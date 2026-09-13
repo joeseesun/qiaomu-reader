@@ -44,6 +44,10 @@ Qiaomu Reader 是中文优先的 Obsidian EPUB、PDF、FB2、MOBI、AZW3 和 CBZ
 
 首页主图展示插件内置的六本中英文公版书，每本都有封面。书库提供继续阅读、搜索、阅读状态和“有划线”筛选；书名下方直接显示划线数量与阅读笔记入口。也可以添加自己的 EPUB、PDF、MOBI 等图书。
 
+**桌面端可以从本机 [Calibre](https://calibre-ebook.com/) 书库按需加入图书。** 在书库点击「从 Calibre 添加」，或使用命令面板。默认读取书库里的 `metadata.db`（需要 Python 3）；若没有 Python，则回退到 `calibredb`。选定的 EPUB / PDF / MOBI 等文件会拷贝进当前仓库，不会把整座 Calibre 书库挂进 Obsidian。移动端不提供此入口。
+
+![从 Calibre 按需加入书库](docs/assets/calibre-import.png)
+
 ### 2. 选中一句话，就地划线、批注或提问
 
 ![4.2.4 选文工具栏：划线与颜色下拉、批注、问 AI、复制；正文使用青瓷主题与双页布局](docs/assets/showcase-4.2.4-selection.jpg)
@@ -235,6 +239,8 @@ Qiaomu Reader 由 [向阳乔木](https://qiaomu.ai) 维护：
 2. Select **Browse** and search for **Qiaomu Reader**.
 3. Choose **Qiaomu Reader** by **向阳乔木**, then select **Install → Enable**.
 4. Open the library from the left ribbon to try the bundled public-domain books or add your own. AI setup is optional.
+
+On desktop, **Add from Calibre** copies selected books from a local [Calibre](https://calibre-ebook.com/) library into the vault. Search uses `metadata.db` (Python 3) and falls back to `calibredb`. The whole Calibre library is not mounted into Obsidian. This entry is hidden on mobile.
 
 For updates, use **Settings → Community plugins → Check for updates**, then update Qiaomu Reader. Community plugins do not update automatically. If you used Qiaomu Book Reader before, back up your vault and disable it before enabling the new plugin; see the [migration instructions](#安装).
 
