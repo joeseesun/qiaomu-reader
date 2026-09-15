@@ -196,7 +196,16 @@ export function aiProviderFor(id) {
 }
 
 export function normalizeAiBase(value) {
-  return String(value || "").trim().replace(/\/+$/, "");
+  const trimmed = String(value || "").trim().replace(/\/+$/, "");
+  if (!trimmed) return "";
+  let parsed;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return "";
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "";
+  return trimmed;
 }
 
 export function classifyAiHttpStatus(status) {
