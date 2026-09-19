@@ -1,7 +1,7 @@
 {
   "id": "qiaomu-reader",
   "name": "Qiaomu Reader",
-  "version": "4.2.15",
+  "version": "4.2.16",
   "minAppVersion": "1.11.4",
   "description": "Read EPUB, PDF, MOBI, FB2 and comics with highlights, notes, progress, custom fonts and optional AI assistance.",
   "author": "向阳乔木",
