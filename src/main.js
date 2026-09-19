@@ -759,11 +759,22 @@ function handleAreaNavClick(view, e) {
   return false;
 }
 
+// Page turns should stay visually quiet in immersive mode. A blank tap that
+// did not navigate can still bring the controls back, while links, images,
+// highlights and text selection keep their own interaction.
+function revealReaderChromeFromPage(view, e) {
+  if (e.defaultPrevented) return false;
+  if (e.target?.closest?.("a,button,input,textarea,select,[contenteditable],img,.qiaomu-reader-hl,.qiaomu-reader-hl-popup")) return false;
+  const sel = e.target?.ownerDocument?.getSelection() || selOf(view.areaEl);
+  if (sel && !sel.isCollapsed && sel.toString().trim()) return false;
+  view._armImmersive?.();
+  return true;
+}
+
 // iframe events do not bubble to the host's immersive chrome or tap zones.
 // Convert section coordinates before reusing the reader's navigation rules.
 function attachEngineChrome(view, doc, index) {
   doc.addEventListener("pointerdown", (event) => {
-    view._armImmersive?.();
     beginReaderSelection(view, event);
   });
   const release = () => { view._selectionDragging = false; };
@@ -780,17 +791,20 @@ function attachEngineChrome(view, doc, index) {
   doc.addEventListener("click", (event) => {
     const frame = doc.defaultView?.frameElement?.getBoundingClientRect();
     if (!frame) return;
-    if (handleAreaNavClick(view, {
+    const pageEvent = {
       target: event.target, defaultPrevented: event.defaultPrevented,
       clientX: event.clientX + frame.left,
-    })) event.preventDefault();
+    };
+    if (handleAreaNavClick(view, pageEvent)) event.preventDefault();
+    else revealReaderChromeFromPage(view, pageEvent);
   });
 }
 // Reader chrome lives above the page rather than reserving rows around it. In
 // immersive mode it retracts after a short pause and returns through several
-// equivalent inputs: touch/click, the top or bottom pointer edge, or keyboard
-// focus. Panels, selection tools and focused controls keep it visible so an
-// auto-hide timer can never take the active UI away from the reader.
+// equivalent inputs: a blank page tap, the top or bottom pointer edge, or
+// keyboard focus. Page-turn taps and swipes deliberately do not reveal it.
+// Panels, selection tools and focused controls keep it visible so an auto-hide
+// timer can never take the active UI away from the reader.
 function setupImmersiveChrome(view, root) {
   const chromeBusy = () => {
     const doc = docOf(root);
@@ -829,8 +843,6 @@ function setupImmersiveChrome(view, root) {
     if (event.clientY <= rect.top + 64 || event.clientY >= rect.bottom - 64) reveal();
   };
   root.addEventListener("pointermove", revealFromEdge);
-  root.addEventListener("pointerdown", reveal);
-  root.addEventListener("touchstart", reveal, { passive: true });
   root.addEventListener("focusin", reveal);
   view._armImmersive = reveal;
   reveal();
@@ -988,7 +1000,9 @@ function attachReaderSwipeNav(view) {
   view.areaEl.addEventListener("touchstart", onStart, { passive: true });
   view.areaEl.addEventListener("touchmove", onMove, { passive: false });
   view.areaEl.addEventListener("touchend", onEnd, { passive: true });
-  view.areaEl.addEventListener("click", (ev) => handleAreaNavClick(view, ev));
+  view.areaEl.addEventListener("click", (ev) => {
+    if (!handleAreaNavClick(view, ev)) revealReaderChromeFromPage(view, ev);
+  });
 }
 
 // Zoom gestures and immersive chrome behave the same once either host's DOM

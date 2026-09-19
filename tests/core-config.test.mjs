@@ -910,6 +910,9 @@ test("immersive reader chrome overlays the page and retracts without reserving r
   assert.match(css, /\.qiaomu-reader-pct::before \{ content:"·"/);
   assert.match(source, /function setupImmersiveChrome\(view, root\)/);
   assert.match(source, /root\.addEventListener\("focusin", reveal\)/);
+  assert.doesNotMatch(source, /root\.addEventListener\("pointerdown", reveal\)/);
+  assert.doesNotMatch(source, /root\.addEventListener\("touchstart", reveal/);
+  assert.match(source, /if \(!handleAreaNavClick\(view, ev\)\) revealReaderChromeFromPage\(view, ev\)/);
   assert.match(source, /event\.clientY <= rect\.top \+ 64/);
   assert.match(source, /\.qiaomu-reader-panel-open,\.qiaomu-reader-overlay-on,\.qiaomu-reader-hl-popup-on/);
   assert.equal((source.match(/wireReaderChrome\(this, root\);/g) || []).length, 2); // both views delegate chrome wiring to the shared helper

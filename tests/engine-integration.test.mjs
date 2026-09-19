@@ -279,7 +279,7 @@ test("bundled paginator ignores hidden navigation, unlocks after errors and disc
   dom.window.close();
 });
 
-test("iframe pointer events reveal chrome and use host tap zones without hijacking links or scrolling", () => {
+test("iframe page turns stay immersive while center taps and pointer edges reveal chrome", () => {
   const dom = new JSDOM('<body><main><iframe></iframe></main></body>');
   const frame = dom.window.document.querySelector("iframe"), doc = frame.contentDocument;
   doc.body.innerHTML = '<p>正文</p><a href="#note">注释</a>';
@@ -289,18 +289,21 @@ test("iframe pointer events reveal chrome and use host tap zones without hijacki
   const calls = [];
   const view = { areaEl: main, plugin: { settings: { navMode: "click" } },
     _armImmersive: () => calls.push("chrome"), nav: dir => calls.push(dir) };
-  const attach = vm.runInNewContext(`${functionSource("beginReaderSelection")}\n${functionSource("handleAreaNavClick")}\n${functionSource("attachEngineChrome")}\nattachEngineChrome`, {
+  const attach = vm.runInNewContext(`${functionSource("beginReaderSelection")}\n${functionSource("handleAreaNavClick")}\n${functionSource("revealReaderChromeFromPage")}\n${functionSource("attachEngineChrome")}\nattachEngineChrome`, {
     readerIsPdf: () => false, selOf: () => null,
   });
   attach(view, doc);
   const send = (target, type, x = 1400, y = 20) => target.dispatchEvent(new doc.defaultView.MouseEvent(type, {
     bubbles: true, cancelable: true, clientX: x, clientY: y,
   }));
-  send(doc.body, "pointerdown"); send(doc.body, "pointermove");
+  send(doc.body, "pointerdown");
+  assert.deepEqual(calls, [], "starting a page turn must not reveal the controls");
+  send(doc.body, "pointermove");
   send(doc.querySelector("p"), "click");
+  send(doc.querySelector("p"), "click", 900);
   send(doc.querySelector("a"), "click");
   view.plugin.settings.readMode = "scroll"; send(doc.querySelector("p"), "click");
-  assert.deepEqual(calls, ["chrome", "chrome", "next"]);
+  assert.deepEqual(calls, ["chrome", "next", "chrome", "chrome"]);
   dom.window.close();
 });
 
