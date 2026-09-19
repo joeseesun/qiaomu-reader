@@ -842,8 +842,12 @@ function setupImmersiveChrome(view, root) {
     const rect = root.getBoundingClientRect();
     if (event.clientY <= rect.top + 64 || event.clientY >= rect.bottom - 64) reveal();
   };
+  const revealFromChromeFocus = (event) => {
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (target?.closest(".qiaomu-reader-top,.qiaomu-reader-bot,.qiaomu-reader-panel-open,.qiaomu-reader-hl-popup-on")) reveal();
+  };
   root.addEventListener("pointermove", revealFromEdge);
-  root.addEventListener("focusin", reveal);
+  root.addEventListener("focusin", revealFromChromeFocus);
   view._armImmersive = reveal;
   reveal();
 }

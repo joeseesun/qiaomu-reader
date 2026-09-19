@@ -909,7 +909,9 @@ test("immersive reader chrome overlays the page and retracts without reserving r
   assert.match(css, /\.qiaomu-reader-bot-center \{[^}]*flex-direction:row/s);
   assert.match(css, /\.qiaomu-reader-pct::before \{ content:"·"/);
   assert.match(source, /function setupImmersiveChrome\(view, root\)/);
-  assert.match(source, /root\.addEventListener\("focusin", reveal\)/);
+  assert.doesNotMatch(source, /root\.addEventListener\("focusin", reveal\)/);
+  assert.match(source, /root\.addEventListener\("focusin", revealFromChromeFocus\)/);
+  assert.match(source, /target\?\.closest\("\.qiaomu-reader-top,\.qiaomu-reader-bot/);
   assert.doesNotMatch(source, /root\.addEventListener\("pointerdown", reveal\)/);
   assert.doesNotMatch(source, /root\.addEventListener\("touchstart", reveal/);
   assert.match(source, /if \(!handleAreaNavClick\(view, ev\)\) revealReaderChromeFromPage\(view, ev\)/);
