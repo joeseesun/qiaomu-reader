@@ -892,9 +892,10 @@ test("book-note append asks to open only once", () => {
   assert.match(exportSource, /await plugin\._saveLocalData\(\)/);
 });
 
-test("reader chrome stays white and removes only the reader's redundant host header", () => {
+test("reader chrome follows the selected theme and removes only the reader's redundant host header", () => {
   const css = fs.readFileSync(new URL("../styles.css", import.meta.url), "utf8");
-  assert.match(css, /\.qiaomu-reader-top, \.qiaomu-reader-bot \{ background:#fff/);
+  assert.match(css, /\.qiaomu-reader-top, \.qiaomu-reader-bot \{ background:var\(--qiaomu-reader-ui/);
+  assert.match(css, /\.qiaomu-reader-night \{[^}]*color-scheme: dark;/s);
   assert.match(css, /\.workspace-leaf-content\[data-type="qiaomu-reader"\] > \.view-header \{ display:none; \}/);
   assert.match(css, /\.qiaomu-reader-area \{[^}]*background:var\(--qiaomu-reader-bg/s);
 });
