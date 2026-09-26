@@ -1,4 +1,14 @@
 export const QIAOMU_READER_EN = {
+  "message-or-drop-epub": "Message, or drop an EPUB",
+  "epub-attachment-loading": "Reading {0}…",
+  "epub-attachment-full": "Whole EPUB",
+  "epub-attachment-truncated": "EPUB · truncated to first 180,000 characters",
+  "epub-attachment-too-large": "EPUB too large: max 30 MB, 100 MB expanded, 8 MB per chapter. Use a smaller edition or a selected passage.",
+  "epub-attachment-invalid": "Cannot read EPUB text. Check that the file is complete and unencrypted, then drop it again.",
+  "epub-attachment-empty": "This EPUB has no readable text. Use a text-based edition.",
+  "epub-attachment-busy": "Stop the current answer before attaching a book.",
+  "epub-attachment-one": "Attach one EPUB at a time.",
+
   "find-books": "Find books",
   "add": "Add",
   "remove": "Remove",

@@ -122,6 +122,11 @@ async function bundle(elements) {
   }, bundle: true, format: "cjs", write: false, plugins: [elements.plugin], define: elements.define });
   return result.outputFiles[0].text;
 }
+function engineHost(dom) {
+  const host = dom.window.document.querySelector("main");
+  Object.defineProperties(host, { clientWidth: { value: 390 }, clientHeight: { value: 700 } });
+  return host;
+}
 function evaluate(dom, code) {
   dom.window.module = { exports: {} };
   vm.runInContext(code, dom.getInternalVMContext());
@@ -172,7 +177,7 @@ test("engine searches createDocument sections, returns readable excerpts and can
   View.prototype.getCFI = (index, range) => `epubcfi(${index}/${range.startOffset})`;
   View.prototype.addAnnotation = async ({ value }) => annotations.add(value);
   View.prototype.deleteAnnotation = async ({ value }) => annotations.delete(value);
-  const engine = new EpubEngine(dom.window.document.querySelector("main"));
+  const engine = new EpubEngine(engineHost(dom));
   try {
     await engine.open(new Uint8Array(), "test.epub");
     const hits = [];
@@ -226,7 +231,7 @@ test("closing the engine releases the book once, including cancellation during a
   View.prototype.open = async function () { this.book = { destroy: () => disposed++ }; };
   View.prototype.init = async function () { this.lastLocation = { cfi: "test" }; this.renderer = { getContents: () => [{ doc: dom.window.document }] }; };
   View.prototype.close = function () {};
-  const engine = new EpubEngine(dom.window.document.querySelector("main"));
+  const engine = new EpubEngine(engineHost(dom));
   await engine.open(new Uint8Array(), "test.mobi");
   engine.destroy(); engine.destroy();
   assert.equal(disposed, 1);
@@ -419,7 +424,7 @@ test("engine reopening releases the previous parser; invalid navigation cannot c
   View.prototype.close = function () {};
   View.prototype.resolveNavigation = target => ({ index: target === "bad" ? 999 : 1 });
   View.prototype.goTo = async function (target) { moves++; return this.resolveNavigation(target); };
-  const engine = new EpubEngine(dom.window.document.querySelector("main"));
+  const engine = new EpubEngine(engineHost(dom));
   try {
     await engine.open(new Uint8Array(), "one.epub");
     await engine.open(new Uint8Array(), "two.epub");

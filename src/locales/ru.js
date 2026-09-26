@@ -1,6 +1,16 @@
 // Russian locale pack. Inherited Russian UI strings keep their original wording;
 // strings that were originally Chinese source keys are translated to Russian here.
 export default {
+  "message-or-drop-epub": "Сообщение или перетащите EPUB",
+  "epub-attachment-loading": "Чтение «{0}»…",
+  "epub-attachment-full": "Весь EPUB",
+  "epub-attachment-truncated": "EPUB · только первые 180 000 символов",
+  "epub-attachment-too-large": "EPUB слишком большой: до 30 МБ, 100 МБ после распаковки, 8 МБ на главу. Выберите меньшую версию или отрывок.",
+  "epub-attachment-invalid": "Не удалось прочитать EPUB. Проверьте целостность файла и отсутствие шифрования, затем повторите.",
+  "epub-attachment-empty": "В EPUB нет доступного текста. Используйте текстовую версию.",
+  "epub-attachment-busy": "Остановите ответ перед добавлением книги.",
+  "epub-attachment-one": "Прикрепляйте по одной книге EPUB.",
+
   "find-books": "Найти книги",
   "add": "Добавить",
   "remove": "Удалить",

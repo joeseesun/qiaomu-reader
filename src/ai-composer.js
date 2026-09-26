@@ -12,7 +12,7 @@ export function bindAiComposer(input, send, chat, { blurOnSend = false, onDraftC
   };
   const refresh = () => { resize(); chat._setSending(!!chat.busy); };
   const submit = async (providedQuestion) => {
-    if (chat.busy || composing || pending) return;
+    if (chat.busy || chat.attachmentLoading || composing || pending) return;
     const question = providedQuestion || input.value.trim();
     if (!question) return;
     const sentRevision = revision;

@@ -1,4 +1,14 @@
 export default {
+  "message-or-drop-epub": "메시지 입력 또는 EPUB 끌어놓기",
+  "epub-attachment-loading": "{0} 읽는 중…",
+  "epub-attachment-full": "EPUB 전체",
+  "epub-attachment-truncated": "EPUB · 처음 180,000자로 제한",
+  "epub-attachment-too-large": "EPUB이 너무 큽니다. 최대 30 MB, 압축 해제 후 100 MB, 장당 8 MB입니다. 더 작은 판본이나 선택한 문장을 사용하세요.",
+  "epub-attachment-invalid": "EPUB 본문을 읽을 수 없습니다. 파일이 완전하고 암호화되지 않았는지 확인한 뒤 다시 끌어놓으세요.",
+  "epub-attachment-empty": "읽을 수 있는 본문이 없습니다. 텍스트가 있는 판본을 사용하세요.",
+  "epub-attachment-busy": "현재 답변을 중지한 뒤 책을 첨부하세요.",
+  "epub-attachment-one": "한 번에 EPUB 한 권만 첨부할 수 있습니다.",
+
   "find-books": "책 찾기",
   "add": "추가",
   "remove": "삭제",

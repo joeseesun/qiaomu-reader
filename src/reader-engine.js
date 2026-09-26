@@ -1,5 +1,6 @@
 import { HIGHLIGHT_PAINTS } from "./highlight-colors.js";
 import { createBookCover, isGeneratedBookCover } from "./book-cover.js";
+import { waitForEngineViewport } from "./engine-viewport.js";
 export { HIGHLIGHT_PAINTS } from "./highlight-colors.js";
 // Qiaomu Reader — e-book rendering engine.
 //
@@ -106,6 +107,7 @@ export class EpubEngine {
     #resizeObserver = null;
     #resizeFrame = null;
     #keyCleanup = null;
+    #openController = null;
 
     constructor(container, hooks = {}) {
         this.#host = container;
@@ -119,6 +121,7 @@ export class EpubEngine {
     async open(bytes, fileName, opts = {}) {
         // Reusing an adapter must release its previous parser and observers.
         this.destroy();
+        const controller = this.#openController = new AbortController();
         // Format is sniffed from the bytes by the library, not from the name.
         const file = new File([bytes], fileName);
         const view = document.createElement(VIEW_TAG);
@@ -165,6 +168,8 @@ export class EpubEngine {
         try {
             await view.open(file);
             if (this.#view !== view) throw Object.assign(new Error("Reader closed"), { name: "AbortError" });
+            await waitForEngineViewport(this.#host, controller.signal);
+            if (this.#view !== view) throw Object.assign(new Error("Reader closed"), { name: "AbortError" });
         } catch (error) {
             disposeEngineView(view);
             if (this.#view === view) this.#view = null;
@@ -198,6 +203,7 @@ export class EpubEngine {
     }
 
     destroy() {
+        this.#openController?.abort(); this.#openController = null;
         this.#searchGeneration++;
         this.#resizeObserver?.disconnect(); this.#resizeObserver = null;
         this.#host.ownerDocument.defaultView?.cancelAnimationFrame?.(this.#resizeFrame);

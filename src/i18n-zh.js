@@ -1,6 +1,16 @@
 // Generated from the complete source UI dictionary and reviewed for core reading terms.
 // Keep placeholders, Markdown and HTML structure identical to the source strings.
 export const QIAOMU_READER_ZH_CN = {
+  "message-or-drop-epub": "输入消息，或拖入 EPUB",
+  "epub-attachment-loading": "正在读取《{0}》…",
+  "epub-attachment-full": "整本 EPUB",
+  "epub-attachment-truncated": "EPUB · 已截断，仅前 18 万字符",
+  "epub-attachment-too-large": "EPUB 过大：最多 30 MB，解压后 100 MB，单章 8 MB。请换较小版本或选文提问。",
+  "epub-attachment-invalid": "无法提取 EPUB 正文，请确认文件完整且未加密，再拖入重试。",
+  "epub-attachment-empty": "这本 EPUB 没有可提取的正文，请使用含文字的版本。",
+  "epub-attachment-busy": "请先停止当前回答，再添加电子书。",
+  "epub-attachment-one": "每次只能附加一本 EPUB，请逐本提问。",
+
   "find-books": "找书",
   "add": "添加",
   "remove": "移除",

@@ -113,7 +113,7 @@ export function queueReadingLayout(view, run) {
 }
 
 export function shouldFollowContext(mode, sameBook) {
-  return !sameBook || (mode !== "selection" && mode !== "none");
+  return !sameBook || (mode !== "selection" && mode !== "none" && mode !== "attachment");
 }
 
 export function comfortableLineWidth(fontSize, maxCharacters, cjk) {

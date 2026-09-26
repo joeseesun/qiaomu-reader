@@ -55,7 +55,7 @@ img.qiaomu-reader-pdf-lazy:not([data-loaded="1"]) { background:color-mix(in srgb
 
 /* ── Edge-aligned chrome: bars, buttons and location readout ─────────────── */
 .qiaomu-reader-top { position:absolute; top:0; left:0; right:0; height:40px; display:flex; align-items:center; padding:4px 8px; gap:6px; box-sizing:border-box; border:0; border-bottom:1px solid; border-radius:0; box-shadow:none; z-index:16; }
-.qiaomu-reader-top-title { flex:1 1 auto; min-width:0; text-align:left; font-size:12px; font-weight:500; font-family:'Inter',system-ui,sans-serif; color:#555; opacity:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.qiaomu-reader-top-title { flex:1 1 auto; min-width:0; text-align:left; font-size:12px; font-weight:500; font-family:'Inter',system-ui,sans-serif; color:var(--qiaomu-reader-muted,var(--text-muted)); opacity:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .qiaomu-reader-top-right { display:flex; gap:2px; align-items:center; }
 .qiaomu-reader-ibtn { width:36px; height:36px; padding:0; display:flex; align-items:center; justify-content:center; box-sizing:border-box; border:1px solid var(--background-modifier-border); box-shadow:none; background:color-mix(in srgb,var(--text-normal) 4%,transparent); border-radius:10px; cursor:pointer; color:var(--text-muted); opacity:.82; transition:opacity .15s,background .13s,border-color .13s,transform .1s; flex-shrink:0; }
 .qiaomu-reader-ibtn:hover { opacity:1; background:var(--background-modifier-hover); border-color:color-mix(in srgb,var(--text-muted) 35%,var(--background-modifier-border)); }
@@ -100,9 +100,9 @@ img.qiaomu-reader-pdf-lazy:not([data-loaded="1"]) { background:color-mix(in srgb
 .qiaomu-reader-pct { font-family:'Inter',system-ui,sans-serif; font-size:14px; font-weight:700; color:var(--text-accent); }
 .qiaomu-reader-pct::before { content:"·"; margin-right:6px; color:var(--text-muted); font-weight:500; }
 /* White chrome stays distinct from the selected page paper. */
-.qiaomu-reader-top, .qiaomu-reader-bot { background:#fff; border-color:#e8e8e8; color:#333; }
-.qiaomu-reader-top .qiaomu-reader-ibtn, .qiaomu-reader-bot .qiaomu-reader-ibtn, .qiaomu-reader-bot .qiaomu-reader-navbtn { width:32px; height:32px; border-color:transparent; border-radius:6px; background:transparent; color:#666; opacity:1; }
-.qiaomu-reader-top .qiaomu-reader-ibtn:hover, .qiaomu-reader-bot .qiaomu-reader-ibtn:hover, .qiaomu-reader-bot .qiaomu-reader-navbtn:hover, .qiaomu-reader-bot .qiaomu-reader-loc:hover { background:color-mix(in srgb,#333 8%,transparent); color:#333; }
+.qiaomu-reader-top, .qiaomu-reader-bot { background:var(--qiaomu-reader-ui,var(--background-secondary)); border-color:var(--qiaomu-reader-border,var(--background-modifier-border)); color:var(--qiaomu-reader-text,var(--text-normal)); }
+.qiaomu-reader-top .qiaomu-reader-ibtn, .qiaomu-reader-bot .qiaomu-reader-ibtn, .qiaomu-reader-bot .qiaomu-reader-navbtn { width:32px; height:32px; border-color:transparent; border-radius:6px; background:transparent; color:var(--qiaomu-reader-muted,var(--text-muted)); opacity:1; }
+.qiaomu-reader-top .qiaomu-reader-ibtn:hover, .qiaomu-reader-bot .qiaomu-reader-ibtn:hover, .qiaomu-reader-bot .qiaomu-reader-navbtn:hover, .qiaomu-reader-bot .qiaomu-reader-loc:hover { background:color-mix(in srgb,var(--qiaomu-reader-text,var(--text-normal)) 8%,transparent); color:var(--qiaomu-reader-text,var(--text-normal)); }
 .qiaomu-reader-bot .qiaomu-reader-loc { background:transparent; box-shadow:none; border:0; }
 .qiaomu-reader-bot .qiaomu-reader-loc, .qiaomu-reader-bot .qiaomu-reader-pct { color:#666; font-weight:500; }
 
@@ -1563,6 +1563,33 @@ button.qiaomu-reader-find-item.qiaomu-reader-toc-active { background: var(--back
 .qiaomu-reader-translation-save { display: flex; gap: 2px; }
 .qiaomu-reader-translation-save svg { width: 16px; height: 16px; }
 .qiaomu-reader-translation-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--text-muted); font-size: var(--font-ui-small); margin-top: 12px; }
+
+.qiaomu-reader-ai-attachment-status { display:flex; align-items:center; gap:8px; padding:6px 0; font-size:var(--font-ui-small); color:var(--text-muted); }
+.qiaomu-reader-ai-attachment-status[hidden] { display:none; }
+.qiaomu-reader-sr-only { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+
+.qiaomu-reader-note-folder-field { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:6px; }
+.qiaomu-reader-note-folder-field .qiaomu-reader-setup-label { grid-column:1 / -1; }
+
+/* Keep explicit night reading local to its view, even in a light vault. */
+.qiaomu-reader-night {
+  color-scheme: dark;
+  --background-primary: #181a1b;
+  --background-primary-alt: #222526;
+  --background-secondary: #222526;
+  --background-secondary-alt: #181a1b;
+  --background-modifier-border: #383c3d;
+  --background-modifier-hover: #303536;
+  --background-modifier-form-field: #222526;
+  --text-normal: #d9d7d1;
+  --text-muted: #9a9a94;
+  --text-faint: #858b87;
+  --interactive-normal: #222526;
+  --interactive-hover: #303536;
+  --interactive-accent: #91ab9a;
+  --text-on-accent: #181a1b;
+  color: var(--text-normal);
+}
 
 /* Bundled reading subset: SIL OFL 1.1
 Copyright (c) 2023, Zhejiang JadeFoci Techonology Co. LTD
