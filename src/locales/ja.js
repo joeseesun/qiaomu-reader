@@ -1,4 +1,14 @@
 export default {
+  "message-or-drop-epub": "メッセージを入力、またはEPUBをドロップ",
+  "epub-attachment-loading": "『{0}』を読み込み中…",
+  "epub-attachment-full": "EPUB全体",
+  "epub-attachment-truncated": "EPUB · 先頭180,000文字に切り詰め",
+  "epub-attachment-too-large": "EPUBが大きすぎます。最大30 MB、展開後100 MB、各章8 MB。小さい版か選択した文章を使用してください。",
+  "epub-attachment-invalid": "本文を読み取れません。破損や暗号化がないか確認し、再度ドロップしてください。",
+  "epub-attachment-empty": "読み取れる本文がありません。テキストを含む版を使用してください。",
+  "epub-attachment-busy": "回答を停止してから本を追加してください。",
+  "epub-attachment-one": "一度に添付できるEPUBは1冊です。",
+
   "find-books": "本を探す",
   "add": "追加",
   "remove": "削除",

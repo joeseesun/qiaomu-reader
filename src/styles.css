@@ -1516,3 +1516,10 @@ button.qiaomu-reader-find-item.qiaomu-reader-toc-active { background: var(--back
 .qiaomu-reader-translation-save { display: flex; gap: 2px; }
 .qiaomu-reader-translation-save svg { width: 16px; height: 16px; }
 .qiaomu-reader-translation-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--text-muted); font-size: var(--font-ui-small); margin-top: 12px; }
+
+.qiaomu-reader-ai-attachment-status { display:flex; align-items:center; gap:8px; padding:6px 0; font-size:var(--font-ui-small); color:var(--text-muted); }
+.qiaomu-reader-ai-attachment-status[hidden] { display:none; }
+.qiaomu-reader-sr-only { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+
+.qiaomu-reader-note-folder-field { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:6px; }
+.qiaomu-reader-note-folder-field .qiaomu-reader-setup-label { grid-column:1 / -1; }

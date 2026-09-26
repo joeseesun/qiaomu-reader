@@ -1,3 +1,4 @@
+import { noteFolderPath } from "../src/note-folders.js";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
@@ -496,7 +497,7 @@ function titleModal() {
   }
   const NoteModal = vm.runInNewContext(`${cls}\nNoteTitleModal`, {
     Modal, qiaomuReaderTranslate: (s) => s, sanitizeNoteTitle: (s) => s, suggestNoteTitle: (s) => s,
-    notesFolderPath: () => "", allVaultTags: () => [], FolderSuggest: null,
+    noteFolderPath, addNoteFolderPicker() {}, notesFolderPath: () => "", allVaultTags: () => [], FolderSuggest: null,
     parseNoteTags: () => [], qiaomuReaderPath: (s) => s, qiaomuReaderAutoFocus() {},
   });
   const modal = new NoteModal({}, { settings: {}, _saveLocalData: async () => {} }, "重要性如何放大紧张", null, (value) => results.push(value), { kind: "ai-answer" });
@@ -507,7 +508,7 @@ function titleModal() {
 test("title form allows editing and ignores IME Enter; submit fires once", async () => {
   const { modal, window, input, results } = titleModal();
   assert.equal(input.value, "重要性如何放大紧张");
-  assert.ok(input.getAttribute("aria-label"));
+  assert.equal(input.labels[0]?.textContent, "title");
   input.value = "我修改的主题";
   const enter = (opts) => input.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Enter", ...opts }));
   enter({ isComposing: true });
@@ -617,4 +618,35 @@ test("mobile AI requests leave the busy state after a stalled network call", asy
   const pending = withTimeout(new Promise(() => {}), controller.signal, 1000);
   controller.abort();
   await assert.rejects(pending, (error) => error.qiaomuReaderReason === "cancelled");
+});
+
+test('book extraction blocks enter and quick-send without clearing the draft or calling a provider', async () => {
+  const h=composer();h.chat.attachmentLoading=true;h.type('尚未发送');h.enter();h.send.click();
+  assert.equal(h.calls.length,0);assert.equal(h.input.value,'尚未发送');
+  let calls=0;const {chat}=chatHarness(async()=>{calls++;return '回答';});
+  chat.attachmentLoading=true;assert.equal(await chat._send('快捷问题'),false);assert.equal(calls,0);assert.equal(chat.turns.length,0);
+});
+test('whole-book send snapshots source metadata and consumes only the attachment that was sent', async () => {
+  let captured,finish;const {chat}=chatHarness(async(_text,_plugin,turns)=>{captured=turns[0].context;return new Promise(resolve=>finish=resolve);});
+  chat.app.vault={getAbstractFileByPath:path=>({path})};
+  chat.contextMode='attachment';chat.pendingContext={kind:'document',text:'一\n\n二',label:'Whole EPUB',sourceBookName:'唐诗三百首',sourceBookPath:'B/唐诗.epub',truncated:false};
+  const pending=chat._send('总结');
+  assert.equal(captured.text,'一\n\n二');assert.equal(captured.sourceBookPath,'B/唐诗.epub');
+  chat.pendingContext={kind:'selection',text:'后来的选文'};
+  finish('已完成');await pending;
+  assert.equal(chat.pendingContext.text,'后来的选文');assert.equal(chat.turns[0].context.text,'一\n\n二');
+});
+test('model serialization uses attached book identity and explicit truncation, not the open book name',()=>{
+  const start=source.indexOf('function normalizeAiTurnContext('),end=source.indexOf('function clearAiSource(',start);
+  const helpers=vm.runInNewContext(`${source.slice(start,end)};({aiMessages,normalizeAiTurnContext})`,{PDF_AI_CONTEXT_MAX_CHARS:180000,qiaomuReaderTranslate:k=>k,aiSystemChat:()=> 'system'});
+  const context=helpers.normalizeAiTurnContext({kind:'document',label:'EPUB',text:'书籍正文',sourceBookName:'唐诗三百首',sourceBookPath:'Books/唐诗.epub',truncated:true});
+  const messages=helpers.aiMessages('',{},[{role:'user',content:'概括',context}], '另一本书');
+  assert.match(messages[1].content,/书名：《唐诗三百首》/);assert.match(messages[1].content,/仅包含开头部分/);assert.match(messages[1].content,/书籍正文/);assert.doesNotMatch(messages[1].content,/另一本书/);
+});
+
+test('normalization cannot silently trim whole-book attachment metadata',()=>{
+  const start=source.indexOf('function normalizeAiTurnContext('),end=source.indexOf('function aiChatTitle(',start);
+  const normalize=vm.runInNewContext(`${source.slice(start,end)};normalizeAiTurnContext`,{PDF_AI_CONTEXT_MAX_CHARS:8,qiaomuReaderTranslate:k=>k});
+  const context=normalize({kind:'document',text:'123456789',sourceBookPath:'book.epub',sourceBookName:'Book'});
+  assert.equal(context.text,'12345678');assert.equal(context.truncated,true);
 });

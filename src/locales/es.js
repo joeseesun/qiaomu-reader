@@ -1,4 +1,14 @@
 export default {
+  "message-or-drop-epub": "Mensaje o arrastra un EPUB",
+  "epub-attachment-loading": "Leyendo {0}…",
+  "epub-attachment-full": "EPUB completo",
+  "epub-attachment-truncated": "EPUB · truncado a los primeros 180.000 caracteres",
+  "epub-attachment-too-large": "EPUB demasiado grande: máximo 30 MB, 100 MB descomprimidos y 8 MB por capítulo. Usa una edición menor o un pasaje.",
+  "epub-attachment-invalid": "No se pudo leer el EPUB. Comprueba que esté completo y sin cifrar e inténtalo de nuevo.",
+  "epub-attachment-empty": "El EPUB no contiene texto legible. Usa una edición con texto.",
+  "epub-attachment-busy": "Detén la respuesta antes de adjuntar un libro.",
+  "epub-attachment-one": "Adjunta un solo EPUB cada vez.",
+
   "find-books": "Buscar libros",
   "add": "Añadir",
   "remove": "Quitar",

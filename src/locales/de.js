@@ -1,4 +1,14 @@
 export default {
+  "message-or-drop-epub": "Nachricht oder EPUB hier ablegen",
+  "epub-attachment-loading": "{0} wird gelesen…",
+  "epub-attachment-full": "Ganzes EPUB",
+  "epub-attachment-truncated": "EPUB · auf die ersten 180.000 Zeichen gekürzt",
+  "epub-attachment-too-large": "EPUB zu groß: maximal 30 MB, 100 MB entpackt, 8 MB je Kapitel. Kleinere Ausgabe oder Textauswahl verwenden.",
+  "epub-attachment-invalid": "EPUB-Text nicht lesbar. Vollständige, unverschlüsselte Datei prüfen und erneut ablegen.",
+  "epub-attachment-empty": "Dieses EPUB enthält keinen lesbaren Text. Eine Ausgabe mit Text verwenden.",
+  "epub-attachment-busy": "Antwort vor dem Anhängen eines Buchs stoppen.",
+  "epub-attachment-one": "Jeweils nur ein EPUB anhängen.",
+
   "find-books": "Bücher finden",
   "add": "Hinzufügen",
   "remove": "Entfernen",
