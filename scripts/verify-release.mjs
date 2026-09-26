@@ -39,7 +39,7 @@ requireCheck(versions[manifest.version] === manifest.minAppVersion, "versions.js
 const assets = Object.fromEntries(releaseFiles.map((name) => {
   const file = path.join(profile.outputDir, name);
   requireCheck(fs.existsSync(file), `missing release asset: ${name}`);
-  requireCheck(fs.statSync(file).size <= 5_200_000, `release asset exceeds 5.2 MB: ${name}`);
+  requireCheck(fs.statSync(file).size <= 5_300_000, `release asset exceeds 5.3 MB: ${name}`);
   requireCheck(fs.statSync(file).size > 0, `empty release asset: ${name}`);
   return [name, { bytes: fs.statSync(file).size, sha256: sha256(file) }];
 }));

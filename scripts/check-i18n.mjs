@@ -7,6 +7,7 @@ import { AI_PROVIDER_CATEGORIES, AI_PROVIDERS } from "../src/ai-providers.js";
 import { QIAOMU_READER_ZH_CN } from "../src/i18n-zh.js";
 
 const source = await fs.readFile(new URL("../src/main.js", import.meta.url), "utf8");
+const calibreModalSource = await fs.readFile(new URL("../src/calibre-modal.js", import.meta.url), "utf8");
 const readingNoteSource = await fs.readFile(new URL("../src/reading-note.js", import.meta.url), "utf8");
 const manifest = JSON.parse(await fs.readFile(new URL("../manifest.json", import.meta.url), "utf8"));
 const packageJson = JSON.parse(await fs.readFile(new URL("../package.json", import.meta.url), "utf8"));
@@ -15,14 +16,14 @@ function placeholders(value) {
   return [...String(value).matchAll(/\{[^{}\n]+\}/g)].map((match) => match[0]).sort();
 }
 
-function translatedLiterals(code) {
+function translatedLiterals(code, txArgument = 0) {
   const ast = parse(code, { ecmaVersion: "latest", sourceType: "module" });
   const values = new Set();
   const visit = (node) => {
     if (!node || typeof node !== "object") return;
-    if (node.type === "CallExpression" && node.callee?.type === "Identifier" && node.callee.name === "qiaomuReaderTranslate") {
-      const first = node.arguments?.[0];
-      if (first?.type === "Literal" && typeof first.value === "string") values.add(first.value);
+    if (node.type === "CallExpression" && node.callee?.type === "Identifier" && (node.callee.name === "qiaomuReaderTranslate" || node.callee.name === "tx")) {
+      const arg = node.callee.name === "tx" ? node.arguments?.[txArgument] : node.arguments?.[0];
+      if (arg?.type === "Literal" && typeof arg.value === "string") values.add(arg.value);
     }
     for (const value of Object.values(node)) {
       if (Array.isArray(value)) value.forEach(visit);
@@ -37,7 +38,7 @@ const english = QIAOMU_READER_EN;
 const isChineseSource = (key) => /[\u3400-\u9fff]/.test(key);
 const chineseValue = (key) => isChineseSource(key) ? key : QIAOMU_READER_ZH_CN[key];
 const missing = Object.keys(english).filter((key) => !isChineseSource(key) && (QIAOMU_READER_ZH_CN[key] == null || QIAOMU_READER_ZH_CN[key] === ""));
-const usedLiterals = [...new Set([...translatedLiterals(source), ...AI_PROVIDER_CATEGORIES.map((c) => c.label),
+const usedLiterals = [...new Set([...translatedLiterals(source), ...translatedLiterals(calibreModalSource, 1), ...AI_PROVIDER_CATEGORIES.map((c) => c.label),
   ...Object.values(AI_PROVIDERS).flatMap((p) => [p.label, p.description]).filter((value) => /[\u3400-\u9fffА-Яа-яЁё]/.test(value))])];
 const missingUsedEnglish = usedLiterals.filter((key) => english[key] == null);
 const missingUsedChinese = usedLiterals.filter((key) => !isChineseSource(key) && (QIAOMU_READER_ZH_CN[key] == null || QIAOMU_READER_ZH_CN[key] === ""));
