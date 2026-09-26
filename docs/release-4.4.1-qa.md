@@ -1,6 +1,6 @@
 # Reader 4.4.1 最终构建候选验收
 
-**当前状态：4.4.1 最终构建候选已冻结，包含路径兼容迁移、整书附件及隐藏容器初始化修复。全测、i18n、src lint、standard/community 构建与发布校验通过。下列 hash 是最终构建资产；本轮未安装、未 reload、未 commit/push，等待主进程安装此候选后验收发布。此前 rockfish 交互验证与本次最终候选安装验证分开记录。**
+**当前状态：4.4.1 最终构建候选已完成本地安装复验并提交 PR #33；290 项测试、i18n、src lint、standard/community 构建及 CI 通过。rockfish 和隔离 release vault 已重载最终三资产，原书手机模拟结果见文末。官方预扫描与公开发布尚未完成。**
 
 基线：`origin/main` = `7157656`，远端 manifest 4.4.0；rockfish 原安装同为 4.4.0。分支 `codex/reader-notes-epub-context`。未推送、未公开发布、未提交官方扫描。
 
@@ -36,7 +36,7 @@
 - 宿主延迟 readBinary 后立即关闭伴读，关闭后 loading 清除、没有旧附件回填，对话轮数仍为 0。
 - 截图保存在本机 `/tmp/reader-441-final.png`。未将个人库截图提交到仓库。
 
-## 最终 standard 候选 SHA256（仓库根目录；尚未安装）
+## 最终 standard 候选 SHA256（仓库根目录；最终安装已核对）
 
 | 资产 | bytes | SHA256 |
 | --- | ---: | --- |
@@ -52,7 +52,7 @@ Community 最终构建位于 `dist/community/`，main.js 为 5,197,761 bytes，S
 - 主进程报告：4.4.0 的真实 ReaderModal + Obsidian `dev:mobile on` + CDP 390×844，封面 SVG、书名页图片、正文、CFI 恢复与 scroll 正常；58 章节遍历无空章/坏图。这是桌面宿主移动模拟，非手机实机验收。
 - 明确复现：engine host 初始 `display:none`，300ms 后显示；修复前报 `Could not load a readable book location`，引擎销毁后不能恢复。
 - 修复后主进程宿主记录 `/tmp/reader-blank-qa/hidden-after.json` 已核读：显示前 location 为 null，显示后有 CFI，封面宽 335.40625、高 481.4296875，下一页图片 `nextImageLoaded: true`。
-- 未在用户手机实机测试；无法据此认定其设备原始空白现象的唯一根因。最终候选的安装、reload 与宿主验收交由主进程执行。
+- 未在用户手机实机测试；无法据此认定其设备原始空白现象的唯一根因。最终候选的安装、reload 与宿主验收结果见文末。
 
 ## 边界与现场观察
 
@@ -61,7 +61,7 @@ Community 最终构建位于 `dist/community/`，main.js 为 5,197,761 bytes，S
 - 移动端真实拖放、多窗口、DRM 实际样本、完整模型生成回合未验收；测试中的 provider 全部使用模拟实现。
 - 此前隐藏 Reader leaf 首开失败现已纳入上述初始化时序修复；曾观察到的 ResizeObserver loop 通知未单独证明已消除。
 
-最终检查日志：`/tmp/reader-final-tests.log`、`/tmp/reader-final-standard-verify.log`、`/tmp/reader-final-community-build.log`。版本为 4.4.1（package、lock、manifest、versions 一致）；本轮构建后未安装、reload、commit 或 push。
+最终检查日志：`/tmp/reader-final-tests.log`、`/tmp/reader-final-standard-verify.log`、`/tmp/reader-final-community-build.log`。版本为 4.4.1（package、lock、manifest、versions 一致）；最终安装与提交状态见文首及文末。
 
 ## 最终产物安装复验
 
