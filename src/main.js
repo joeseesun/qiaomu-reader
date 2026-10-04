@@ -1,6 +1,7 @@
 import { selectionActionPreferences } from "./selection-preferences.js";
 import { watchQuietUi } from "./quiet-ui.js";
 import { watchReaderStatusBar } from "./status-bar.js";
+import { protectBooksFromNoteDeletion } from "./book-deletion-guard.js";
 import { STARTER_BOOKS } from "./starter-book-data.js";
 import { createStarterLibraryInstaller, findStarterBook } from "./starter-library.js";
 import { isNonChineseSource } from "./ai-source-language.js";
@@ -1520,6 +1521,7 @@ const QiaomuBookReader = class extends Plugin {
     configureEngineFrames(Platform.isAndroidApp);
     await this.loadAll(); await this._attachAiDraftStore();
     this._unloading = false;
+    this.register(protectBooksFromNoteDeletion(this.app, BOOK_EXTENSIONS));
     this._watchCompanionAndNotes();
     this._registerReaderViews();
     // Shares the open book with Qiaomu Agent (Qiaomu Context Protocol, see qiaomu-context.js).
