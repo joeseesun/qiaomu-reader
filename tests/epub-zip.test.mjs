@@ -19,11 +19,11 @@ const chapter = '01 方案 根干枝叶的成长模型.xhtml';
 
 // Mirrors web-exported EPUBs: UTF-8 names with the ZIP UTF-8 flag (bit 11)
 // cleared and no Unicode Path extra field (0x7075) to recover them.
-async function unflaggedEpub() {
+async function unflaggedEpub(metadata = '<dc:title>前传</dc:title>') {
   const zip = new JSZip();
   zip.file('mimetype', 'application/epub+zip');
   zip.file('META-INF/container.xml', '<container xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="EPUB/package.opf" media-type="application/oebps-package+xml"/></rootfiles></container>');
-  zip.file('EPUB/package.opf', `<package xmlns="http://www.idpf.org/2007/opf" xmlns:dc="http://purl.org/dc/elements/1.1/" version="3.0"><metadata><dc:title>前传</dc:title></metadata><manifest><item id="toc" href="toc.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="c0" href="${chapter}" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="toc"/><itemref idref="c0"/></spine></package>`);
+  zip.file('EPUB/package.opf', `<package xmlns="http://www.idpf.org/2007/opf" xmlns:dc="http://purl.org/dc/elements/1.1/" version="3.0"><metadata>${metadata}</metadata><manifest><item id="toc" href="toc.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="c0" href="${chapter}" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="toc"/><itemref idref="c0"/></spine></package>`);
   zip.file('EPUB/toc.xhtml', `<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><body><nav epub:type="toc"><ol><li><a href="${chapter}">01 方案</a></li></ol></nav></body></html>`);
   zip.file(`EPUB/${chapter}`, '<html xmlns="http://www.w3.org/1999/xhtml"><body><p>什么叫根干枝叶模型？</p></body></html>');
   const bytes = new Uint8Array(await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' }));
@@ -50,7 +50,7 @@ test('unflagged UTF-8 names are misread by default and kept intact by the EPUB d
   assert.equal(decodeZipText(new Uint8Array([0x41]), 'utf-8'), undefined);
 });
 
-test('bundled Foliate reader renders chapters of an EPUB with unflagged UTF-8 names', async () => {
+test('bundled Foliate opens UTF-8 EPUB chapters with missing grouping APIs', async () => {
   const root = path.resolve(import.meta.dirname, '..');
   const elements = foliateElements(root);
   const result = await build({ absWorkingDir: root, stdin: { contents: 'export { makeBook } from "foliate-js/view.js";', resolveDir: root },
@@ -66,6 +66,41 @@ test('bundled Foliate reader renders chapters of an EPUB with unflagged UTF-8 na
     assert.ok(section.size > 0);
     assert.match((await section.createDocument()).body.textContent, /根干枝叶/);
     assert.equal(book.resolveHref(book.toc[0].href)?.index, 1);
+    // Exercise real Foliate metadata parsing and chapter access with the APIs
+    // absent in older WebKit, without installing globals for other plugins.
+    const metadata = `<dc:title id="title">前传</dc:title>
+      <dc:creator id="author">乔木</dc:creator><dc:language>zh</dc:language>
+      <meta refines="#title" property="title-type">main</meta>
+      <meta refines="#title" property="alternate-script" xml:lang="en">Prelude</meta>
+      <meta refines="#author" property="role" scheme="marc:relators">aut</meta>
+      <meta property="belongs-to-collection" id="collection">Reader Library</meta>
+      <meta refines="#collection" property="collection-type">collection</meta>
+      <meta refines="#collection" property="group-position">2</meta>
+      <meta name="calibre:title_sort" content="Prelude"/>`;
+    const bytes = await unflaggedEpub(metadata);
+    const expected = (await makeBook(new File([bytes], 'metadata.epub'))).metadata;
+    assert.deepEqual(expected.title, { und: '前传', en: 'Prelude' });
+    assert.equal(expected.author.name, '乔木');
+    assert.equal(expected.sortAs, 'Prelude');
+    assert.deepEqual(expected.belongsTo.collection, { name: 'Reader Library', position: '2' });
+    for (const missing of [[Object], [Map], [Object, Map]]) {
+      const descriptors = missing.map(target => Object.getOwnPropertyDescriptor(target, 'groupBy'));
+      try {
+        for (const target of missing) delete target.groupBy;
+        const opened = await makeBook(new File([bytes], 'metadata.epub'));
+        assert.deepEqual(opened.metadata, expected);
+        assert.equal(opened.resolveHref(opened.toc[0].href)?.index, 1);
+        assert.match((await opened.sections[1].createDocument()).body.textContent, /根干枝叶/);
+        const minimal = await makeBook(new File([await unflaggedEpub()], 'minimal.epub'));
+        assert.equal(minimal.metadata.title, '前传');
+        for (const target of missing) assert.equal(target.groupBy, undefined);
+      } finally {
+        missing.forEach((target, index) => {
+          if (descriptors[index]) Object.defineProperty(target, 'groupBy', descriptors[index]);
+          else delete target.groupBy;
+        });
+      }
+    }
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 

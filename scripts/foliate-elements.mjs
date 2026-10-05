@@ -91,6 +91,17 @@ export function patchFoliateZipLoader(code) {
   return `import { EPUB_ZIP_OPTIONS } from ${options}\n${code}`;
 }
 
+// esbuild's syntax target does not polyfill Object.groupBy / Map.groupBy.
+// EPUB metadata calls both on open; iOS 17.0 lacks these built-ins.
+export function patchFoliateEpubGrouping(code) {
+  const module = fileURLToPath(new URL("../src/epub-grouping.js", import.meta.url));
+  code = replaceRequired(code, "Object.groupBy(", "groupByObject(");
+  code = code.replaceAll("Object.groupBy(", "groupByObject(");
+  code = replaceRequired(code, "Map.groupBy(", "groupByMap(");
+  code = code.replaceAll("Map.groupBy(", "groupByMap(");
+  return `import { groupByObject, groupByMap } from ${JSON.stringify(module)}\n${code}`;
+}
+
 // Custom elements survive plugin unload. Scope them to this plugin and its
 // locked dependency build, so reloads reuse compatible classes and upgrades
 // cannot accidentally instantiate an older library's renderer.
@@ -108,6 +119,7 @@ export function foliateElements(root = process.cwd()) {
           let code = await fs.promises.readFile(file, "utf8");
           if (path.basename(file) === "paginator.js") code = patchFoliatePaginator(code);
           if (path.basename(file) === "view.js") code = patchFoliateZipLoader(code);
+          if (path.basename(file) === "epub.js") code = patchFoliateEpubGrouping(code);
           code = patchFoliateFrames(code, path.basename(file));
           code = code.replace(/(['"])foliate-(view|paginator|fxl)\1/g, (_, quote, type) => `${quote}${prefix}-${type}${quote}`);
           code = code.replace(/customElements\.define\(('([^']+)'|"([^"]+)"),/g,
