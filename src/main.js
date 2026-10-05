@@ -12164,7 +12164,7 @@ const LibraryModal = class extends Modal {
     return this._renderPdfCover(bytes);
   }
   async _renderPdfCover(bytes) {
-    const loadingTask = pdfjsLib.getDocument({ data: bytes, isEvalSupported: false });
+    const loadingTask = pdfjsLib.getDocument({ data: bytes, ...PDF_CMAP_OPTIONS, isEvalSupported: false });
     try {
       const doc = await loadingTask.promise;
       const firstPage = await doc.getPage(1);
