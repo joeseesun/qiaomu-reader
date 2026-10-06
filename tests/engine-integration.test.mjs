@@ -197,6 +197,36 @@ test("engine searches createDocument sections, returns readable excerpts and can
   } finally { engine.destroy(); dom.window.close(); }
 });
 
+test("stored highlights are repainted when their section loads later, not only when first added", async () => {
+  const dom = new JSDOM("<body><main></main></body>", { runScripts: "outside-only" });
+  const elements = foliateElements(root);
+  const { EpubEngine } = evaluate(dom, await bundle(elements));
+  const View = dom.window.customElements.get(JSON.parse(elements.define.__QBR_ENGINE_VIEW_TAG__));
+  // Like Foliate, only a section whose overlay exists accepts an annotation.
+  const loaded = new Set([0]); const drawn = [];
+  const sectionOf = value => Number(/epubcfi\((\d+)/.exec(value)[1]);
+  View.prototype.open = async function () { this.book = { sections: [{}, {}], metadata: {} }; };
+  View.prototype.init = async function () { this.lastLocation = { cfi: "test" }; this.renderer = { getContents: () => [{ doc: dom.window.document }] }; };
+  View.prototype.close = function () {};
+  View.prototype.addAnnotation = async function ({ value }) {
+    const index = sectionOf(value);
+    if (loaded.has(index)) drawn.push(value);
+    return { index, label: "" };
+  };
+  const engine = new EpubEngine(engineHost(dom));
+  try {
+    await engine.open(new Uint8Array(), "test.epub");
+    const view = engineHost(dom).firstElementChild;
+    await engine.addHighlight("a", "epubcfi(0/1)", "yellow");
+    await engine.addHighlight("b", "epubcfi(1/1)", "yellow");
+    assert.deepEqual(drawn, ["epubcfi(0/1)"]);
+    loaded.add(1);
+    view.dispatchEvent(new dom.window.CustomEvent("create-overlay", { detail: { index: 1 } }));
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(drawn, ["epubcfi(0/1)", "epubcfi(1/1)"]);
+  } finally { engine.destroy(); dom.window.close(); }
+});
+
 test("layout supports explicit one/two columns, narrow panes and scroll mode; iframe keys respect editing", async () => {
   const dom = new JSDOM('<body><input><p tabindex="0">text</p></body>', { runScripts: "outside-only" });
   const { engineLayout, bindEngineKeys } = evaluate(dom, await bundle(foliateElements(root)));
