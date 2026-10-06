@@ -139,6 +139,18 @@ export class EpubEngine {
             if (this.#extraCss) this.#injectCss(doc, this.#extraCss);
             this.#hooks.onDocLoaded?.({ doc, index });
         });
+        // Foliate paints an annotation only on an overlay that already exists,
+        // and re-applies nothing when another section is loaded later. Repaint
+        // the stored highlights of each section as its overlay appears, so
+        // highlights survive page turns, chapter jumps and reopening the book.
+        view.addEventListener("create-overlay", (e) => {
+            if (this.#view !== view) return;
+            const index = e.detail?.index;
+            for (const annotation of this.#highlights.values()) {
+                if (annotation.index !== undefined && annotation.index !== index) continue;
+                void this.#paintHighlight(view, annotation);
+            }
+        });
         view.addEventListener("draw-annotation", (e) => {
             const { draw, annotation } = e.detail;
             if (typeof annotation?.colorId === "string" && HIGHLIGHT_PAINTS[annotation.colorId])
@@ -324,7 +336,17 @@ export class EpubEngine {
         const annotation = { id, value: cfiRange, colorId };
         this.#highlights.set(id, annotation);
         this.#idByCfi.set(cfiRange, id);
-        await this.#view.addAnnotation(annotation);
+        await this.#paintHighlight(this.#view, annotation);
+    }
+
+    async #paintHighlight(view, annotation) {
+        try {
+            const placed = await view.addAnnotation(annotation);
+            if (placed && typeof placed.index === "number") annotation.index = placed.index;
+        } catch (error) {
+            // An unresolvable CFI must not hide the other highlights of the book.
+            console.warn("Qiaomu Reader: could not paint a highlight", error);
+        }
     }
 
     async removeHighlight(id) {
