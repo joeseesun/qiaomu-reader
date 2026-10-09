@@ -1444,4 +1444,13 @@ export default {
   "position-invalid": "Introduza um destino válido. A página original deve existir e ser única.",
   "position-jump-failed": "Não foi possível saltar. Verifique se o livro está aberto e tente novamente.",
   "position-go": "Ir",
+  "recognize-pdf-text": "Reconhecer texto do PDF",
+  "ocr-queued": "PDF digitalizado adicionado à fila de reconhecimento local…",
+  "ocr-queued-manual": "PDF adicionado à fila de reconhecimento local…",
+  "recognizing-pdf-text-0": "Reconhecendo texto do PDF… {0}%",
+  "pdf-text-recognized": "Texto reconhecido. Reabrindo o livro…",
+  "ocr-needs-local-vault": "O reconhecimento requer um cofre no sistema de arquivos local.",
+  "ocr-tools-missing": "Instale OCRmyPDF e os dados de idioma do Tesseract e tente novamente.",
+  "ocr-source-changed": "O PDF mudou durante o OCR; o original foi preservado.",
+  "ocr-failed-original-unchanged": "Falha no reconhecimento. O PDF original não foi alterado.",
 };

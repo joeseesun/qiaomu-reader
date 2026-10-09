@@ -1444,4 +1444,13 @@ export default {
   "position-invalid": "Geben Sie ein gültiges Ziel ein. Die Originalseite muss vorhanden und eindeutig sein.",
   "position-jump-failed": "Sprung fehlgeschlagen. Prüfen Sie, ob das Buch geöffnet ist, und versuchen Sie es erneut.",
   "position-go": "Springen",
+  "recognize-pdf-text": "PDF-Text erkennen",
+  "ocr-queued": "Gescanntes PDF zur lokalen Texterkennung eingereiht…",
+  "ocr-queued-manual": "PDF zur lokalen Texterkennung eingereiht…",
+  "recognizing-pdf-text-0": "PDF-Text wird erkannt… {0}%",
+  "pdf-text-recognized": "PDF-Text erkannt. Buch wird neu geöffnet…",
+  "ocr-needs-local-vault": "Die Texterkennung benötigt einen lokalen Dateisystem-Tresor.",
+  "ocr-tools-missing": "Installiere OCRmyPDF und Tesseract-Sprachdaten und versuche es erneut.",
+  "ocr-source-changed": "Das PDF wurde während der OCR geändert; das Original blieb erhalten.",
+  "ocr-failed-original-unchanged": "Texterkennung fehlgeschlagen. Das Original-PDF blieb unverändert.",
 };

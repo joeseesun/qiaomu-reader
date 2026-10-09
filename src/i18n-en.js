@@ -1445,4 +1445,13 @@ export const QIAOMU_READER_EN = {
   "position-invalid": "Enter a valid destination. For original pages, use an existing unique page label.",
   "position-jump-failed": "Could not jump. Check that the book is open, then retry.",
   "position-go": "Jump",
+  "recognize-pdf-text": "Recognize PDF text",
+  "ocr-queued": "Scanned PDF queued for local text recognition…",
+  "ocr-queued-manual": "PDF queued for local text recognition…",
+  "recognizing-pdf-text-0": "Recognizing PDF text… {0}%",
+  "pdf-text-recognized": "PDF text recognized. Reopening the book…",
+  "ocr-needs-local-vault": "Text recognition needs a local filesystem vault.",
+  "ocr-tools-missing": "Install OCRmyPDF and Tesseract language data, then try again.",
+  "ocr-source-changed": "The PDF changed during OCR, so the original was left untouched. Try again.",
+  "ocr-failed-original-unchanged": "Text recognition failed. The original PDF was left untouched.",
 };

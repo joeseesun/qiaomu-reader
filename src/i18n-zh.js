@@ -1888,4 +1888,13 @@ Object.assign(QIAOMU_READER_ZH_CN, {
   "syncing": "正在同步…",
   "anki-sync-failed": "同步失败，请查看提示信息。",
   "base-form": "原形",
+  "recognize-pdf-text": "识别 PDF 文字",
+  "ocr-queued": "扫描 PDF 已加入本地文字识别队列…",
+  "ocr-queued-manual": "PDF 已加入本地文字识别队列…",
+  "recognizing-pdf-text-0": "正在识别 PDF 文字… {0}%",
+  "pdf-text-recognized": "PDF 文字识别完成，正在重新打开图书…",
+  "ocr-needs-local-vault": "文字识别需要本地文件系统仓库。",
+  "ocr-tools-missing": "请安装 OCRmyPDF 和 Tesseract 语言数据后重试。",
+  "ocr-source-changed": "OCR 期间 PDF 已被修改，因此保留了原文件。请重试。",
+  "ocr-failed-original-unchanged": "文字识别失败，原 PDF 保持不变。",
 });
