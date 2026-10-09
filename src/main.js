@@ -45,7 +45,7 @@ import { deriveAiSetupState } from "./ai-setup-state.js";
 import { PDF_CMAP_OPTIONS } from "./pdf-cmaps.js";
 import { PDF_AI_CONTEXT_MAX_CHARS, READER_BLOCK_SELECTOR, packPdfDocumentContext, pdfPageKind, pdfPageShell, pdfPageTextFallback, pdfPageTextForAi } from "./pdf-page-mode.js";
 import { getPdfTextContent } from "./pdf-text-content.js";
-import { createPdfOcrQueue, shouldAutoOcrPdf } from "./pdf-ocr.js";
+import { createPdfOcrQueue, pdfPixelsHaveInk, shouldAutoOcrPdf } from "./pdf-ocr.js";
 import { PDF_ZOOM_DEFAULT, PDF_ZOOM_MAX, PDF_ZOOM_MIN, clampPdfZoom, pdfZoomFromWheel, pdfZoomPercent, pdfZoomShortcut, stepPdfZoom } from "./pdf-zoom.js";
 import { appendReadingNoteExcerpts, isReadingHighlightsHeading, migrateAndReplaceReadingHighlights, replaceManagedReadingHighlights } from "./reading-note.js";
 import { cliAcpSupport, cliMeta, cliReasoningEfforts, disposeCliAiSessions, effectiveCliEffort, installCliAcp, probeCliAcp, probeCliAi, resolveAcpPath, resolveCliPath, runCliAi } from "./ai-cli.js";
@@ -1820,21 +1820,27 @@ const QiaomuBookReader = class extends Plugin {
     if (!sourcePath) return view?._showPdfOcrError?.(qiaomuReaderTranslate("ocr-needs-local-vault"), () => this.runPdfOcrForView(view, file, options));
     view?._showPdfOcrProgress?.(0, qiaomuReaderTranslate(options.manual ? "ocr-queued-manual" : "ocr-queued"));
     try {
-      await this._pdfOcrQueue.enqueue(file.path, {
+      view?._pdfOcrRelease?.();
+      const subscription = this._pdfOcrQueue.subscribe(file.path, {
         sourcePath,
         pageCount: options.expectedPages,
         onProgress: (percent) => view?._showPdfOcrProgress?.(percent, qiaomuReaderTranslate("recognizing-pdf-text-0", percent)),
-        validatePdf: (path) => validateOcrPdf(path, options.expectedPages),
+        validatePdf: (path, validateOptions) => validateOcrPdf(path, options.expectedPages, validateOptions),
       });
+      if (view) view._pdfOcrRelease = subscription.release;
+      await subscription.promise;
       if (this._unloading || view?._closed || view?.file?.path !== file.path) return;
       view._clearPdfOcrStatus?.();
       new Notice(qiaomuReaderTranslate("pdf-text-recognized"));
       await view.openFile(file);
     } catch (error) {
-      if (error?.qiaomuReaderReason === "cancelled" || this._unloading || view?._closed) return;
+      if (error?.qiaomuReaderReason === "cancelled" || error?.name === "AbortError" || this._unloading || view?._closed) return;
       console.error("Qiaomu Reader: local PDF OCR failed", error);
       const missing = ["ocrmypdf-missing", "tesseract-missing", "languages"].includes(error?.qiaomuReaderReason);
       view?._showPdfOcrError?.(qiaomuReaderTranslate(missing ? "ocr-tools-missing" : error?.qiaomuReaderReason === "source-changed" ? "ocr-source-changed" : "ocr-failed-original-unchanged"), () => this.runPdfOcrForView(view, file, options));
+    } finally {
+      view?._pdfOcrRelease?.();
+      if (view) view._pdfOcrRelease = null;
     }
   }
   _watchBookFiles() {
@@ -7214,7 +7220,7 @@ async function readPdfPage(doc, pageNumber, signal, onProgress, total) {
     if (!textLen) {
       const operators = await page.getOperatorList();
       const imageOps = new Set([pdfjsLib.OPS.paintImageXObject, pdfjsLib.OPS.paintInlineImageXObject, pdfjsLib.OPS.paintImageMaskXObject]);
-      if (!operators.fnArray.some((op) => imageOps.has(op))) kind = "blank";
+      if (!operators.fnArray.some((op) => imageOps.has(op)) || !await pdfPageHasInk(page, signal)) kind = "blank";
     }
     return {
       width: size.width,
@@ -7225,6 +7231,26 @@ async function readPdfPage(doc, pageNumber, signal, onProgress, total) {
     };
   } finally {
     page.cleanup?.();
+  }
+}
+
+async function pdfPageHasInk(page, signal) {
+  throwIfReaderLoadAborted(signal);
+  const unit = page.getViewport({ scale: 1 });
+  const scale = Math.min(1, 96 / Math.max(unit.width, unit.height, 1));
+  const viewport = page.getViewport({ scale });
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.ceil(viewport.width)); canvas.height = Math.max(1, Math.ceil(viewport.height));
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  context.fillStyle = "#fff"; context.fillRect(0, 0, canvas.width, canvas.height);
+  const render = page.render({ canvasContext: context, viewport });
+  const abort = () => { try { render.cancel(); } catch { /* already finished */ } };
+  signal?.addEventListener("abort", abort, { once: true });
+  try {
+    await render.promise; throwIfReaderLoadAborted(signal);
+    return pdfPixelsHaveInk(context.getImageData(0, 0, canvas.width, canvas.height).data);
+  } finally {
+    signal?.removeEventListener("abort", abort); canvas.width = 0; canvas.height = 0;
   }
 }
 
@@ -7337,23 +7363,29 @@ async function openPdfLoadingTask(app, file, signal) {
   return pdfjsLib.getDocument({ data: bytes, ...PDF_CMAP_OPTIONS, isEvalSupported: false });
 }
 
-async function validateOcrPdf(path, expectedPages) {
+async function validateOcrPdf(path, expectedPages, options = {}) {
   const fs = window.process?.getBuiltinModule?.("fs") || window.require?.("fs");
   if (!fs) throw Object.assign(new Error("Desktop file access is unavailable"), { qiaomuReaderReason: "desktop" });
+  throwIfReaderLoadAborted(options.signal);
   const bytes = await fs.promises.readFile(path);
+  throwIfReaderLoadAborted(options.signal);
   const data = new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const task = pdfjsLib.getDocument({ data, ...PDF_CMAP_OPTIONS, isEvalSupported: false });
+  const abort = () => { try { void task.destroy(); } catch { /* already stopped */ } };
+  options.signal?.addEventListener("abort", abort, { once: true });
   try {
+    throwIfReaderLoadAborted(options.signal);
     const doc = await task.promise;
     if (expectedPages && doc.numPages !== expectedPages) throw Object.assign(new Error("OCR changed the page count"), { qiaomuReaderReason: "page-count" });
     let hasText = false;
     for (let i = 1; i <= doc.numPages; i++) {
+      throwIfReaderLoadAborted(options.signal);
       const page = await doc.getPage(i);
       try { if (pdfPageCharCount((await getPdfTextContent(page)).items) > 0) { hasText = true; break; } }
       finally { page.cleanup?.(); }
     }
     return { pageCount: doc.numPages, hasText };
-  } finally { await task.destroy(); }
+  } finally { options.signal?.removeEventListener("abort", abort); await task.destroy().catch(() => {}); }
 }
 
 async function extractPdf(file, app, _settings = {}, onProgress, options = {}) {
@@ -10720,7 +10752,7 @@ const ReaderView = class extends ItemView {
       status.createDiv("qiaomu-reader-ocr-label");
       status.createEl("progress", { cls: "qiaomu-reader-ocr-progress", attr: { max: "100" } });
       const cancel = status.createEl("button", { text: qiaomuReaderTranslate("cancel") });
-      cancel.addEventListener("click", () => { if (this.file) this.plugin._pdfOcrQueue.cancel(this.file.path); this._clearPdfOcrStatus(); });
+      cancel.addEventListener("click", () => { this._pdfOcrRelease?.(); this._pdfOcrRelease = null; this._clearPdfOcrStatus(); });
     }
     status.removeClass("is-error");
     status.querySelector(".qiaomu-reader-ocr-label")?.setText(text);
@@ -11542,7 +11574,7 @@ const ReaderView = class extends ItemView {
   }
   async onClose() {
     this._loadCoordinator.cancel();
-    if (this.file) this.plugin._pdfOcrQueue.cancel(this.file.path);
+    this._pdfOcrRelease?.(); this._pdfOcrRelease = null;
     this._closed = true;
     this._resizeObs?.disconnect();
     this._selectionCleanup?.();

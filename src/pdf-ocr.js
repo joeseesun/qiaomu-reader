@@ -29,6 +29,17 @@ export function shouldAutoOcrPdf(pages) {
   return scan > 0 && scan >= text;
 }
 
+export function pdfPixelsHaveInk(data) {
+  const pixels = data && data.length ? Math.floor(data.length / 4) : 0;
+  if (!pixels) return false;
+  let nonWhite = 0;
+  for (let i = 0; i < pixels; i++) {
+    const offset = i * 4;
+    if (data[offset + 3] > 8 && Math.min(data[offset], data[offset + 1], data[offset + 2]) < 245) nonWhite++;
+  }
+  return nonWhite / pixels >= 0.002;
+}
+
 export function pdfOcrPageSummary(pages) {
   const kinds = Array.from(pages || []);
   return {
@@ -57,6 +68,10 @@ export function sameFileSnapshot(before, after) {
 async function fileSnapshot(file, rt) {
   const [stat, bytes] = await Promise.all([rt.fs.promises.stat(file), rt.fs.promises.readFile(file)]);
   return { size: stat.size, mtimeMs: stat.mtimeMs, mode: stat.mode, digest: rt.crypto.createHash("sha256").update(bytes).digest("hex") };
+}
+
+function throwIfAborted(signal) {
+  if (signal?.aborted) throw ocrError("cancelled", "OCR was cancelled");
 }
 
 function executableCandidates(name, platform, envPath, path) {
@@ -151,8 +166,9 @@ export async function probePdfOcr() {
   return { ocrmypdf, ...selected, language: chinese ? "chi_sim+eng" : "eng" };
 }
 
-export async function replacePdfAtomically(sourcePath, preparedPath, before, validatePdf) {
+export async function replacePdfAtomically(sourcePath, preparedPath, before, validatePdf, signal) {
   const rt = runtime();
+  throwIfAborted(signal);
   const current = await fileSnapshot(sourcePath, rt);
   if (!sameFileSnapshot(before, current)) throw ocrError("source-changed", "The PDF changed while OCR was running");
   const nonce = rt.crypto.randomBytes(8).toString("hex");
@@ -160,16 +176,19 @@ export async function replacePdfAtomically(sourcePath, preparedPath, before, val
   const recovery = `${sourcePath}.qiaomu-ocr-${nonce}.recovery`;
   await rt.fs.promises.copyFile(preparedPath, staged, rt.fs.constants.COPYFILE_EXCL);
   try {
-    await validatePdf(staged);
+    await validatePdf(staged, { signal });
+    throwIfAborted(signal);
     // Re-check immediately before entering the atomic replacement window.
     const finalSource = await fileSnapshot(sourcePath, rt);
     if (!sameFileSnapshot(before, finalSource)) throw ocrError("source-changed", "The PDF changed while OCR was running");
+    throwIfAborted(signal);
     // Keep a recovery inode while replacing the destination with one atomic
     // rename. The source path is never deliberately made absent, and a failed
     // rename leaves it untouched.
     try { await rt.fs.promises.link(sourcePath, recovery); }
     catch { await rt.fs.promises.copyFile(sourcePath, recovery, rt.fs.constants.COPYFILE_EXCL); }
     await rt.fs.promises.chmod(staged, finalSource.mode);
+    throwIfAborted(signal);
     await rt.fs.promises.rename(staged, sourcePath);
     await rt.fs.promises.unlink(recovery).catch(() => {});
   } catch (error) {
@@ -206,9 +225,10 @@ export async function runPdfOcr({ sourcePath, signal, onProgress, validatePdf, p
       },
     });
     if (signal?.aborted) throw ocrError("cancelled", "OCR was cancelled");
-    const verified = await validatePdf(outputPath);
+    const verified = await validatePdf(outputPath, { signal });
+    throwIfAborted(signal);
     if (!verified?.hasText) throw ocrError("no-text", "OCR completed but produced no usable text layer");
-    await replacePdfAtomically(sourcePath, outputPath, before, validatePdf);
+    await replacePdfAtomically(sourcePath, outputPath, before, validatePdf, signal);
     return verified;
   } finally {
     await rt.fs.promises.rm(tempDir, { recursive: true, force: true }).catch(() => {});
@@ -219,12 +239,36 @@ export function createPdfOcrQueue(run = runPdfOcr) {
   let tail = Promise.resolve();
   const tasks = new Map();
   return {
+    subscribe(key, options) {
+      let task = tasks.get(key);
+      if (!task) {
+        const controller = new AbortController();
+        task = { controller, subscribers: new Set(), listeners: new Set() };
+        const notify = (...args) => { for (const listener of task.listeners) listener(...args); };
+        task.promise = tail.then(() => run({ ...options, onProgress: notify, signal: controller.signal }))
+          .finally(() => tasks.delete(key));
+        tail = task.promise.catch(() => {});
+        tasks.set(key, task);
+      }
+      const token = {};
+      task.subscribers.add(token);
+      if (options.onProgress) task.listeners.add(options.onProgress);
+      let released = false;
+      return {
+        promise: task.promise,
+        release() {
+          if (released) return;
+          released = true; task.subscribers.delete(token); task.listeners.delete(options.onProgress);
+          if (!task.subscribers.size && tasks.get(key) === task) task.controller.abort();
+        },
+      };
+    },
     enqueue(key, options) {
       if (tasks.has(key)) return tasks.get(key).promise;
       const controller = new AbortController();
       const relay = () => controller.abort();
       options.signal?.addEventListener("abort", relay, { once: true });
-      const task = {};
+      const task = { subscribers: new Set() };
       task.promise = tail.then(() => run({ ...options, signal: controller.signal }))
         .finally(() => { options.signal?.removeEventListener("abort", relay); tasks.delete(key); });
       tail = task.promise.catch(() => {});
