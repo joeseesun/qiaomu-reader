@@ -136,6 +136,10 @@ img.qiaomu-reader-pdf-lazy:not([data-loaded="1"]) { background:color-mix(in srgb
   background:var(--qiaomu-reader-choice-bg); color:var(--qiaomu-reader-choice-text);
   border:1px solid var(--qiaomu-reader-choice-border); box-shadow:none;
 }
+.qiaomu-reader-ocr-status { position:absolute; z-index:12; left:50%; bottom:18px; transform:translateX(-50%); display:flex; align-items:center; gap:10px; width:min(560px,calc(100% - 32px)); padding:10px 12px; border:1px solid var(--background-modifier-border); border-radius:10px; background:var(--background-primary); box-shadow:0 8px 24px rgba(0,0,0,.16); color:var(--text-normal); font-size:var(--font-ui-small); }
+.qiaomu-reader-ocr-status.is-error { border-color:var(--background-modifier-error); }
+.qiaomu-reader-ocr-label { flex:1 1 auto; min-width:0; }
+.qiaomu-reader-ocr-progress { width:120px; max-width:24vw; }
 .qiaomu-reader-theme-btn.active,
 .qiaomu-reader-rs .qiaomu-reader-rs-theme-card .qiaomu-reader-col-btn.active {
   border-color:var(--qiaomu-reader-choice-text); color:var(--qiaomu-reader-choice-text);

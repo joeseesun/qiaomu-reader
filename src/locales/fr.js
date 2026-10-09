@@ -1444,4 +1444,13 @@ export default {
   "position-invalid": "Saisissez une destination valide. La page originale doit exister et être unique.",
   "position-jump-failed": "Échec du déplacement. Vérifiez que le livre est ouvert, puis réessayez.",
   "position-go": "Aller",
+  "recognize-pdf-text": "Reconnaître le texte du PDF",
+  "ocr-queued": "PDF numérisé ajouté à la file de reconnaissance locale…",
+  "ocr-queued-manual": "PDF ajouté à la file de reconnaissance locale…",
+  "recognizing-pdf-text-0": "Reconnaissance du texte du PDF… {0}%",
+  "pdf-text-recognized": "Texte reconnu. Réouverture du livre…",
+  "ocr-needs-local-vault": "La reconnaissance nécessite un coffre sur le système de fichiers local.",
+  "ocr-tools-missing": "Installez OCRmyPDF et les données de langue Tesseract, puis réessayez.",
+  "ocr-source-changed": "Le PDF a changé pendant l’OCR. L’original a été conservé.",
+  "ocr-failed-original-unchanged": "La reconnaissance a échoué. Le PDF original est inchangé.",
 };

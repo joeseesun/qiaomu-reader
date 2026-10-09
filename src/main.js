@@ -45,6 +45,7 @@ import { deriveAiSetupState } from "./ai-setup-state.js";
 import { PDF_CMAP_OPTIONS } from "./pdf-cmaps.js";
 import { PDF_AI_CONTEXT_MAX_CHARS, READER_BLOCK_SELECTOR, packPdfDocumentContext, pdfPageKind, pdfPageShell, pdfPageTextFallback, pdfPageTextForAi } from "./pdf-page-mode.js";
 import { getPdfTextContent } from "./pdf-text-content.js";
+import { createPdfOcrQueue, shouldAutoOcrPdf } from "./pdf-ocr.js";
 import { PDF_ZOOM_DEFAULT, PDF_ZOOM_MAX, PDF_ZOOM_MIN, clampPdfZoom, pdfZoomFromWheel, pdfZoomPercent, pdfZoomShortcut, stepPdfZoom } from "./pdf-zoom.js";
 import { appendReadingNoteExcerpts, isReadingHighlightsHeading, migrateAndReplaceReadingHighlights, replaceManagedReadingHighlights } from "./reading-note.js";
 import { cliAcpSupport, cliMeta, cliReasoningEfforts, disposeCliAiSessions, effectiveCliEffort, installCliAcp, probeCliAcp, probeCliAi, resolveAcpPath, resolveCliPath, runCliAi } from "./ai-cli.js";
@@ -1541,6 +1542,7 @@ const QiaomuBookReader = class extends Plugin {
     this._corruptStoreNotices = new Set();
     this._blockedStores = new Set();
     this._unreadableStores = new Map();
+    this._pdfOcrQueue = createPdfOcrQueue();
   }
   async onload() { // state first (loadAll), then every Obsidian integration, registered in the original order
     watchPaneDividers(this);
@@ -1804,8 +1806,36 @@ const QiaomuBookReader = class extends Plugin {
     const onFileMenu = (menu, file) => {
       if (!(file instanceof TFile) || file.extension !== "pdf") return;
       menu.addItem((item) => item.setTitle(qiaomuReaderTranslate("open-in-book-reader")).setIcon("book-open").onClick(() => this.openFile(file)));
+      if (!this.app.isMobile) menu.addItem((item) => item.setTitle(qiaomuReaderTranslate("recognize-pdf-text")).setIcon("scan-text").onClick(async () => {
+        const view = await this.openFile(file);
+        if (view) void this.runPdfOcrForView(view, file, { manual: true, expectedPages: view._pdfLazy?._doc?.numPages });
+      }));
     };
     this.registerEvent(this.app.workspace.on("file-menu", onFileMenu));
+  }
+  async runPdfOcrForView(view, file, options = {}) {
+    if (this.app.isMobile || this._unloading || file?.extension !== "pdf") return;
+    const adapter = this.app.vault.adapter;
+    const sourcePath = typeof adapter.getFullPath === "function" ? adapter.getFullPath(file.path) : "";
+    if (!sourcePath) return view?._showPdfOcrError?.(qiaomuReaderTranslate("ocr-needs-local-vault"), () => this.runPdfOcrForView(view, file, options));
+    view?._showPdfOcrProgress?.(0, qiaomuReaderTranslate(options.manual ? "ocr-queued-manual" : "ocr-queued"));
+    try {
+      await this._pdfOcrQueue.enqueue(file.path, {
+        sourcePath,
+        pageCount: options.expectedPages,
+        onProgress: (percent) => view?._showPdfOcrProgress?.(percent, qiaomuReaderTranslate("recognizing-pdf-text-0", percent)),
+        validatePdf: (path) => validateOcrPdf(path, options.expectedPages),
+      });
+      if (this._unloading || view?._closed || view?.file?.path !== file.path) return;
+      view._clearPdfOcrStatus?.();
+      new Notice(qiaomuReaderTranslate("pdf-text-recognized"));
+      await view.openFile(file);
+    } catch (error) {
+      if (error?.qiaomuReaderReason === "cancelled" || this._unloading || view?._closed) return;
+      console.error("Qiaomu Reader: local PDF OCR failed", error);
+      const missing = ["ocrmypdf-missing", "tesseract-missing", "languages"].includes(error?.qiaomuReaderReason);
+      view?._showPdfOcrError?.(qiaomuReaderTranslate(missing ? "ocr-tools-missing" : error?.qiaomuReaderReason === "source-changed" ? "ocr-source-changed" : "ocr-failed-original-unchanged"), () => this.runPdfOcrForView(view, file, options));
+    }
   }
   _watchBookFiles() {
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
@@ -1869,6 +1899,7 @@ const QiaomuBookReader = class extends Plugin {
   }
   onunload() {
     this._unloading = true;
+    this._pdfOcrQueue.cancelAll();
     for (const modal of this._announcementModals || []) modal.close();
     this._announcementModals?.clear();
     this._aiQuoteJumpController?.abort();
@@ -1883,6 +1914,7 @@ const QiaomuBookReader = class extends Plugin {
       this._localDataQueue?.drain?.(),
       this._hlChain,
       this._thumbSaveChain,
+      this._pdfOcrQueue.drain(),
     ].filter(Boolean);
     void Promise.allSettled(pending);
   }
@@ -7178,7 +7210,12 @@ async function readPdfPage(doc, pageNumber, signal, onProgress, total) {
     const size = pdfPageSize(page);
     const brokenText = textLen >= 40 && pdfTextLooksUnreadable(textContent.items);
     const textFallback = brokenText ? "" : pdfPageTextFallback(textContent.items);
-    const kind = pdfPageKind(textLen, brokenText || !textFallback);
+    let kind = pdfPageKind(textLen, brokenText || !textFallback);
+    if (!textLen) {
+      const operators = await page.getOperatorList();
+      const imageOps = new Set([pdfjsLib.OPS.paintImageXObject, pdfjsLib.OPS.paintInlineImageXObject, pdfjsLib.OPS.paintImageMaskXObject]);
+      if (!operators.fnArray.some((op) => imageOps.has(op))) kind = "blank";
+    }
     return {
       width: size.width,
       height: size.height,
@@ -7300,6 +7337,25 @@ async function openPdfLoadingTask(app, file, signal) {
   return pdfjsLib.getDocument({ data: bytes, ...PDF_CMAP_OPTIONS, isEvalSupported: false });
 }
 
+async function validateOcrPdf(path, expectedPages) {
+  const fs = window.process?.getBuiltinModule?.("fs") || window.require?.("fs");
+  if (!fs) throw Object.assign(new Error("Desktop file access is unavailable"), { qiaomuReaderReason: "desktop" });
+  const bytes = await fs.promises.readFile(path);
+  const data = new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const task = pdfjsLib.getDocument({ data, ...PDF_CMAP_OPTIONS, isEvalSupported: false });
+  try {
+    const doc = await task.promise;
+    if (expectedPages && doc.numPages !== expectedPages) throw Object.assign(new Error("OCR changed the page count"), { qiaomuReaderReason: "page-count" });
+    let hasText = false;
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
+      try { if (pdfPageCharCount((await getPdfTextContent(page)).items) > 0) { hasText = true; break; } }
+      finally { page.cleanup?.(); }
+    }
+    return { pageCount: doc.numPages, hasText };
+  } finally { await task.destroy(); }
+}
+
 async function extractPdf(file, app, _settings = {}, onProgress, options = {}) {
   const signal = options.signal;
   const loadingTask = await openPdfLoadingTask(app, file, signal);
@@ -7311,9 +7367,10 @@ async function extractPdf(file, app, _settings = {}, onProgress, options = {}) {
     const doc = await loadingTask.promise;
     throwIfReaderLoadAborted(signal);
     const pageCount = doc.numPages;
-    const parts = [], textPages = [], pageText = [], outline = [];
+    const parts = [], textPages = [], pageText = [], pageKinds = [], outline = [];
     for (let i = 1; i <= pageCount; i++) {
       const part = await readPdfPage(doc, i, signal, onProgress, pageCount);
+      pageKinds.push(part.kind);
       if (part.kind === "text" && part.aiText) textPages.push({ page: i, text: part.aiText });
       pageText.push(part.kind === "text" ? part.textFallback : "");
       parts.push(pdfPageShell({
@@ -7335,6 +7392,8 @@ async function extractPdf(file, app, _settings = {}, onProgress, options = {}) {
       lazy: createPdfLazyView(doc, loadingTask, pageText),
       outline,
       pdfDocumentContext: packPdfDocumentContext(textPages, PDF_AI_CONTEXT_MAX_CHARS),
+      pageKinds,
+      pageCount,
     };
   } catch (error) {
     try { await loadingTask.destroy(); } catch { /* best-effort cleanup */ }
@@ -10617,6 +10676,7 @@ const ReaderView = class extends ItemView {
     }
   }
   _resetBookState(file) {
+    this._clearPdfOcrStatus?.();
     this.file = file; this.ext = file.extension;
     this.locEl?.setText(""); this.pctEl?.setText("0%");
     if (this.pbarFill) this.pbarFill.style.removeProperty("width");
@@ -10652,6 +10712,31 @@ const ReaderView = class extends ItemView {
     label.setText(qiaomuReaderTranslate("loading-the-book"));
     return label;
   }
+  _showPdfOcrProgress(percent, text) {
+    let status = this._pdfOcrStatus;
+    if (!status?.isConnected) {
+      status = this._pdfOcrStatus = this.areaEl.createDiv("qiaomu-reader-ocr-status");
+      status.setAttribute("role", "status");
+      status.createDiv("qiaomu-reader-ocr-label");
+      status.createEl("progress", { cls: "qiaomu-reader-ocr-progress", attr: { max: "100" } });
+      const cancel = status.createEl("button", { text: qiaomuReaderTranslate("cancel") });
+      cancel.addEventListener("click", () => { if (this.file) this.plugin._pdfOcrQueue.cancel(this.file.path); this._clearPdfOcrStatus(); });
+    }
+    status.removeClass("is-error");
+    status.querySelector(".qiaomu-reader-ocr-label")?.setText(text);
+    const progress = status.querySelector("progress"); if (progress) progress.value = Number(percent) || 0;
+  }
+  _showPdfOcrError(message, retry) {
+    this._clearPdfOcrStatus();
+    const status = this._pdfOcrStatus = this.areaEl.createDiv("qiaomu-reader-ocr-status is-error");
+    status.setAttribute("role", "alert");
+    status.createDiv("qiaomu-reader-ocr-label").setText(message);
+    const again = status.createEl("button", { cls: "mod-cta", text: qiaomuReaderTranslate("try-again") });
+    again.addEventListener("click", retry);
+    const dismiss = status.createEl("button", { text: qiaomuReaderTranslate("cancel") });
+    dismiss.addEventListener("click", () => this._clearPdfOcrStatus());
+  }
+  _clearPdfOcrStatus() { this._pdfOcrStatus?.remove(); this._pdfOcrStatus = null; }
   _waitFrame() {
     return waitForReaderFrame(window);
   }
@@ -10692,6 +10777,9 @@ const ReaderView = class extends ItemView {
       if (!this._loadCoordinator.isCurrent(loadToken)) return;
     }
     this._finishBookOpen(file);
+    if (!result.engine && shouldAutoOcrPdf(result.pageKinds)) {
+      void this.plugin.runPdfOcrForView(this, file, { expectedPages: result.pageCount });
+    }
   }
   _adoptPdfResult(result) {
     this.bookHtml = result.html;
@@ -11454,6 +11542,7 @@ const ReaderView = class extends ItemView {
   }
   async onClose() {
     this._loadCoordinator.cancel();
+    if (this.file) this.plugin._pdfOcrQueue.cancel(this.file.path);
     this._closed = true;
     this._resizeObs?.disconnect();
     this._selectionCleanup?.();

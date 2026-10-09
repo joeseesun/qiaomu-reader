@@ -1444,4 +1444,13 @@ export default {
   "position-invalid": "유효한 위치를 입력하세요. 원본 쪽 표기는 존재하고 중복되지 않아야 합니다.",
   "position-jump-failed": "이동하지 못했습니다. 책이 열려 있는지 확인하고 다시 시도하세요.",
   "position-go": "이동",
+  "recognize-pdf-text": "PDF 텍스트 인식",
+  "ocr-queued": "스캔 PDF를 로컬 문자 인식 대기열에 추가했습니다…",
+  "ocr-queued-manual": "PDF를 로컬 문자 인식 대기열에 추가했습니다…",
+  "recognizing-pdf-text-0": "PDF 텍스트 인식 중… {0}%",
+  "pdf-text-recognized": "PDF 텍스트를 인식했습니다. 책을 다시 여는 중…",
+  "ocr-needs-local-vault": "문자 인식에는 로컬 파일 시스템 보관소가 필요합니다.",
+  "ocr-tools-missing": "OCRmyPDF와 Tesseract 언어 데이터를 설치한 뒤 다시 시도하세요.",
+  "ocr-source-changed": "OCR 중 PDF가 변경되어 원본을 유지했습니다. 다시 시도하세요.",
+  "ocr-failed-original-unchanged": "문자 인식에 실패했습니다. 원본 PDF는 변경되지 않았습니다.",
 };

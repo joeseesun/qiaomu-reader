@@ -1444,4 +1444,13 @@ export default {
   "position-invalid": "有効な位置を入力してください。原書ページは存在し、重複しない表記が必要です。",
   "position-jump-failed": "移動できませんでした。本が開いていることを確認して再試行してください。",
   "position-go": "移動",
+  "recognize-pdf-text": "PDFテキストを認識",
+  "ocr-queued": "スキャンPDFをローカル文字認識キューに追加しました…",
+  "ocr-queued-manual": "PDFをローカル文字認識キューに追加しました…",
+  "recognizing-pdf-text-0": "PDFテキストを認識中… {0}%",
+  "pdf-text-recognized": "PDFテキストを認識しました。本を再度開いています…",
+  "ocr-needs-local-vault": "文字認識にはローカルファイルシステムの保管庫が必要です。",
+  "ocr-tools-missing": "OCRmyPDFとTesseract言語データをインストールして再試行してください。",
+  "ocr-source-changed": "OCR中にPDFが変更されたため、元のファイルを保持しました。再試行してください。",
+  "ocr-failed-original-unchanged": "文字認識に失敗しました。元のPDFは変更されていません。",
 };
