@@ -106,7 +106,8 @@ export class AiAccountModal extends Modal {
             s.aiSecrets = { ...s.aiSecrets, [this.id]: this.secretId }; s.aiBases = { ...s.aiBases, [this.id]: this.base };
             s.aiCatalogs = { ...s.aiCatalogs, [this.id]: this.models.filter(m => this.selected.has(m.id)) };
             s.aiEnabled = false; s.aiNeedsVerification = true;
-            await this.plugin.saveAll(); this.close(); this.done();
+            if (!await this.plugin._saveLocalData()) throw new Error(label('保存失败，请检查库的写入权限后重试。', 'Could not save. Check vault write access and try again.'));
+            this.close(); this.done();
           } catch (e) { Object.assign(s, previous); this.app.secretStorage.setSecret(this.secretId, oldSecret || ''); throw e; }
         } catch (e) { showError(e); } finally { this.saving = false; if (this.alive) save.setDisabled(false); }
       });
