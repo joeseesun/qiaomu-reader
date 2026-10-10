@@ -25,7 +25,7 @@ export class AiAccountModal extends Modal {
     (this.plugin.modelAccessModals ||= new Set()).add(this);
     this.modalEl.addClass('qiaomu-reader-account-modal');
     this.setTitle(this.preset.label);
-    const root = this.contentEl, controls = root.createDiv(), status = root.createDiv({ attr: { role: 'status', 'aria-live': 'polite' } });
+    const outer = this.contentEl, root = outer.createDiv('qiaomu-reader-account-scroll'), controls = root.createDiv(), status = root.createDiv({ attr: { role: 'status', 'aria-live': 'polite' } });
     const showError = error => { if (this.alive) status.setText(connectionError(error)); };
     if (this.id === 'magpie') {
       root.createEl('p', { text: label('在 Magpie 中登录 Claude 等订阅并启用模型，然后读取列表。', 'Sign in to subscriptions such as Claude in Magpie, enable models, then load them here.') });
@@ -90,7 +90,7 @@ export class AiAccountModal extends Modal {
       if (!this.models.some(m => m.id === id)) this.models.push({ id }); this.selected.add(id); manual.setValue(''); render();
     }));
     let save;
-    new Setting(root).addButton(button => button.setButtonText(label('取消', 'Cancel')).onClick(() => { if (!this.saving) this.close(); })).addButton(button => {
+    new Setting(outer.createDiv('qiaomu-reader-account-footer')).addButton(button => button.setButtonText(label('取消', 'Cancel')).onClick(() => { if (!this.saving) this.close(); })).addButton(button => {
       save = button; button.setButtonText(label('保存', 'Save')).onClick(async () => {
         if (this.saving || this.login) return;
         const s = this.plugin.settings;
