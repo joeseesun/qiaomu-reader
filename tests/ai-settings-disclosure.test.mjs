@@ -22,6 +22,10 @@ function setup(provider, model = "", key = "", tools = {}) {
   class Setting {
     constructor(host) { this.settingEl = host.createDiv("setting-item"); this.controlEl = this.settingEl.createDiv("setting-item-control"); }
     setName(name) { this.settingEl.dataset.name = name; return this; }
+    addButton(build) {
+      const el = this.controlEl.createEl("button");
+      const b = { setButtonText(text) { el.textContent = text; return b; }, onClick(fn) { el.addEventListener("click", fn); return b; } }; build(b); return this;
+    }
     addDropdown(build) {
       const selectEl = this.controlEl.createEl("select");
       const c = { selectEl, addOption(value, text) { selectEl.createEl("option", { text, attr: { value } }); return c; }, setValue(value) { selectEl.value = value; return c; }, onChange(fn) { selectEl.addEventListener("change", () => fn(selectEl.value)); return c; } };

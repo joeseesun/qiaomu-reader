@@ -1,6 +1,9 @@
+import { API_PROVIDERS } from './model-access/services/api-providers.js';
 // Provider metadata lives outside the settings UI so endpoints, model aliases
 // and help links can be reviewed and updated without touching reader logic.
 export const AI_PROVIDER_CATEGORIES = [
+  { id: "account", label: "account-sign-in" },
+  { id: "plan", label: "coding-plans" },
   { id: "cli", label: "local-cli-accounts-no-api-key" },
   { id: "china", label: "chinese-model-providers" },
   { id: "aggregator", label: "model-aggregators" },
@@ -10,6 +13,10 @@ export const AI_PROVIDER_CATEGORIES = [
 ];
 
 export const AI_PROVIDERS = {
+  chatgpt: { label: 'ChatGPT', category: 'account', transport: 'chatgpt', needsKey: true, base: 'https://api.openai.com/v1', model: '', models: [], login: 'chatgpt', desktopOnly: true },
+  tokendance: { label: 'TokenDance', category: 'aggregator', needsKey: true, base: 'https://tokendance.space/gateway/v1', model: '', models: [], login: 'tokendance' },
+  magpie: { label: 'Magpie · Claude / Codex / Coding', category: 'local', needsKey: false, base: 'http://127.0.0.1:3425/v1', model: '', models: [], local: true },
+  ...Object.fromEntries(Object.entries(API_PROVIDERS).filter(([, p]) => p.group === 'plan').map(([id, p]) => [id, { label: p.label, category: 'plan', needsKey: true, base: p.baseUrl, model: '', models: [], apiKeyUrl: p.website }])),
   "codex-cli": {
     label: "Codex CLI",
     category: "cli",
@@ -141,6 +148,7 @@ export const AI_PROVIDERS = {
     description: "enter-the-inference-endpoint-id-you-created-in-volcengine-ark-in",
   },
   openrouter: {
+    login: "openrouter",
     label: "OpenRouter",
     category: "aggregator",
     needsKey: true,
@@ -220,6 +228,7 @@ export function buildAiRequestBody(providerId, model, messages, options = {}) {
   // max_tokens budget. Let its thinking-mode default apply so reasoning cannot
   // consume the entire 2400-token cap before a final answer starts.
   if (!deepSeekThinking) body.max_tokens = options.connectionTest ? 16 : 2400;
+  if (providerId === "magpie" && options.effort) body.reasoning_effort = options.effort;
   if (options.stream) body.stream = true;
   // A connection check needs one short answer. In real reading conversations
   // DeepSeek may return reasoning_content, which the UI shows separately.

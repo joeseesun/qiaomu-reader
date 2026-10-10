@@ -1,3 +1,6 @@
+import { AiAccountModal } from './ai-account-modal.js';
+import { completeChatGPT, connectionToken } from './model-access/client.js';
+import { cancelAccountLogins, readAccount } from './model-access/services/provider-auth.js';
 import { watchPaneDividers } from "./pane-dividers.js";
 import { selectionActionPreferences } from "./selection-preferences.js";
 import { watchQuietUi } from "./quiet-ui.js";
@@ -1868,6 +1871,7 @@ const QiaomuBookReader = class extends Plugin {
     this.app.workspace.onLayoutReady(onReady);
   }
   onunload() {
+    cancelAccountLogins(); for (const modal of this.modelAccessModals || []) modal.close();
     this._unloading = true;
     for (const modal of this._announcementModals || []) modal.close();
     this._announcementModals?.clear();
@@ -3490,10 +3494,11 @@ function aiConfig(plugin) {
       || (id === settings.aiProvider ? settings.aiBase : "")
       || p.base),
     model: String(settings.aiModels && settings.aiModels[id] || settings.aiModel || p.model || "").trim(),
+    reasoningEffort: settings.aiCatalogs?.[id]?.find(m => m.id === (settings.aiModels?.[id] || settings.aiModel))?.efforts?.includes(settings.aiModelEfforts?.[id + ":" + (settings.aiModels?.[id] || settings.aiModel)]) ? settings.aiModelEfforts[id + ":" + (settings.aiModels?.[id] || settings.aiModel)] : undefined,
     thinking: !p.supportsThinking || !settings.aiThinking
       || settings.aiThinking[id] !== false,
     effort: effectiveCliEffort(id, settings.aiCliEfforts && settings.aiCliEfforts[id]),
-    key: aiSecretValue(plugin, id),
+    key: id === "chatgpt" ? (readAccount(aiSecretValue(plugin, id))?.access || "") : aiSecretValue(plugin, id),
     needsKey: p.needsKey,
     cliPath: String(settings.aiCliPaths && settings.aiCliPaths[id] || "").trim(),
     acpPath: String(settings.aiAcpPaths && settings.aiAcpPaths[id] || "").trim(),
@@ -4396,6 +4401,7 @@ async function aiExplainStream(cfg, messages, options) {
     ...options,
     stream: true,
     thinkingEnabled: cfg.thinking,
+    effort: cfg.reasoningEffort,
   });
   const req = buildAiRequestOptions(cfg.base, cfg.key, body);
   const controller = new AbortController();
@@ -4476,6 +4482,9 @@ async function aiExplain(text, plugin, turns, book, options = {}) {
 // translation and word lookup share transport, streaming and error reasons.
 async function aiComplete(plugin, messages, options = {}) {
   const cfg = aiConfig(plugin);
+  if (cfg.id === 'chatgpt') return completeChatGPT({ provider: cfg.id, baseUrl: cfg.base, model: cfg.model, secretId: plugin.settings.aiSecrets?.[cfg.id] || '', protocol: 'openai-responses' }, plugin.app.secretStorage, messages,
+    { signal: options.signal, effort: plugin.settings.aiCatalogs?.[cfg.id]?.find(m => m.id === cfg.model)?.efforts?.includes(plugin.settings.aiModelEfforts?.[cfg.id + ":" + cfg.model]) ? plugin.settings.aiModelEfforts[cfg.id + ":" + cfg.model] : undefined, onDelta: (content, answer) => options.onDelta?.({ content, answer, reasoning: '', reasoningText: '' }) });
+  if (cfg.id === 'magpie') cfg.key = await connectionToken({ provider: cfg.id, baseUrl: cfg.base, model: cfg.model, secretId: '' }, cfg.key, plugin.app.secretStorage);
   if (!cfg.provider || (cfg.transport !== "cli" && (!cfg.base || !cfg.model))) {
     const err = new Error("AI is not configured");
     err.qiaomuReaderReason = "notconfigured";
@@ -4522,6 +4531,7 @@ async function aiComplete(plugin, messages, options = {}) {
   const body = buildAiRequestBody(cfg.id, cfg.model, messages, {
     ...options,
     thinkingEnabled: cfg.thinking,
+    effort: cfg.reasoningEffort,
   });
   const res = await aiRequestWithTimeout(
     requestUrl(buildAiRequestOptions(cfg.base, cfg.key, body)),
@@ -13624,8 +13634,9 @@ const SettingsTab = class extends PluginSettingTab {
       return;
     }
     const p = cfg.provider;
+    if (p.transport !== "cli") new Setting(c).setName(qiaomuReaderTranslate("ai-service")).addButton(button => button.setButtonText(qiaomuReaderTranslate("accounts-and-models")).onClick(() => new AiAccountModal(plugin, cfg.id, p, redraw).open()));
     this._aiModelPicker(c, s, p, redraw);
-    const needsSecret = p.transport !== "cli" && p.needsKey && !cfg.key;
+    const needsSecret = p.transport !== "cli" && p.transport !== "chatgpt" && p.needsKey && !cfg.key;
     if (needsSecret || cfg.id === "custom") this._aiSecretRow(c, s, p);
     if (cfg.id === "custom") this._aiBaseRow(c, s, p);
     if (p.transport === "cli") this._aiCliSetupHelp(c, s, redraw, options);
@@ -13647,7 +13658,7 @@ const SettingsTab = class extends PluginSettingTab {
     const connection = this._settingsDisclosure(advanced, "ai-connection-settings");
     connection.parentElement.setAttribute("data-ai-connection", "");
     if (p.transport === "cli") this._aiCliRows(connection, s, p, redraw);
-    if (p.transport !== "cli") {
+    if (p.transport !== "cli" && p.transport !== "chatgpt") {
       if (p.needsKey && !needsSecret) this._aiSecretRow(connection, s, p);
       if (cfg.id !== "custom") this._aiBaseRow(connection, s, p);
     }
@@ -13780,7 +13791,7 @@ const SettingsTab = class extends PluginSettingTab {
     });
   }
   _aiModelPicker(host, s, p, redraw) {
-    const models = [...new Set([p.model, ...(p.models || [])].filter(Boolean))];
+    const models = [...new Set([...(s.aiCatalogs?.[s.aiProvider] || []).map(m => m.id), p.model, ...(p.models || [])].filter(Boolean))];
     const custom = Boolean(s.aiModel && !models.includes(s.aiModel)) || (!p.model && p.transport !== "cli" && !s.aiModel);
     const saveModel = async value => {
       s.aiModel = value;
@@ -13808,6 +13819,11 @@ const SettingsTab = class extends PluginSettingTab {
     inputRow = new Setting(host).setName(qiaomuReaderTranslate("model-id"))
       .addText(field => field.setValue(s.aiModel || "").setPlaceholder(p.model || "model-id").onChange(value => saveModel(value.trim())));
     inputRow.settingEl.toggleClass("qiaomu-reader-hidden", !custom);
+    const efforts = s.aiCatalogs?.[s.aiProvider]?.find(m => m.id === s.aiModel)?.efforts || [];
+    if (efforts.length) new Setting(host).setName(qiaomuReaderTranslate("reasoning-effort")).addDropdown(dropdown => {
+      dropdown.addOption('', qiaomuReaderTranslate("default-model")); efforts.forEach(e => dropdown.addOption(e, e));
+      dropdown.setValue(s.aiModelEfforts?.[s.aiProvider + ':' + s.aiModel] || '').onChange(async value => { s.aiModelEfforts = { ...s.aiModelEfforts, [s.aiProvider + ':' + s.aiModel]: value }; await this._saveAll(); });
+    });
   }
   _aiCliRows(host, s, p, redraw) {
     if (!Platform.isDesktopApp) {
