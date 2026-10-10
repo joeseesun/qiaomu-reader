@@ -1710,6 +1710,7 @@ body.qiaomu-reader-active-view .status-bar { display: none; }
 }
 .qiaomu-reader-account-modal .modal-content { display: flex; flex-direction: column; gap: 12px; max-height: calc(85vh - 90px); overflow: hidden; }
 .qiaomu-reader-account-scroll { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; min-height: 0; }
+.qiaomu-reader-account-scroll > * { flex-shrink: 0; }
 .qiaomu-reader-account-footer { flex-shrink: 0; }
 .qiaomu-reader-account-modal .setting-item { padding: 8px 0; }
 .qiaomu-reader-account-modal .setting-item-description { font-size: var(--font-ui-smaller); }
