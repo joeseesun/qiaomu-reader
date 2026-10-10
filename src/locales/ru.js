@@ -1,6 +1,15 @@
 // Russian locale pack. Inherited Russian UI strings keep their original wording;
 // strings that were originally Chinese source keys are translated to Russian here.
 export default {
+  "智谱 GLM · Coding Plan": "Zhipu GLM · Coding Plan",
+  "Kimi Code · 国内套餐": "Kimi Code · China",
+  "百炼 · Token Plan": "Bailian · Token Plan",
+  "小米 MiMo · Token Plan": "Xiaomi MiMo · Token Plan",
+  "火山方舟 · Coding Plan": "Volcengine Ark · Coding Plan",
+  "accounts-and-models": "Аккаунты и модели",
+  "account-sign-in": "Вход в аккаунт",
+  "coding-plans": "Тарифы Coding",
+
   "ai-appearance": "Оформление помощника",
   "ai-follow-book-appearance": "Как в книге",
   "ai-appearance-description": "Использовать шрифт, размер, интервал и фон книги. Отключите для отдельной настройки.",

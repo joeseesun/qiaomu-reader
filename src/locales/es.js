@@ -1,4 +1,13 @@
 export default {
+  "智谱 GLM · Coding Plan": "Zhipu GLM · Coding Plan",
+  "Kimi Code · 国内套餐": "Kimi Code · China",
+  "百炼 · Token Plan": "Bailian · Token Plan",
+  "小米 MiMo · Token Plan": "Xiaomi MiMo · Token Plan",
+  "火山方舟 · Coding Plan": "Volcengine Ark · Coding Plan",
+  "accounts-and-models": "Cuentas y modelos",
+  "account-sign-in": "Iniciar sesión",
+  "coding-plans": "Planes Coding",
+
   "ai-appearance": "Aspecto del asistente",
   "ai-follow-book-appearance": "Usar el aspecto del libro",
   "ai-appearance-description": "Usar la fuente, el tamaño, el interlineado y el fondo del libro. Desactivar para personalizar por separado.",

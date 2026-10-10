@@ -1,6 +1,15 @@
 // Generated from the complete source UI dictionary and reviewed for core reading terms.
 // Keep placeholders, Markdown and HTML structure identical to the source strings.
 export const QIAOMU_READER_ZH_CN = {
+  "智谱 GLM · Coding Plan": "智谱 GLM · Coding Plan",
+  "Kimi Code · 国内套餐": "Kimi Code · 国内套餐",
+  "百炼 · Token Plan": "百炼 · Token Plan",
+  "小米 MiMo · Token Plan": "小米 MiMo · Token Plan",
+  "火山方舟 · Coding Plan": "火山方舟 · Coding Plan",
+
+  "accounts-and-models": "账号与模型",
+  "account-sign-in": "账号登录",
+  "coding-plans": "Coding 套餐",
   "ai-appearance": "伴读外观",
   "ai-follow-book-appearance": "跟随书籍外观",
   "ai-appearance-description": "同步书籍的字体、字号、行距和背景。关闭后可单独调整伴读外观。",

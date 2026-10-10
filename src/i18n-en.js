@@ -1,4 +1,13 @@
 export const QIAOMU_READER_EN = {
+  "智谱 GLM · Coding Plan": "Zhipu GLM · Coding Plan",
+  "Kimi Code · 国内套餐": "Kimi Code · China",
+  "百炼 · Token Plan": "Bailian · Token Plan",
+  "小米 MiMo · Token Plan": "Xiaomi MiMo · Token Plan",
+  "火山方舟 · Coding Plan": "Volcengine Ark · Coding Plan",
+
+  "accounts-and-models": "Accounts and models",
+  "account-sign-in": "Account sign-in",
+  "coding-plans": "Coding plans",
   "ai-appearance": "Companion appearance",
   "ai-follow-book-appearance": "Match book appearance",
   "ai-appearance-description": "Use the book’s font, size, spacing and background. Turn off to customize the companion separately.",
