@@ -1,3 +1,4 @@
+import { isTextBook, isListedBook } from "./text-book.js";
 import { AiAccountModal } from './ai-account-modal.js';
 import { completeChatGPT, connectionToken } from './model-access/client.js';
 import { cancelAccountLogins, readAccount } from './model-access/services/provider-auth.js';
@@ -18,7 +19,7 @@ import { HL_COLOR_SWATCHES } from "./highlight-colors.js";
  * party libraries (pdf.js, epub.js, JSZip) come from npm and are bundled by
  * esbuild at build time — see esbuild.config.mjs for what gets stubbed out.
  */
-import { AbstractInputSuggest, Component, FuzzySuggestModal, ItemView, MarkdownView, MarkdownRenderer, Menu, Modal, Notice, Platform, Plugin, PluginSettingTab, Scope, SecretComponent, Setting, TFile, TFolder, normalizePath, requestUrl, setIcon } from "obsidian";
+import { AbstractInputSuggest, Component, FuzzySuggestModal, ItemView, MarkdownView, MarkdownRenderer, Menu, Modal, Notice, Platform, Plugin, PluginSettingTab, Scope, SecretComponent, Setting, TFile, TFolder, normalizePath, parseYaml, requestUrl, setIcon } from "obsidian";
 import { EpubEngine, ENGINE_EXTENSIONS, coverFromBytes } from "./reader-engine.js";
 import { bindReaderPageKeys } from "./reader-keyboard.js";
 import { coverPalette, migrateCoverCache } from "./book-cover.js";
@@ -1550,7 +1551,7 @@ const QiaomuBookReader = class extends Plugin {
     configureEngineFrames(Platform.isAndroidApp);
     await this.loadAll(); await this._attachAiDraftStore();
     this._unloading = false;
-    this.register(protectBooksFromNoteDeletion(this.app, BOOK_EXTENSIONS));
+    this.register(protectBooksFromNoteDeletion(this.app, new Set([...BOOK_EXTENSIONS].filter(ext => ext !== "md" && ext !== "markdown"))));
     this._watchCompanionAndNotes();
     this._registerReaderViews();
     // Shares the open book with Qiaomu Agent (Qiaomu Context Protocol, see qiaomu-context.js).
@@ -1679,7 +1680,7 @@ const QiaomuBookReader = class extends Plugin {
     // a conflict with another plugin over one extension never takes the rest
     // of the reader down.
     for (const ext of ENGINE_EXTENSIONS) {
-      if (ext === "epub") continue;
+      if (ext === "epub" || ext === "md" || ext === "markdown") continue;
       try { this.registerExtensions([ext], VIEW_TYPE); }
       catch (e) { console.warn(`Qiaomu Reader: could not register .${ext}`, e); }
     }
@@ -1708,6 +1709,15 @@ const QiaomuBookReader = class extends Plugin {
           const active = this.app.workspace.getActiveFile();
           if (!active || active.extension !== "pdf") return false;
           if (!probe) this.openFile(active);
+          return true;
+        },
+      },
+      {
+        id: "open-text-reader", name: qiaomuReaderTranslate("open-text-reader"),
+        checkCallback: (probe) => {
+          const active = this.app.workspace.getActiveFile();
+          if (!active || !isTextBook(active.name)) return false;
+          if (!probe) void this.openFile(active);
           return true;
         },
       },
@@ -1805,7 +1815,7 @@ const QiaomuBookReader = class extends Plugin {
   }
   _registerPdfFileMenu() {
     const onFileMenu = (menu, file) => {
-      if (!(file instanceof TFile) || file.extension !== "pdf") return;
+      if (!(file instanceof TFile) || !BOOK_EXTENSIONS.has(file.extension.toLowerCase())) return;
       menu.addItem((item) => item.setTitle(qiaomuReaderTranslate("open-in-book-reader")).setIcon("book-open").onClick(() => this.openFile(file)));
     };
     this.registerEvent(this.app.workspace.on("file-menu", onFileMenu));
@@ -1813,6 +1823,22 @@ const QiaomuBookReader = class extends Plugin {
   _watchBookFiles() {
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
       let changed = false;
+      const selected = this.settings.textBookPaths || [];
+      this.settings.textBookPaths = selected.map(path => {
+        if (path !== oldPath && !path.startsWith(`${oldPath}/`)) return path;
+        changed = true;
+        const next = file.path + path.slice(oldPath.length);
+        for (const store of [this.progress, this.settings.bookNoteLinks, this.settings.bookNotePrompted]) {
+          if (store && Object.hasOwn(store, path)) { store[next] = store[path]; delete store[path]; }
+        }
+        void this._persistHighlights(next, disk => {
+          if (disk[path]) { disk[next] = disk[path]; delete disk[path]; }
+        }).then(saved => { if (!saved) this._reportHighlightSaveError(); });
+        if (this._lastBookPath === path) this._lastBookPath = next;
+        if (this.settings.lastBookPath === path) this.settings.lastBookPath = next;
+        return next;
+      });
+      if (changed) { void this.saveAll(); this.registerBookCommands(); }
       for (const [book, target] of Object.entries(this.settings.bookNoteLinks || {})) {
         if (typeof target === "string" && (target === oldPath || target.startsWith(`${oldPath}/`))) {
           this.settings.bookNoteLinks[book] = file.path + target.slice(oldPath.length);
@@ -1824,6 +1850,14 @@ const QiaomuBookReader = class extends Plugin {
         changed = true;
       }
       if (changed) void this._saveLocalData();
+    }));
+    this.registerEvent(this.app.vault.on("delete", file => {
+      const paths = this.settings.textBookPaths || [];
+      const remaining = paths.filter(path => path !== file.path && !path.startsWith(`${file.path}/`));
+      if (remaining.length !== paths.length) {
+        this.settings.textBookPaths = remaining;
+        void this._saveLocalData();
+      }
     }));
     this.registerBookCommands(); const scheduleRefresh = () => {
       window.clearTimeout(this._bookCmdTimer); this._bookCmdTimer = window.setTimeout(() => this.registerBookCommands(), 1500);
@@ -1890,7 +1924,16 @@ const QiaomuBookReader = class extends Plugin {
     ].filter(Boolean);
     void Promise.allSettled(pending);
   }
+  async rememberTextBook(file) {
+    if (!isTextBook(file.name)) return;
+    const selected = this.settings.textBookPaths || [];
+    if (selected.includes(file.path)) return;
+    this.settings.textBookPaths = [...selected, file.path];
+    await this._saveLocalData();
+    this.registerBookCommands();
+  }
   async openFile(file) {
+    await this.rememberTextBook(file);
     if (this.app.isMobile) {
       const modal = new ReaderModal(this.app, this, file);
       modal.open();
@@ -2315,10 +2358,9 @@ const QiaomuBookReader = class extends Plugin {
   }
   bookFiles() {
     const folder = qiaomuReaderPath(this.settings.booksFolder || "");
-    const prefix = folder ? folder + "/" : "";
     return this.app.vault.getFiles().filter(
-      (f) => BOOK_EXTENSIONS.has(f.extension)
-        && (prefix === "" || f.path.startsWith(prefix))
+      (f) => BOOK_EXTENSIONS.has(f.extension.toLowerCase())
+        && isListedBook(f, folder, this.settings.textBookPaths)
     );
   }
   lastReadBookFile() {
@@ -2385,7 +2427,7 @@ const QiaomuBookReader = class extends Plugin {
     if (set) return set;
     const counts = new Map();
     for (const f of this.app.vault.getFiles()) {
-      if (!BOOK_EXTENSIONS.has(f.extension)) continue;
+      if (!BOOK_EXTENSIONS.has(f.extension) || isTextBook(f.name)) continue;
       const dir = f.parent && f.parent.path && f.parent.path !== "/" ? f.parent.path : "";
       counts.set(dir, (counts.get(dir) || 0) + 1);
     }
@@ -10463,10 +10505,21 @@ async function persistCurrentReaderPosition(reader) {
     console.warn("Qiaomu Reader: could not save the final reading position", error);
   }
 }
+function textReaderOptions(app, file) {
+  return {
+    parseYaml,
+    resolveResource(link) {
+      const resource = app.metadataCache.getFirstLinkpathDest(link.split("#")[0], file.path);
+      return resource ? app.vault.getResourcePath(resource) : null;
+    },
+    openLink: link => void app.workspace.openLinkText(link, file.path, true),
+  };
+}
 async function loadReaderDocument(file, app, settings, onProgress, options = {}) {
   throwIfReaderLoadAborted(options.signal);
-  if (ENGINE_EXTENSIONS.includes(file.extension)) {
-    // Format is sniffed from the bytes by the library itself.
+  if (ENGINE_EXTENSIONS.includes(file.extension.toLowerCase())) {
+    // Reject oversized text before allocating its decoded string and DOM.
+    if (isTextBook(file.name) && file.stat.size > 20 * 1024 * 1024) throw new Error("text-book-too-large");
     const bytes = await app.vault.readBinary(file);
     throwIfReaderLoadAborted(options.signal);
     return { engine: true, bytes, name: file.name, html: "", lazy: null, outline: null };
@@ -10482,7 +10535,7 @@ function renderReaderLoadError(reader, error, retry) {
   const icon = state.createDiv("qiaomu-reader-load-state-icon");
   setIcon(icon, "book-x");
   state.createEl("h3", { text: qiaomuReaderTranslate("could-not-open-this-book") });
-  state.createEl("p", { text: qiaomuReaderTranslate("the-file-may-be-damaged-password-protected-or-not-fully-download") });
+  state.createEl("p", { text: qiaomuReaderTranslate(["text-book-empty", "text-book-too-large", "text-book-encoding"].includes(error?.message) ? error.message : "the-file-may-be-damaged-password-protected-or-not-fully-download") });
   const message = String((error == null ? void 0 : error.message) || error || "Unknown error").trim();
   if (message) {
     const details = state.createEl("details", { cls: "qiaomu-reader-load-state-details" });
@@ -10710,6 +10763,7 @@ const ReaderView = class extends ItemView {
     this._pdfOutline = result.outline;
   }
   _finishBookOpen(file) {
+    void this.plugin.rememberTextBook(file);
     syncReaderAiCapability(this);
     this.buildSettPanel(); this._maybePromptBookNote(file);
     this._sessionSec = 0; this._running = false;
@@ -10753,7 +10807,7 @@ const ReaderView = class extends ItemView {
       },
     });
     try {
-      await engine.open(result.bytes, result.name, { initialCfi: saved?.cfi || undefined, initialFraction: saved?.pct });
+      await engine.open(result.bytes, result.name, { initialCfi: saved?.cfi || undefined, initialFraction: saved?.pct, textOptions: textReaderOptions(this.app, file) });
     } catch (e) {
       engine.destroy();
       if (this.engine === engine) this.engine = null;
@@ -11776,8 +11830,7 @@ const LibraryModal = class extends Modal {
     return { input };
   }
   _libVaultBooks(folder) {
-    const prefix = folder ? `${folder}/` : "";
-    return this.app.vault.getFiles().filter((f) => BOOK_EXTENSIONS.has(f.extension) && (prefix === "" || f.path.startsWith(prefix)));
+    return this.app.vault.getFiles().filter((f) => BOOK_EXTENSIONS.has(f.extension.toLowerCase()) && isListedBook(f, folder, this.plugin.settings.textBookPaths));
   }
   _sortLibBooks(bookFiles) {
     const lastRead = (p) => this.plugin.getProgress(p)?.lastRead ?? 0;
@@ -11882,7 +11935,7 @@ const LibraryModal = class extends Modal {
     const exts = [...BOOK_EXTENSIONS];
     const counts = new Map();
     for (const f of this.app.vault.getFiles()) {
-      if (!exts.includes(f.extension)) continue;
+      if (!exts.includes(f.extension) || isTextBook(f.name)) continue;
       const dir = f.parent && f.parent.path && f.parent.path !== "/" ? f.parent.path : "";
       counts.set(dir, (counts.get(dir) || 0) + 1);
     }
@@ -11950,7 +12003,8 @@ const LibraryModal = class extends Modal {
     for (const item of picked) {
       try {
         const data = await item.arrayBuffer();
-        await this.app.vault.createBinary(this._freeBookPath(target, item.name), data);
+        const added = await this.app.vault.createBinary(this._freeBookPath(target, item.name), data);
+        await this.plugin.rememberTextBook(added);
         ok += 1;
       } catch (error) {
         errors.push(item.name);
@@ -12801,7 +12855,7 @@ const ReaderModal = class extends Modal {
       },
     });
     try {
-      await engine.open(result.bytes, result.name, { initialCfi: saved?.cfi || undefined, initialFraction: saved?.pct });
+      await engine.open(result.bytes, result.name, { initialCfi: saved?.cfi || undefined, initialFraction: saved?.pct, textOptions: textReaderOptions(this.app, file) });
     } catch (e) {
       engine.destroy();
       if (this.engine === engine) this.engine = null;

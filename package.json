@@ -1,6 +1,6 @@
 {
   "name": "qiaomu-reader",
-  "version": "4.6.0",
+  "version": "4.6.1",
   "description": "中文优先的 Obsidian EPUB 与 PDF 阅读器，支持划线、批注、阅读笔记和进度同步。",
   "main": "main.js",
   "type": "module",
@@ -36,6 +36,7 @@
     "foliate-js": "^1.0.1",
     "jszip": "^3.10.1",
     "localforage": "^1.10.0",
+    "marked": "18.1.1",
     "pdfjs-dist": "^6.2.108"
   },
   "overrides": {

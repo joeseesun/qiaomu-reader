@@ -1,3 +1,4 @@
+import { isTextBook } from "../src/text-book.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
@@ -40,7 +41,7 @@ test("existing books get metadata covers without rewriting bytes, and embedded c
     const embedded = new Blob(["cover"], { type: "image/png" });
     let destroyed = 0;
     const readCover = vm.runInNewContext(`${method}; coverFromBytes`, {
-      Blob, File, createBookCover,
+      Blob, File, isTextBook, createBookCover,
       makeBook: async () => ({ metadata: { title: "书中标题", author: [{ name: "原作者" }] },
         getCover: async () => { if (kind === "broken") throw Error("no cover asset"); return kind === "embedded" ? embedded : null; },
         destroy: () => { destroyed++; },
@@ -75,7 +76,7 @@ test("curated cover upgrades only starter identities and missing/generated artwo
   for (const kind of ["missing", "generated", "jpeg", "custom-svg", "resolver-failure"]) {
     let resolved = 0, destroyed = 0;
     const original = kind === "missing" || kind === "resolver-failure" ? null : new Blob([kind === "generated" ? createBookCover({ title: "道德经" }) : "original"], { type: kind === "jpeg" ? "image/jpeg" : "image/svg+xml" });
-    const read = vm.runInNewContext(`${method}; coverFromBytes`, { Blob, File, createBookCover, isGeneratedBookCover,
+    const read = vm.runInNewContext(`${method}; coverFromBytes`, { Blob, File, isTextBook, createBookCover, isGeneratedBookCover,
       makeBook: async () => ({ metadata: { identifier: "urn:qbr:starter:7337", title: "道德经" }, getCover: async () => original, destroy: () => destroyed++ }),
     });
     const art = new Blob(["actual cover"], { type: "image/jpeg" });

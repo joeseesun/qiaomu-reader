@@ -185,3 +185,21 @@ not be presented as available when the active provider accepts text only.
 - Header: term (17px/600) with phonetic in small muted monospace, and a ghost target-language chip. Body: in-context meaning first, then senses with a monospace part-of-speech column, a muted note and a tinted example block. Footer: engine name, one-click engine switch, **Add word**, copy, save.
 - Verify in light, dark and one tinted reading theme; no accent colour may appear.
 
+
+## 13. Text documents as books
+
+Markdown, plain text and static HTML use the existing book reader and library.
+Markdown is parsed as GFM HTML by a bundled private Marked instance and rendered
+inside the reader. Tables, task lists, strikethrough, autolinks and code fences
+retain their semantics. TXT uses escaped HTML paragraphs, preserving in-paragraph
+newlines and indentation, with blank lines separating paragraphs.
+Only explicitly imported/opened text documents enter the library; ordinary vault
+notes remain in Obsidian's native editor. Headings become the contents hierarchy,
+TXT chapter labels become section entries, and existing highlights, search,
+progress and reading-note actions keep the same interaction contract.
+
+HTML supplies semantic reading content, not application UI: source scripts,
+forms, frames and styles are removed. Reader typography and theme remain the
+single presentation source. Local images resolve relative to the vault source;
+individual imports do not silently gather files from the user's filesystem.
+See `docs/text-formats.md` for format boundaries and acceptance evidence.

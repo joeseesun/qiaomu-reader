@@ -1,6 +1,11 @@
 // Russian locale pack. Inherited Russian UI strings keep their original wording;
 // strings that were originally Chinese source keys are translated to Russian here.
 export default {
+  "open-text-reader": "Открыть текущий текст в Qiaomu Reader",
+  "text-book-empty": "В файле нет читаемого текста. Добавьте текст и повторите попытку.",
+  "text-book-too-large": "Размер файла превышает 20 МБ. Разделите его на главы.",
+  "text-book-encoding": "Не удалось определить кодировку. Сохраните файл в UTF-8.",
+
   "智谱 GLM · Coding Plan": "Zhipu GLM · Coding Plan",
   "Kimi Code · 国内套餐": "Kimi Code · China",
   "百炼 · Token Plan": "Bailian · Token Plan",
@@ -54,7 +59,7 @@ export default {
   "selection-move-down": "Ниже",
 
   "welcome-library-title": "Откройте книгу и начните",
-  "welcome-library-body": "Попробуйте встроенную классику или добавьте EPUB, PDF или MOBI. Продолжить чтение можно из библиотеки.",
+  "welcome-library-body": "Попробуйте встроенную классику или добавьте Markdown, TXT, HTML, EPUB, PDF или MOBI. Продолжить чтение можно из библиотеки.",
   "welcome-reading-title": "Читайте с комфортом",
   "welcome-reading-body": "Настройте размер текста, межстрочный интервал и фон. Книги с гибкой вёрсткой поддерживают одну или две колонки; позиция сохраняется автоматически.",
   "welcome-highlight-title": "Сохраняйте мысли",
@@ -397,7 +402,7 @@ export default {
   "it-s-a-cozy-book-reader-right-inside-obsidian-read-highlight-wha": "Это уютная читалка книг прямо внутри Obsidian. Читаете, выделяете важное и превращаете выделения в заметки — не выходя из хранилища.",
   "flip-through-a-few-screens-with-the-arrow-or-the-next-button-it": "Пролистайте несколько экранов стрелкой → (или кнопкой «Далее»). Это займёт минуту, зато потом всё будет понятно.",
   "which-formats-and-how-to-open-a-book": "Какие форматы и как открыть книгу",
-  "the-reader-opens-two-formats-epub-epub-files-and-pdf-pdf-files": "Читалка открывает два формата: EPUB (файлы .epub) и PDF (файлы .pdf).",
+  "the-reader-opens-two-formats-epub-epub-files-and-pdf-pdf-files": "Читалка открывает два формата: Markdown, TXT, HTML, EPUB (файлы .epub) и PDF (файлы .pdf).",
   "to-read-a-book-put-its-file-into-your-obsidian-vault-and-just-cl": "Чтобы читать книгу, положите её файл в своё хранилище Obsidian и просто кликните по нему — она откроется в читалке.",
   "in-the-left-sidebar-there-s-a-library-icon-all-your-books-with-c": "На левой панели есть значок 📖 «Библиотека» — там все ваши книги с обложками в одном месте.",
   "this-is-the-very-first-version": "Это самая первая версия",
@@ -572,7 +577,7 @@ export default {
   "skipped-0": "пропущено: {0}",
   "could-not-add-0": "Не удалось добавить: {0}",
   "pdf-paragraphs-are-kept-as-in-the-original-the-text-no-longer-gl": "Абзацы в PDF сохраняются как в оригинале — текст больше не склеивается в сплошную стену",
-  "library-an-add-a-book-button-and-drag-and-drop-of-files-pdf-epub": "Библиотека: кнопка «Добавить книгу» и перетаскивание файлов (PDF, EPUB, FB2) прямо в окно",
+  "library-an-add-a-book-button-and-drag-and-drop-of-files-pdf-epub": "Библиотека: кнопка «Добавить книгу» и перетаскивание файлов (PDF, Markdown, TXT, HTML, EPUB, FB2) прямо в окно",
   "the-pdf-engine-is-now-bundled-in-books-open-offline-nothing-is-f": "PDF-движок встроен в плагин — книги открываются офлайн, ничего не подгружается из интернета",
   "in-the-highlights-list-a-comment-no-longer-breaks-the-quote-it-s": "В списке выделений комментарий больше не ломает цитату — он аккуратно встаёт под ней",
   "the-imported-font-is-unavailable-using-a-fallback-check-file-syn": "Импортированный шрифт недоступен. Используется запасной; проверьте синхронизацию файлов или импортируйте его заново.",
@@ -743,7 +748,7 @@ export default {
   "p-0-2": ", стр. {0}",
   "shape-of-a-copied-quote": "Формат скопированной цитаты",
   "what-the-copy-as-a-quote-button-puts-on-the-clipboard-available": "Что попадает в буфер по кнопке «Скопировать как цитату». Доступны {text}, {book}, {page}, {link}, {comment}. Пусто — вид по умолчанию.",
-  "not-accepted-0-1-supported-formats-are-epub-pdf-fb2-mobi-azw3-an": "Не подошли ({0}): {1}. Поддерживаются EPUB, PDF, FB2, MOBI, AZW3 и CBZ.",
+  "not-accepted-0-1-supported-formats-are-epub-pdf-fb2-mobi-azw3-an": "Не подошли ({0}): {1}. Поддерживаются Markdown, TXT, HTML, EPUB, PDF, FB2, MOBI, AZW3 и CBZ.",
   "folders-were-skipped-drop-the-book-files-themselves-0": "Папки пропущены — перетащите сами файлы книг ({0})",
   "progress-in-the-book-note-s-properties": "Прогресс в свойствах заметки книги",
   "adds-reading-progress-a-percentage-and-reading-updated-a-date-to": "Дописывает в заметку книги свойства reading-progress (процент) и reading-updated (дата). Это те же цифры, что и в файле прогресса, — просто в виде, который понимают Bases: по ним можно строить таблицы и сортировать. Сама заметка больше ничем не трогается.",

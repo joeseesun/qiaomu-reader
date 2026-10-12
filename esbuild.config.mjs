@@ -179,7 +179,8 @@ const ctx = await esbuild.context({
   treeShaking: true,
   outfile: path.join(profile.outputDir, "main.js"),
   metafile: true,
-  banner: { js: banner },
+  // Keep all notices verbatim apart from indentation in production bundles.
+  banner: { js: prod ? banner.replace(/^[ \t]+/gm, "") : banner },
   plugins: [...profile.plugins, neutralise, foliate.plugin],
   charset: "utf8",
   minifyWhitespace: prod,
@@ -195,7 +196,8 @@ if (prod) {
   fs.writeFileSync(mainPath, fs.readFileSync(mainPath, "utf8").replace(/[ \t]+$/gm, ""));
   const fontData = fs.readFileSync("fonts/QiaomuReadingFangsong.woff2").toString("base64");
   const css = fs.readFileSync("src/styles.css", "utf8") + `\n/* Bundled reading subset: SIL OFL 1.1\n${fontLicense}\n*/\n@font-face { font-family: 'QBR Zhuque Fangsong'; src: url('data:font/woff2;base64,${fontData}') format('woff2'); font-style: normal; font-weight: 400; font-display: swap; }\n`;
-  fs.writeFileSync(path.join(profile.outputDir, "styles.css"), css);
+  const markedLicense = fs.readFileSync("licenses/marked-MIT.txt", "utf8").replaceAll("*/", "* /");
+  fs.writeFileSync(path.join(profile.outputDir, "styles.css"), css + `\n/* Bundled Marked GFM parser license\n${markedLicense}\n*/\n`);
   if (profile.name === "community") {
     fs.copyFileSync("manifest.json", path.join(profile.outputDir, "manifest.json"));
     fs.writeFileSync(path.join(profile.outputDir, "build-info.json"), JSON.stringify({

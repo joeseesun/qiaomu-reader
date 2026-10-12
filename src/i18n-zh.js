@@ -1,6 +1,11 @@
 // Generated from the complete source UI dictionary and reviewed for core reading terms.
 // Keep placeholders, Markdown and HTML structure identical to the source strings.
 export const QIAOMU_READER_ZH_CN = {
+  "open-text-reader": "用乔木阅读器打开当前文本",
+  "text-book-empty": "文件中没有可阅读的正文。请添加内容后重试。",
+  "text-book-too-large": "文本文件超过 20 MB。请按章节拆分后再打开。",
+  "text-book-encoding": "无法识别文件编码。请另存为 UTF-8 后重试。",
+
   "智谱 GLM · Coding Plan": "智谱 GLM · Coding Plan",
   "Kimi Code · 国内套餐": "Kimi Code · 国内套餐",
   "百炼 · Token Plan": "百炼 · Token Plan",
@@ -54,7 +59,7 @@ export const QIAOMU_READER_ZH_CN = {
   "selection-move-down": "下移",
 
   "welcome-library-title": "打开一本书，就开始",
-  "welcome-library-body": "先读一本内置经典，或添加自己的 EPUB、PDF、MOBI。正在读的书，都能从书库继续。",
+  "welcome-library-body": "先读一本内置经典，或添加自己的 Markdown、TXT、HTML、EPUB、PDF、MOBI。正在读的书，都能从书库继续。",
   "welcome-reading-title": "读得舒服，才读得长久",
   "welcome-reading-body": "在阅读设置里调整字号、行距和背景。可重排书籍支持单列与双列，阅读位置自动保存。",
   "welcome-highlight-title": "遇到好内容，顺手留下",
@@ -475,7 +480,7 @@ export const QIAOMU_READER_ZH_CN = {
   "it-s-a-cozy-book-reader-right-inside-obsidian-read-highlight-wha": "它是 Obsidian 内部的一个舒适的图书阅读器。阅读、突出显示重要内容，并将突出显示的内容转化为笔记——所有这些都无需离开您的仓库。",
   "flip-through-a-few-screens-with-the-arrow-or-the-next-button-it": "使用 → 箭头（或“下一步”按钮）滚动浏览多个屏幕。这需要一分钟的时间，但随后一切都会清楚。",
   "which-formats-and-how-to-open-a-book": "什么格式以及如何打开一本书",
-  "the-reader-opens-two-formats-epub-epub-files-and-pdf-pdf-files": "阅读器支持多种格式：EPUB、PDF、FB2、MOBI、AZW3 和 CBZ。",
+  "the-reader-opens-two-formats-epub-epub-files-and-pdf-pdf-files": "阅读器支持多种格式：Markdown、TXT、HTML、EPUB、PDF、FB2、MOBI、AZW3 和 CBZ。",
   "to-read-a-book-put-its-file-into-your-obsidian-vault-and-just-cl": "要阅读一本书，请将其文件放入Obsidian存储中，然后只需单击它 - 它将在阅读器中打开。",
   "in-the-left-sidebar-there-s-a-library-icon-all-your-books-with-c": "左侧面板上有一个图标📖“图书馆” - 您所有带封面的书籍都集中在一处。",
   "this-is-the-very-first-version": "这是第一个版本",
@@ -650,7 +655,7 @@ export const QIAOMU_READER_ZH_CN = {
   "skipped-0": "缺失：{0}",
   "could-not-add-0": "添加失败：{0}",
   "pdf-paragraphs-are-kept-as-in-the-original-the-text-no-longer-gl": "PDF 中的段落按原始格式保存 - 文本不再粘在一起形成实心墙",
-  "library-an-add-a-book-button-and-drag-and-drop-of-files-pdf-epub": "图书馆：“添加书籍”按钮并将文件（PDF、EPUB、FB2）直接拖放到窗口中",
+  "library-an-add-a-book-button-and-drag-and-drop-of-files-pdf-epub": "图书馆：“添加书籍”按钮并将文件（PDF、Markdown、TXT、HTML、EPUB、FB2）直接拖放到窗口中",
   "the-pdf-engine-is-now-bundled-in-books-open-offline-nothing-is-f": "PDF引擎内置于插件中 - 书籍可以离线打开，无需从互联网下载任何内容",
   "in-the-highlights-list-a-comment-no-longer-breaks-the-quote-it-s": "在突出显示列表中，评论不再破坏引用 - 它整齐地位于其下方",
   "close-the-book": "合上书本",
@@ -685,7 +690,7 @@ export const QIAOMU_READER_ZH_CN = {
   "p-0-2": "，第{0}页",
   "shape-of-a-copied-quote": "复制的报价格式",
   "what-the-copy-as-a-quote-button-puts-on-the-clipboard-available": "使用“复制为引用”按钮进入缓冲区的内容。 {text}、{book}、{page}、{link}、{comment} 可用。空是默认视图。",
-  "not-accepted-0-1-supported-formats-are-epub-pdf-fb2-mobi-azw3-an": "不支持（{0}）：{1}。支持 EPUB、PDF、FB2、MOBI、AZW3 和 CBZ。",
+  "not-accepted-0-1-supported-formats-are-epub-pdf-fb2-mobi-azw3-an": "不支持（{0}）：{1}。支持 Markdown、TXT、HTML、EPUB、PDF、FB2、MOBI、AZW3 和 CBZ。",
   "folders-were-skipped-drop-the-book-files-themselves-0": "文件夹丢失 - 拖放书籍文件本身 ({0})",
   "progress-in-the-book-note-s-properties": "书本笔记属性的进展",
   "adds-reading-progress-a-percentage-and-reading-updated-a-date-to": "将阅读进度（百分比）和阅读更新（日期）属性添加到读书笔记。这些数字与进度文件中的数字相同，只是采用 Bases 可以理解的形式：您可以使用它们构建表格并对它们进行排序。笔记本身没有被任何其他东西触及。",
@@ -1514,7 +1519,7 @@ Object.assign(QIAOMU_READER_ZH_CN, {
   "highlights-colors-and-actions": "划线颜色与操作",
   "reader-and-library-themes-switch-instantly-and-can-follow-your-o": "阅读器和书库可即时切换主题，并支持跟随 Obsidian 外观。",
   "in-the-left-sidebar-there-s-a-library-icon-all-your-books-with-c": "左侧栏的 📖“书库”集中展示全部图书和封面。",
-  "library-an-add-a-book-button-and-drag-and-drop-of-files-pdf-epub": "书库支持点击“添加图书”，也可直接拖入 PDF、EPUB 或 FB2 文件。",
+  "library-an-add-a-book-button-and-drag-and-drop-of-files-pdf-epub": "书库支持点击“添加图书”，也可直接拖入 PDF、Markdown、TXT、HTML、EPUB 或 FB2 文件。",
   "library-categories-by-genre-and-folder-plus-a-reading-finished-f": "书库可按主题和文件夹分类，并筛选“正在阅读 / 已读完”。",
   "talking-about-the-passage": "围绕所选文字提问",
   "message": "输入问题…",

@@ -1,3 +1,4 @@
+import { TEXT_EXTENSIONS, isTextBook, makeTextBook } from "./text-book.js";
 import { HIGHLIGHT_PAINTS } from "./highlight-colors.js";
 import { createBookCover, isGeneratedBookCover } from "./book-cover.js";
 import { waitForEngineViewport } from "./engine-viewport.js";
@@ -26,8 +27,9 @@ import { Overlayer } from "foliate-js/overlayer.js";
 import { searchMatcher } from "foliate-js/search.js";
 import { textWalker } from "foliate-js/text-walker.js";
 
-// Every extension this engine can open; the plugin registers all of them.
-export const ENGINE_EXTENSIONS = ["epub", "fb2", "fbz", "mobi", "azw", "azw3", "cbz"];
+// Every supported flowing-book extension. Markdown opens explicitly so the
+// host retains its native editor registration.
+export const ENGINE_EXTENSIONS = ["epub", "fb2", "fbz", "mobi", "azw", "azw3", "cbz", ...TEXT_EXTENSIONS];
 
 // Wire format the library paints with a neutral outline; anything carrying
 // this prefix in its CFI value is treated as a search hit, not a highlight.
@@ -168,12 +170,24 @@ export class EpubEngine {
             const hit = this.#highlights.get(this.#idByCfi.get(value));
             if (hit) this.#hooks.onHighlightClick?.({ ...hit, index, range });
         });
+        let textBook;
         try {
-            await view.open(file);
+            if (isTextBook(fileName)) {
+                textBook = await makeTextBook(bytes, fileName, opts.textOptions);
+                if (this.#view !== view) throw Object.assign(new Error("Reader closed"), { name: "AbortError" });
+                view.addEventListener("external-link", event => {
+                    if (event.detail?.href?.startsWith("reader-note:")) {
+                        event.preventDefault();
+                        opts.textOptions?.openLink?.(decodeURIComponent(event.detail.href.slice(12)));
+                    }
+                });
+            }
+            await view.open(textBook || file);
             if (this.#view !== view) throw Object.assign(new Error("Reader closed"), { name: "AbortError" });
             await waitForEngineViewport(this.#host, controller.signal);
             if (this.#view !== view) throw Object.assign(new Error("Reader closed"), { name: "AbortError" });
         } catch (error) {
+            textBook?.destroy();
             disposeEngineView(view);
             if (this.#view === view) this.#view = null;
             throw error;
@@ -425,6 +439,7 @@ export class EpubEngine {
 // Prefer embedded artwork; otherwise create an offline metadata cover. Existing
 // book bytes and reading locations stay untouched. Return a durable thumbnail Blob.
 export async function coverFromBytes(bytes, fileName, resolveStarterCover) {
+    if (isTextBook(fileName)) return new Blob([createBookCover({ title: fileName.replace(/\.[^.]+$/, "") })], { type: "image/svg+xml" });
     const book = await makeBook(new File([bytes], fileName));
     try {
         let blob;
