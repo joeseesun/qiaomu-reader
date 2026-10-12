@@ -148,12 +148,15 @@ test('ruby pronunciation remains excluded when a range spans following text', ()
   assert.equal(speechDocumentChunks(doc)[0].text, '汉字继续读。');
 });
 test('Edge assembles binary audio and propagates 403 without retrying forever', async () => {
+  let socketCreated;
+  const nextSocket = () => new Promise(resolve => { socketCreated = resolve; });
   class Socket extends EventEmitter {
-    constructor(url) { super(); this.url = url; Socket.latest = this; setImmediate(() => this.emit('open')); }
+    constructor(url) { super(); this.url = url; Socket.latest = this; socketCreated(this); setImmediate(() => this.emit('open')); }
     send() {} terminate() { this.terminated = true; }
   }
+  const firstSocket = nextSocket();
   const pending = synthesizeEdge('test', 'zh-CN-XiaoxiaoNeural', { Socket });
-  for (let i=0; !Socket.latest && i<30; i++) await tick();
+  await firstSocket;
   const url = new URL(Socket.latest.url);
   assert.equal(url.hostname, 'api.msedgeservices.com');
   assert.equal(url.searchParams.has('Ocp-Apim-Subscription-Key'), true);
@@ -163,9 +166,10 @@ test('Edge assembles binary audio and propagates 403 without retrying forever', 
   Socket.latest.emit('message',frame,true); Socket.latest.emit('message',Buffer.from('Path:turn.end\r\n'),false);
   assert.deepEqual([...(await pending).bytes],[1,2,3]); assert.equal(Socket.latest.terminated,true);
   Socket.latest = null;
+  const rejectedSocket = nextSocket();
   const failure = synthesizeEdge('test','voice',{Socket});
   const rejected = assert.rejects(failure,{code:'http',status:403});
-  for (let i=0; !Socket.latest && i<30; i++) await tick();
+  await rejectedSocket;
   Socket.latest.emit('unexpected-response',{}, { statusCode:403, resume() {} }); await rejected;
 });
 test('TTS copy has complete Chinese/English pairs and matching placeholders', () => {
