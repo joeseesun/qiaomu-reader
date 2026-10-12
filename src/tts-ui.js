@@ -11,6 +11,9 @@ import { speechDocumentChunks, splitSpeechText } from './tts-text.js';
 export const TTS_COPY = {
   welcome: ['默认使用 Edge 在线朗读，无需密钥。文字会发送至微软，可在「语音设置」切换其他服务。', 'Edge online speech needs no key and sends reading text to Microsoft. Open Speech settings to configure other providers.'],
   welcomeOther: ['点击音色可换声音、选模型和试听；语音设置可配置其他服务。', 'Click the voice to change voices, models or test speech. Open Speech settings to configure other providers.'],
+  welcomeUnavailable: ['当前设备未提供系统朗读接口。打开「语音设置」选择并配置其他服务。', 'System speech is unavailable on this device. Open Speech settings to choose and configure another provider.'],
+  macos: ['Mac 本地语音', 'Mac local speech'], macosHelp: ['调用本机已安装音色，无需密钥。可用音色取决于系统版本；下载新声音后刷新列表并试听。', 'Uses installed Mac voices without a key. Availability depends on macOS; refresh and audition after downloading voices.'],
+  voiceEnhanced: ['增强', 'Enhanced'], voicePremium: ['高品质', 'Premium'],
   gotIt: ['知道了', 'Got it'], voiceSettings: ['语音设置', 'Speech settings'],
   serviceModels: ['服务与模型', 'Service and model'], configureTest: ['配置并试听', 'Set up and test'],
   voiceSearch: ['搜索音色', 'Search voices'], noVoices: ['没有匹配的音色', 'No matching voices'],
@@ -55,6 +58,9 @@ export const TTS_COPY = {
   'error-response': ['服务返回了无法播放的内容，请检查配置。', 'The response was not playable audio. Check the configuration.'],
   'error-playback': ['音频未能播放，请重试。', 'Audio playback failed. Please retry.'],
   'error-mobile': ['手机端请使用系统语音或其他云端服务。', 'On mobile, use system speech or another cloud provider.'],
+  'error-macPlatform': ['Mac 本地语音仅适用于 Mac 桌面端，请选择其他语音服务。', 'Mac local speech requires a Mac desktop. Choose another provider.'],
+  'error-native': ['本机语音调用失败，请刷新音色、重试或更换语音服务。', 'Local speech failed. Refresh voices, retry, or choose another provider.'],
+  'error-systemUnavailable': ['当前设备未提供系统朗读接口，请在语音设置中选择其他服务。', 'System speech is unavailable on this device. Choose another provider in Speech settings.'],
   'error-http': ['语音请求失败（HTTP {0}），请检查服务配置或重试。', 'Speech request failed (HTTP {0}). Check settings or retry.'],
   rateLimitUntil: ['语音服务暂时限流，已暂停请求。{0} 后可重试，也可更换服务。', 'The voice service is rate-limiting requests. Retry after {0}, or choose another service.'],
   'error-rateLimit': ['请求过于频繁（429），请稍后重试或更换语音服务。', 'Too many requests (429). Retry later or choose another voice service.'],
@@ -112,6 +118,11 @@ export function ensureTts(plugin) {
         if (!Platform.isDesktopApp) throw ttsError('mobile');
         return edge.synthesize(text, profile.voice, { signal });
       }
+      if (profile.id === 'macos') {
+        if (!Platform.isDesktopApp || !Platform.isMacOS) throw ttsError('macPlatform');
+        const { synthesizeMacSpeech } = await import('./tts-macos.js');
+        return synthesizeMacSpeech(text, profile.voice, { signal });
+      }
       return synthesizeHttp(profile, text, { request: requestUrl, key: profile.key, signal });
     },
     onChange: controller => { for (const listener of listeners) listener(controller); },
@@ -133,11 +144,16 @@ function restoreSpeech(controller, session, plugin) {
   if (session.waitingSection) { controller.index = session.index; controller.waitingSection = true; controller.emit(); }
 }
 function configurationError(plugin, profile = profileFor(plugin)) {
-  if (profile.id === 'system') return null;
+  if (profile.id === 'system') return typeof window.speechSynthesis?.speak === 'function' && typeof window.speechSynthesis?.getVoices === 'function' && typeof window.SpeechSynthesisUtterance === 'function' ? null : ttsError('systemUnavailable');
+  if (profile.id === 'macos') return Platform.isDesktopApp && Platform.isMacOS ? null : ttsError('macPlatform');
   if (profile.id === 'edge') return Platform.isDesktopApp ? null : ttsError('mobile');
   try { buildSpeechRequest(profile, '', profile.key); return null; }
   catch (error) { return error; }
 }
+function hideSpeechProvider(id, selected) {
+  return id !== selected && ((id === 'edge' && !Platform.isDesktopApp) || (id === 'macos' && (!Platform.isDesktopApp || !Platform.isMacOS)));
+}
+function speechDescription(id) { return id === 'system' ? 'local' : id === 'macos' ? 'macosHelp' : id === 'edge' ? 'edge' : 'cloud'; }
 export function openTtsSettings(plugin) { const modal = new TtsSettingsModal(plugin); modal.open(); return modal; }
 class SpeechChoices {
   constructor(host, plugin, onChange, options = {}) {
@@ -148,7 +164,7 @@ class SpeechChoices {
   destroy() { this.disposed = true; this.abort?.abort(); window.speechSynthesis?.removeEventListener('voiceschanged', this.onVoices); }
   render() {
     const p = this.plugin, tx = key => ttsText(p, key), settings = config(p), profile = ttsProfile(settings), id = profile.id;
-    if (this.provider !== id) { this.abort?.abort(); this.catalog = {}; this.message = ''; this.provider = id; }
+    if (this.provider !== id) { this.abort?.abort(); this.catalog = {}; this.message = ''; this.nativeLoaded = false; this.provider = id; }
     this.host.empty();
     const update = (key, value) => {
       const current = ttsProfile(config(p));
@@ -175,7 +191,8 @@ class SpeechChoices {
       input.addEventListener('change', () => update(key, input.value.trim()));
     };
     if (TTS_MODELS[id]) field(modelKey(profile), tx('model'), [...TTS_MODELS[id], ...(this.catalog.models || [])]);
-    const voices = id === 'system' ? [{ id: '', label: tx('systemVoice') }, ...(window.speechSynthesis?.getVoices() || []).map(v => ({ id: v.voiceURI, label: `${v.name} · ${v.lang}` }))] : voiceChoices(profile, this.catalog);
+    const voices = id === 'system' ? [{ id: '', label: tx('systemVoice') }, ...(window.speechSynthesis?.getVoices?.() || []).map(v => ({ id: v.voiceURI, label: `${v.name} · ${v.lang}` }))]
+      : id === 'macos' ? [{ id: '', label: tx('systemVoice') }, ...(this.catalog.voices || [])] : voiceChoices(profile, this.catalog);
     this.voices = voices;
     if (!this.options.preview) field('voice', tx('voice'), voices, id !== 'system');
     else {
@@ -209,20 +226,29 @@ class SpeechChoices {
         input.addEventListener('change', () => update('voice', input.value.trim()));
       }
     }
-    if (canLoadVoiceCatalog(id)) {
+    let nativeLoad;
+    if (canLoadVoiceCatalog(id) || id === 'macos') {
       const load = button(this.host, 'refresh-cw', tx('refreshVoices'), async () => {
         this.abort?.abort(); const abort = this.abort = new AbortController(); load.disabled = true; feedback.setText(tx('loading'));
         try {
           const profile = profileFor(p);
-          const result = await loadVoiceCatalog(profile, { request: requestUrl, key: profile.key, signal: abort.signal });
+          let result;
+          if (id === 'macos') {
+            if (!Platform.isDesktopApp || !Platform.isMacOS) throw ttsError('macPlatform');
+            const { macSpeechVoices } = await import('./tts-macos.js');
+            const voices = await macSpeechVoices(abort.signal);
+            result = { voices: voices.sort((a, b) => Number(/^zh|^yue/.test(b.lang)) - Number(/^zh|^yue/.test(a.lang)) || b.quality - a.quality).map(v => ({ id: v.id, label: `${v.name} · ${v.lang}${v.quality > 1 ? ` · ${tx(v.quality === 3 ? 'voicePremium' : 'voiceEnhanced')}` : ''}` })) };
+          } else result = await loadVoiceCatalog(profile, { request: requestUrl, key: profile.key, signal: abort.signal });
           if (abort.signal.aborted || this.disposed || config(p).provider !== id) return;
           this.catalog = result; this.message = tx(result.more ? 'catalogPartial' : 'catalogReady'); this.render();
         } catch (error) {
-          if (!abort.signal.aborted && !this.disposed) { feedback.setText(errorText(p, error, id)); load.disabled = false; }
+          if (!abort.signal.aborted && !this.disposed && config(p).provider === id) { this.message = errorText(p, error, id); this.render(); }
         }
       }, true);
+      if (id === 'macos' && !this.nativeLoaded && Platform.isDesktopApp && Platform.isMacOS) nativeLoad = load;
     }
     const feedback = this.host.createDiv({ cls: 'qbr-tts-choice-feedback', text: this.message || '', attr: { role: 'status' } });
+    if (nativeLoad) { this.nativeLoaded = true; nativeLoad.click(); }
     this.options.onRender?.();
   }
 }
@@ -243,19 +269,19 @@ class TtsSettingsModal extends Modal {
     const changed = () => { controller.stop(this.previewOwner); controller.cache.clear(); persist(p); };
     new Setting(this.contentEl).setName(tx('service')).addDropdown(drop => {
       for (const [id, value] of Object.entries(TTS_PROVIDERS)) {
-        if (id === 'edge' && !Platform.isDesktopApp && settings.provider !== 'edge') continue;
-        drop.addOption(id, ['system', 'doubao', 'siliconflow'].includes(id) ? tx(id) : value.label);
+        if (hideSpeechProvider(id, settings.provider)) continue;
+        drop.addOption(id, ['system', 'macos', 'doubao', 'siliconflow'].includes(id) ? tx(id) : value.label);
       }
       drop.setValue(settings.provider).onChange(value => { settings.provider = value; changed(); this.render(); });
     });
     const id = settings.provider, profile = ttsProfile(settings);
-    this.contentEl.createEl('p', { cls: 'qbr-tts-description', text: tx(id === 'system' ? 'local' : id === 'edge' ? 'edge' : 'cloud') });
+    this.contentEl.createEl('p', { cls: 'qbr-tts-description', text: tx(speechDescription(id)) });
     if (id === 'doubao' || id === 'minimax') this.contentEl.createEl('p', { cls: 'qbr-tts-description', text: tx(`${id}Help`) });
     const update = (key, value) => {
       settings.profiles[id] = { ...settings.profiles[id], [key]: value.trim() }; changed();
     };
     const field = (host, key, label = key) => new Setting(host).setName(tx(label)).addText(input => input.setValue(profile[key] || '').onChange(value => update(key, value)));
-    if (!['system', 'edge'].includes(id)) new Setting(this.contentEl).setName(tx('key')).addText(input => {
+    if (!['system', 'macos', 'edge'].includes(id)) new Setting(this.contentEl).setName(tx('key')).addText(input => {
       input.inputEl.type = 'password'; input.inputEl.autocomplete = 'off';
       input.setValue(p.app.secretStorage?.getSecret(`qiaomu-reader-tts-${id}`) || '').onChange(value => {
         try { p.app.secretStorage.setSecret(`qiaomu-reader-tts-${id}`, value.trim()); changed(); }
@@ -489,8 +515,8 @@ export function attachTts(view, tray) {
   const serviceLabel = selections.createEl('label', { cls: 'qbr-tts-choice' }); serviceLabel.createSpan({ text: tx('service') });
   const service = serviceLabel.createEl('select', { attr: { 'data-tts-field': 'service' } });
   for (const [id, value] of Object.entries(TTS_PROVIDERS)) {
-    if (id === 'edge' && !Platform.isDesktopApp && config(plugin).provider !== 'edge') continue;
-    service.createEl('option', { value: id, text: ['system', 'doubao', 'siliconflow'].includes(id) ? tx(id) : value.label });
+    if (hideSpeechProvider(id, config(plugin).provider)) continue;
+    service.createEl('option', { value: id, text: ['system', 'macos', 'doubao', 'siliconflow'].includes(id) ? tx(id) : value.label });
   }
   const changed = () => {
     if (controller.owner === previewOwner) stopPreview();
@@ -551,7 +577,7 @@ export function attachTts(view, tray) {
     speedHint.setText(profile.id === 'system' ? tx('speedNote') : ''); speedHint.hidden = profile.id !== 'system';
     service.value = profile.id;
     if (picker.provider !== profile.id) picker.render();
-    privacy.setText(tx(profile.id === 'system' ? 'local' : profile.id === 'edge' ? 'edge' : 'cloud'));
+    privacy.setText(tx(speechDescription(profile.id)));
     const voices = picker.voices || voiceChoices(profile);
     const voiceName = voices.find(v => v.id === profile.voice)?.label || profile.voice || tx('systemVoice');
     voiceButton.replaceChildren(); setIcon(voiceButton, 'audio-lines');
@@ -568,11 +594,11 @@ export function attachTts(view, tray) {
     const invalid = configurationError(plugin);
     setup.hidden = !invalid; if (invalid) setupMessage.setText(errorText(plugin, invalid, profile.id));
     intro.hidden = !!config(plugin).introSeen || !options.hidden || !rates.hidden;
-    introText.setText(tx(profile.id === 'edge' ? 'welcome' : 'welcomeOther'));
+    introText.setText(tx(profile.id === 'edge' ? 'welcome' : invalid?.code === 'systemUnavailable' ? 'welcomeUnavailable' : 'welcomeOther'));
     bar.toggleClass('qbr-tts-with-intro', !intro.hidden);
     errorBox.hidden = state !== 'error'; bar.toggleClass('qbr-tts-has-error', state === 'error');
     if (state === 'error') errorMessage.setText(errorText(plugin, controller.error, profile.id));
-    fallback.hidden = profile.id === 'system';
+    fallback.hidden = profile.id === 'system' || !!configurationError(plugin, { id: 'system' });
     const browsing = own && controller.owner.follow === false;
     origins.hidden = !saved || (!browsing && !['idle', 'ended', 'paused', 'error'].includes(state));
     resumeSaved.hidden = own && ['paused', 'playing', 'loading'].includes(state);

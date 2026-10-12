@@ -1,6 +1,7 @@
 // Synthesis only. Playback speed and reading position belong to the controller.
 export const TTS_PROVIDERS = Object.freeze({
   system: { label: 'System voice', voice: '', model: '' },
+  macos: { label: 'Mac local speech', voice: '', model: '' },
   edge: { label: 'Edge TTS', voice: 'zh-CN-XiaoxiaoNeural', model: '' },
   openai: { label: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini-tts', voice: 'coral' },
   compatible: { label: 'OpenAI-compatible', baseUrl: '', model: '', voice: '' },
@@ -33,7 +34,7 @@ export function ttsBaseUrl(value) {
 }
 export function buildSpeechRequest(profile, text, key = '') {
   const { id, voice, model } = profile;
-  if (!TTS_PROVIDERS[id] || ['system', 'edge'].includes(id)) throw ttsError('provider');
+  if (!TTS_PROVIDERS[id] || ['system', 'macos', 'edge'].includes(id)) throw ttsError('provider');
   if (id !== 'compatible' && !key) throw ttsError('key');
   if (!voice || (!['azure', 'doubao'].includes(id) && !model)) throw ttsError('configuration');
   const headers = { 'Content-Type': 'application/json' };

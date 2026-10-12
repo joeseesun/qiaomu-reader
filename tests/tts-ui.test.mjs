@@ -67,11 +67,32 @@ test('first desktop use defaults to Edge, explains online transfer, exposes sett
   assert.equal(intro.hidden, true); assert.equal(f.p.settings.tts.introSeen, true);
   assert.equal(f.calls.length, 0); f.cleanup();
 });
-test('existing explicit service remains; mobile fresh install uses supported default', () => {
+test('existing explicit service remains; mobile fresh install retains system preference', () => {
   const old = fixture({ provider: 'system' }); assert.equal(old.p.settings.tts.provider, 'system'); old.cleanup();
   ttsHost.Platform.isDesktopApp = false;
   const mobile = fixture(); assert.equal(mobile.p.settings.tts.provider, 'system'); mobile.cleanup();
   ttsHost.Platform.isDesktopApp = true;
+});
+test('missing mobile system API gives a direct setup route and hides desktop-only providers', () => {
+  ttsHost.Platform.isDesktopApp = false;
+  const f = fixture();
+  assert.match(f.q('.qbr-tts-intro').textContent, /未提供系统朗读接口/);
+  f.q('.qbr-tts-current-voice').click();
+  assert.equal(f.q('.qbr-tts-setup').hidden, false);
+  assert.match(f.q('.qbr-tts-setup').textContent, /选择其他服务/);
+  const services = [...f.q('select[data-tts-field="service"]').options].map(v => v.value);
+  assert.equal(services.includes('macos'), false); assert.equal(services.includes('edge'), false);
+  f.cleanup(); ttsHost.Platform.isDesktopApp = true;
+});
+test('a synced Mac provider remains visible on Windows with a specific recovery instead of invoking Node speech', () => {
+  ttsHost.Platform.isMacOS = false;
+  const f = fixture({ provider: 'macos', introSeen: true });
+  f.q('.qbr-tts-current-voice').click();
+  assert.equal(f.p.settings.tts.provider, 'macos'); assert.equal(f.calls.length, 0);
+  assert.match(f.q('.qbr-tts-setup').textContent, /仅适用于 Mac/);
+  const services = [...f.q('select[data-tts-field="service"]').options].map(v => v.value);
+  assert.ok(services.includes('macos')); assert.ok(services.includes('edge'));
+  f.cleanup();
 });
 test('voice preview does not select voice or synthesize book on restore; Escape and close clean up', async () => {
   const f = fixture({ provider: 'edge', introSeen: true });

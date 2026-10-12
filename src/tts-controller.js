@@ -47,7 +47,7 @@ export class TtsController {
     try {
       const signal = this.abort.signal;
       if (this.profile.id === 'system') {
-        if (!this.speech || !this.makeUtterance) throw ttsError('system');
+        if (typeof this.speech?.speak !== 'function' || typeof this.speech?.getVoices !== 'function' || !this.makeUtterance) throw ttsError('systemUnavailable');
         const utterance = this.makeUtterance(item.text);
         const voices = this.speech.getVoices();
         const voice = this.profile.voice ? voices.find(v => v.voiceURI === this.profile.voice) : null;
