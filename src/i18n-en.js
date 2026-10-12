@@ -1,4 +1,11 @@
 export const QIAOMU_READER_EN = {
+  "library-remove": "Remove from library",
+  "library-removed": "Removed “{0}” from the library. File and reading records kept.",
+  "library-change-failed": "Could not update the library. Check vault access and retry.",
+  "delete-source-file": "Delete source file",
+  "delete-source-title": "Delete source file?",
+  "delete-source-description": "Delete “{0}” using Obsidian’s trash setting, along with its reading progress and highlights. Reading notes and files outside this vault will be kept.",
+
   "open-text-reader": "Open current text in Qiaomu Reader",
   "text-book-empty": "This file has no readable content. Add text and try again.",
   "text-book-too-large": "This text file exceeds 20 MB. Split it into chapters and try again.",
@@ -928,11 +935,8 @@ export const QIAOMU_READER_EN = {
   "scrolling": "Scrolling",
   "auto": "Auto",
   "how-many-characters-fit-on-a-line-shorter-lines-are-easier-to-re": "How many characters fit on a line. Shorter lines are easier to read.",
-  "delete-the-book": "Delete the book?",
-  "0-will-be-deleted-from-the-vault-together-with-its-reading-progr": "«{0}» will be deleted from the vault together with its reading progress and highlights. The book note will remain.",
   "book-deleted-0": "Book deleted: {0}",
   "could-not-delete-the-book": "Could not delete the book",
-  "delete-book": "Delete book",
   "book-actions": "Book actions",
   "reading-note-template": "Reading-note template",
   "used-only-for-the-single-reading-note-created-for-a-book-where-h": "Used only for the single reading note created for a book, where highlights and comments are collected. It is not used for standalone excerpt notes. Empty means a heading and book properties without a template.",

@@ -1,4 +1,11 @@
 export default {
+  "library-remove": "Aus Bibliothek entfernen",
+  "library-removed": "„{0}“ entfernt. Datei und Lesedaten bleiben erhalten.",
+  "library-change-failed": "Bibliothek konnte nicht aktualisiert werden. Prüfen Sie den Zugriff und versuchen Sie es erneut.",
+  "delete-source-file": "Quelldatei löschen",
+  "delete-source-title": "Quelldatei löschen?",
+  "delete-source-description": "„{0}“ gemäß Obsidian-Papierkorbeinstellung samt Lesefortschritt und Markierungen löschen. Lesenotizen und Dateien außerhalb dieses Vaults bleiben erhalten.",
+
   "open-text-reader": "Aktuellen Text in Qiaomu Reader öffnen",
   "text-book-empty": "Diese Datei enthält keinen lesbaren Inhalt. Fügen Sie Text hinzu und versuchen Sie es erneut.",
   "text-book-too-large": "Diese Textdatei ist größer als 20 MB. Teilen Sie sie in Kapitel auf.",
@@ -928,11 +935,8 @@ export default {
   "scrolling": "Bildlauf",
   "auto": "Automatisch",
   "how-many-characters-fit-on-a-line-shorter-lines-are-easier-to-re": "Wie viele Zeichen in eine Zeile passen. Kürzere Zeilen sind leichter zu lesen.",
-  "delete-the-book": "Buch löschen?",
-  "0-will-be-deleted-from-the-vault-together-with-its-reading-progr": "«{0}» wird zusammen mit dem Lesefortschritt und den Markierungen aus dem Tresor gelöscht. Die Buchnotiz bleibt erhalten.",
   "book-deleted-0": "Buch gelöscht: {0}",
   "could-not-delete-the-book": "Buch konnte nicht gelöscht werden",
-  "delete-book": "Buch löschen",
   "book-actions": "Buchaktionen",
   "reading-note-template": "Vorlage für Lesenotiz",
   "used-only-for-the-single-reading-note-created-for-a-book-where-h": "Wird nur für die einzelne Lesenotiz verwendet, die für ein Buch erstellt wird, in der Markierungen und Kommentare gesammelt werden. Es wird nicht für eigenständige Exzerptnotizen verwendet. Leer bedeutet eine Überschrift und Bucheigenschaften ohne Vorlage.",

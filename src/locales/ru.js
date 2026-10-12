@@ -1,6 +1,13 @@
 // Russian locale pack. Inherited Russian UI strings keep their original wording;
 // strings that were originally Chinese source keys are translated to Russian here.
 export default {
+  "library-remove": "Убрать из библиотеки",
+  "library-removed": "«{0}» убрано. Файл и записи чтения сохранены.",
+  "library-change-failed": "Не удалось обновить библиотеку. Проверьте доступ и повторите попытку.",
+  "delete-source-file": "Удалить исходный файл",
+  "delete-source-title": "Удалить исходный файл?",
+  "delete-source-description": "Удалить «{0}» по настройке корзины Obsidian вместе с прогрессом и выделениями. Заметки о чтении и файлы вне этого хранилища сохранятся.",
+
   "open-text-reader": "Открыть текущий текст в Qiaomu Reader",
   "text-book-empty": "В файле нет читаемого текста. Добавьте текст и повторите попытку.",
   "text-book-too-large": "Размер файла превышает 20 МБ. Разделите его на главы.",
@@ -930,11 +937,8 @@ export default {
   "scrolling": "Прокрутка",
   "auto": "Авто",
   "how-many-characters-fit-on-a-line-shorter-lines-are-easier-to-re": "Сколько знаков помещается в строку. Короткая строка читается легче.",
-  "delete-the-book": "Удалить книгу?",
-  "0-will-be-deleted-from-the-vault-together-with-its-reading-progr": "«{0}» будет удалена из хранилища вместе с прогрессом чтения и выделениями. Заметка книги останется на месте.",
   "book-deleted-0": "Книга удалена: {0}",
   "could-not-delete-the-book": "Не удалось удалить книгу",
-  "delete-book": "Удалить книгу",
   "book-actions": "Действия с книгой",
   "reading-note-template": "Шаблон заметки книги",
   "used-only-for-the-single-reading-note-created-for-a-book-where-h": "Применяется только к общей заметке книги, которая создаётся один раз и собирает выделения и комментарии. Не используется для отдельных заметок из фрагментов. Пусто — заголовок и свойства книги без шаблона.",

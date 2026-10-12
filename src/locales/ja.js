@@ -1,4 +1,11 @@
 export default {
+  "library-remove": "本棚から取り除く",
+  "library-removed": "「{0}」を取り除きました。ファイルと読書記録は保持されます。",
+  "library-change-failed": "本棚を更新できません。保管庫へのアクセスを確認して再試行してください。",
+  "delete-source-file": "元ファイルを削除",
+  "delete-source-title": "元ファイルを削除しますか？",
+  "delete-source-description": "Obsidian のごみ箱設定に従って保管庫内の「{0}」と読書進捗・ハイライトを削除します。読書ノートと保管庫外のファイルは保持されます。",
+
   "open-text-reader": "現在のテキストを Qiaomu Reader で開く",
   "text-book-empty": "読み取れる本文がありません。内容を追加して再試行してください。",
   "text-book-too-large": "20 MB を超えています。章ごとに分割してください。",
@@ -928,11 +935,8 @@ export default {
   "scrolling": "スクロール",
   "auto": "自動",
   "how-many-characters-fit-on-a-line-shorter-lines-are-easier-to-re": "1行に収める文字数です。短めにすると読みやすくなります。",
-  "delete-the-book": "本を削除しますか？",
-  "0-will-be-deleted-from-the-vault-together-with-its-reading-progr": "「{0}」を読書進捗とハイライトとともに保管庫から削除します。本のノートは残ります。",
   "book-deleted-0": "本を削除しました：{0}",
   "could-not-delete-the-book": "本を削除できませんでした",
-  "delete-book": "本を削除",
   "book-actions": "本の操作",
   "reading-note-template": "読書ノートのテンプレート",
   "used-only-for-the-single-reading-note-created-for-a-book-where-h": "本ごとに1つ作成する、ハイライトとコメントをまとめる読書ノートにのみ使用します。個別の抜粋ノートには使いません。空欄の場合は、テンプレートを使わず見出しと本のプロパティを作成します。",
