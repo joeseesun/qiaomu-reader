@@ -10757,7 +10757,7 @@ const ReaderView = class extends ItemView {
       onRelocate: (detail) => {
         if (this.file?.path !== file.path || this.engine !== engine || loadToken.signal.aborted) return;
         updateEngineLocation(this, detail);
-        this._ttsOnRelocate?.();
+        this._ttsOnRelocate?.(detail);
       },
     });
     try {
@@ -12808,7 +12808,7 @@ const ReaderModal = class extends Modal {
       onRelocate: (detail) => {
         if (this.file?.path !== file.path || this.engine !== engine || loadToken.signal.aborted) return;
         updateEngineLocation(this, detail);
-        this._ttsOnRelocate?.();
+        this._ttsOnRelocate?.(detail);
       },
     });
     try {

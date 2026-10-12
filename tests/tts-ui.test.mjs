@@ -147,3 +147,18 @@ test('closing book during configuration prevents restoring stale audio; chapter 
   f.q('.qbr-tts-popup-footer button').click();ui.stopViewTts(f.view);lastModal.close();
   assert.equal(f.c.owner, null);assert.equal(f.calls.length, 1);f.cleanup();
 });
+
+test('automatic EPUB page-follow awaits relocation without disabling follow, while manual browsing does', async () => {
+  const f=fixture({provider:'system',introSeen:true});
+  const book=new JSDOM('<body><p>第一页。第二页。</p></body>').window.document,node=book.querySelector('p').firstChild;
+  const ranges=[0,4].map(start=>{const range=book.createRange();range.setStart(node,start);range.setEnd(node,start+4);return range;});
+  let current=ranges[0],arrive;
+  f.view.engine={currentLocation:()=>({range:current}),rangeFromCfi:cfi=>ranges[cfi.includes('second')?1:0]};
+  f.p.settings.tts.progress={[f.view.file.path]:{cfi:'epubcfi(second)',mtime:1}};
+  const owner={view:f.view,follow:true,onSegment:()=>{f.view._ttsNavigating=1;return new Promise(resolve=>{arrive=()=>{current=ranges[1];f.view._ttsOnRelocate();f.view._ttsNavigating=0;resolve();};});}};
+  f.c.start(owner,[{text:'第二页。'}],{id:'edge'});await tick();f.view._ttsOnRelocate();
+  assert.equal(owner.follow,true);assert.equal(f.c.state,'loading');
+  arrive();await tick();assert.equal(owner.follow,true);assert.equal(f.c.state,'playing');
+  current=ranges[0];f.view._ttsOnRelocate({reason:'anchor'});assert.equal(owner.follow,true);
+  f.view._ttsOnRelocate({reason:'page'});assert.equal(owner.follow,false);f.cleanup();
+});

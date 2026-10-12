@@ -225,7 +225,7 @@ test('paused session restoration retains segment and rate without synthesis or a
 });
 
 test('primary playback restores exact saved sentence, while explicit from-page and changed files start here', async () => {
-  const { rememberSpeechProgress, savedSpeechProgress, restorePdfSpeechPage, speechStartMode } = await import('../src/tts-progress.js');
+  const { rememberSpeechProgress, savedSpeechProgress, restorePdfSpeechPage, speechStartMode, speechAnchorVisible } = await import('../src/tts-progress.js');
   const doc = new JSDOM('<body><p>第一页第一句。第一页第二句。第一页第三句。</p></body>').window.document;
   const textNode = doc.querySelector('p').firstChild;
   const pageRange = doc.createRange(); pageRange.selectNodeContents(doc.querySelector('p'));
@@ -242,7 +242,7 @@ test('primary playback restores exact saved sentence, while explicit from-page a
   const source = readFileSync(new URL('../src/tts-ui.js', import.meta.url), 'utf8');
   const code = source.slice(source.indexOf('async function navigateSpeech('), source.indexOf('export function openTts(view'));
   const context = { config: () => settings, ensureTts: () => controller, savedSpeechProgress, rememberSpeechProgress, restorePdfSpeechPage, speechStartMode,
-    speechDocumentChunks, splitSpeechText, profileFor: () => ({ id: 'system' }), checkTtsSignal: () => {}, highlight() {}, clearHighlight() {}, persist() {},
+    speechDocumentChunks, splitSpeechText, speechAnchorVisible, profileFor: () => ({ id: 'system' }), checkTtsSignal: () => {}, highlight() {}, clearHighlight() {}, persist() {},
     Notice: class { constructor(message) { notices.push(message); } }, ttsText: (_, key) => key, errorText: (_, e) => e.code, ttsError: code => ({ code }), view };
   vm.createContext(context); vm.runInContext(code + ';this.startReading = startReading;', context);
   await context.startReading(view);
@@ -330,4 +330,37 @@ test('fast local playback prepares the next segment before first playback and cl
   await tick(); assert.equal(audios.length,0); assert.equal(c.state,'loading');
   c.stop(); next(audio()); await tick(); assert.equal(audios.length,0);
   c.dispose();
+});
+
+test('page-follow completes before audio starts, even when pause/resume occurs during navigation', async () => {
+  let arrive;
+  const {c,audios}=harness(async()=>audio());
+  c.start({onSegment:()=>new Promise(resolve=>{arrive=resolve;})},[{text:'next page'}],{id:'openai'});
+  await tick(); assert.equal(audios[0].plays,0);
+  c.toggle();c.toggle();assert.equal(audios[0].plays,0);
+  arrive();await tick();assert.equal(audios[0].plays,1);assert.equal(c.state,'playing');c.dispose();
+});
+
+test('PDF automatically continues across source pages, skips blank pages and preserves page offsets', async () => {
+  const {rememberSpeechProgress,savedSpeechProgress,restorePdfSpeechPage,speechStartMode}=await import('../src/tts-progress.js');
+  const doc=new JSDOM('<body>'+[1,2,3,4].map(n=>`<div class="qiaomu-reader-pdf-page-break" data-pdf-page-no="${n}"></div>`).join('')+'</body>').window.document;
+  let page=1; const settings={provider:'system'}, file={path:'continuous.pdf',stat:{mtime:1}}, jumps=[];
+  const view={file,plugin:{settings},contentEl:doc.body,pager:{flow:doc.body,currentPdfPageNumber:()=>page,sw:500,cols:1,jumpTo(){},total:4},_pdfLazy:{textFor:n=>({1:'第一页。',2:'',3:'第三页第一句。第三页第二句。',4:'第四页。'}[n]||'')}};
+  const synth=harness(async()=>audio()),controller=synth.c;
+  const source=readFileSync(new URL('../src/tts-ui.js',import.meta.url),'utf8');
+  const code=source.slice(source.indexOf('async function navigateSpeech('),source.indexOf('export function openTts(view'));
+  const ctx={config:()=>settings,ensureTts:()=>controller,rememberSpeechProgress,savedSpeechProgress,speechStartMode,
+    restorePdfSpeechPage:(v,n)=>{assert.ok(v._ttsNavigating>0);page=n;jumps.push(n);return true;},
+    speechDocumentChunks,splitSpeechText,profileFor:()=>({id:'system'}),checkTtsSignal:s=>{if(s.aborted)throw Object.assign(Error(),{name:'AbortError'});},highlight(){},clearHighlight(){},persist(){},
+    Notice:class{constructor(message){throw Error(message);}},ttsText:(_,k)=>k,errorText:(_,e)=>e.message,ttsError:code=>Object.assign(Error(code),{code})};
+  controller.speech={getVoices:()=>[],speak(){},cancel(){}};controller.makeUtterance=text=>({text});
+  vm.createContext(ctx);vm.runInContext(code+';this.startReading=startReading;',ctx);
+  await ctx.startReading(view);await tick();assert.equal(controller.items[0].page,1);
+  controller.utterance.onend();await tick();assert.equal(controller.items[0].page,3);assert.equal(page,3);
+  controller.utterance.onend();await tick();assert.equal(settings.progress[file.path].offset,7);
+  controller.utterance.onend();await tick();assert.equal(page,4);assert.deepEqual(jumps,[3,4]);
+  controller.utterance.onend();await tick();assert.equal(controller.state,'ended');
+  page=3;await ctx.startReading(view,null,false);await tick();controller.owner.follow=false;
+  controller.skip(controller.items.length-1);await tick();controller.utterance.onend();await tick();assert.equal(controller.state,'paused');assert.equal(page,3);
+  controller.dispose();
 });

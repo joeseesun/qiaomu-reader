@@ -398,6 +398,12 @@ async function navigateSpeech(view, target) {
   try { return await view.engine.goTo(target); }
   finally { view._ttsNavigating--; }
 }
+function navigatePdfSpeech(view, page) {
+  view._ttsNavigating = (view._ttsNavigating || 0) + 1;
+  try {
+    if (!restorePdfSpeechPage(view, page)) throw ttsError('resume');
+  } finally { view._ttsNavigating--; }
+}
 function engineItems(view, fromCurrent = false, exactRange = null) {
   const contents = view.engine.contents();
   const { doc, index } = (exactRange ? contents.find(c => c.doc === exactRange.startContainer.ownerDocument) : contents[0]) || {};
@@ -433,7 +439,7 @@ async function startReading(view, selectedText, resume = 'auto') {
     if (selectedText) items = splitSpeechText(selectedText, local ? 40 : 240, local);
     else if (view.engine) {
       const engine = view.engine; items = engineItems(view, true, exactRange);
-      let section = engine.contents()[0]?.index;
+      let section = items[0]?.section ?? engine.contents()[0]?.index;
       nextSection = async signal => {
         for (;;) {
           const next = engine.nextReadingSection(section);
@@ -445,14 +451,29 @@ async function startReading(view, selectedText, resume = 'auto') {
         }
       };
     } else {
-      const page = saved?.page || view.pager?.currentPdfPageNumber?.() || 1;
-      if (saved?.page && !restorePdfSpeechPage(view, page)) throw ttsError('resume');
-      items = splitSpeechText(view._pdfLazy?.textFor(page) || '', local ? 40 : 240, local).filter(item => !saved || item.end > saved.offset).map(item => ({ ...item, page }));
+      const lazy = view._pdfLazy;
+      let page = saved?.page || view.pager?.currentPdfPageNumber?.() || 1;
+      if (saved?.page) navigatePdfSpeech(view, page);
+      const chunks = page => splitSpeechText(lazy?.textFor(page) || '', local ? 40 : 240, local).map(item => ({ ...item, page }));
+      items = chunks(page).filter(item => !saved || item.end > saved.offset);
+      const pages = [...(view.pager?.flow?.querySelectorAll('.qiaomu-reader-pdf-page-break[data-pdf-page-no]') || [])]
+        .map(el => Number(el.dataset.pdfPageNo)).filter(n => Number.isInteger(n) && n > page).sort((a, b) => a - b);
+      nextSection = pages.length ? async signal => {
+        for (const next of pages) {
+          if (next <= page) continue;
+          checkTtsSignal(signal);
+          if (view.file !== file || view._pdfLazy !== lazy) throw Object.assign(new Error('Cancelled'), { name: 'AbortError' });
+          page = next;
+          const items = chunks(page);
+          if (items.length) return items;
+        }
+        return [];
+      } : undefined;
     }
     if (!items.length) { new Notice(ttsText(plugin, 'error-emptyText')); return; }
     const owner = {
       view, follow: true, clearHighlight: () => clearHighlight(view),
-      onSegment: item => {
+      onSegment: async item => {
         if (file !== view.file) { controller.stop(owner); return; }
         highlight(view, item.range);
         if (!selectedText && item.range && view.engine) {
@@ -460,10 +481,11 @@ async function startReading(view, selectedText, resume = 'auto') {
           if (cfi) {
             rememberSpeechProgress(settings, file, { cfi });
             persist(plugin);
-            if (owner.follow) void navigateSpeech(view, cfi).catch(() => {});
+            if (owner.follow && !speechAnchorVisible(view, { cfi })) await navigateSpeech(view, cfi);
           }
         } else if (!selectedText && item.page) {
           rememberSpeechProgress(settings, file, { page: item.page, offset: item.start }); persist(plugin);
+          if (owner.follow && view.pager?.currentPdfPageNumber?.() !== item.page) navigatePdfSpeech(view, item.page);
         }
       },
     };
@@ -547,7 +569,7 @@ export function attachTts(view, tray) {
     if (!saved) return;
     try {
       if (saved.cfi && view.engine) await navigateSpeech(view, saved.cfi);
-      else restorePdfSpeechPage(view, saved.page);
+      else navigatePdfSpeech(view, saved.page);
       if (controller.owner?.view === view) controller.owner.follow = true;
       refresh();
     } catch (error) { new Notice(errorText(plugin, error, config(plugin).provider)); }
@@ -684,9 +706,9 @@ export function attachTts(view, tray) {
   };
   picker.options.onRender = refresh;
   plugin.ttsListeners.add(listener); view._ttsRefresh = () => { picker.render(); refresh(); }; view._ttsRefreshPosition = refresh;
-  view._ttsOnRelocate = () => {
+  view._ttsOnRelocate = detail => {
     const saved = savedSpeechProgress(config(plugin), view.file);
-    if (!view._ttsNavigating && controller.owner?.view === view && saved && !speechAnchorVisible(view, saved)) controller.owner.follow = false;
+    if (detail?.reason !== 'anchor' && !view._ttsNavigating && controller.owner?.view === view && saved && !speechAnchorVisible(view, saved)) controller.owner.follow = false;
     refresh();
   };
   refresh();

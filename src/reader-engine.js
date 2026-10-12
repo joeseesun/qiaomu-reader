@@ -116,13 +116,14 @@ export class EpubEngine {
         // Format is sniffed from the bytes by the library, not from the name.
         const file = new File([bytes], fileName);
         const view = document.createElement(VIEW_TAG);
+        let relocationReason;
         this.#view = view;
         this.#host.replaceChildren(view);
         view.addEventListener("relocate", (e) => {
             if (this.#view !== view) return;
             const detail = e.detail || {};
             this.#lastRange = detail.range || null;
-            this.#hooks.onRelocate?.(detail);
+            this.#hooks.onRelocate?.({ ...detail, reason: relocationReason });
         });
         // The view re-emits every section document after the library has
         // prepared it; attaching here (not on the raw renderer) is safe because
@@ -179,6 +180,12 @@ export class EpubEngine {
             throw error;
         }
         this.#book = view.book;
+        // Foliate's view drops the renderer reason. Capture it before its
+        // listener re-emits the location, so delayed layout anchors retain
+        // their identity instead of looking like the user turning a page.
+        view.renderer?.addEventListener("relocate", e => {
+            relocationReason = e.detail?.reason;
+        }, { capture: true });
         this.setLayout(this.#layout);
         view.renderer?.setStyles?.(this.#extraCss);
         const Resize = this.#host.ownerDocument.defaultView?.ResizeObserver;

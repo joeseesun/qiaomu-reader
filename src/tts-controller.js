@@ -16,7 +16,7 @@ export class TtsController {
     if (owner && this.owner !== owner) return;
     ++this.generation; this.abort?.abort(); this.releasePlayer(); this.pending.clear();
     this.owner?.clearHighlight?.(); this.owner = null; this.items = []; this.nextSection = null;
-    this.state = 'idle'; this.error = null; this.paused = false; this.deferred = false; this.waitingSection = false; this.emit();
+    this.state = 'idle'; this.error = null; this.paused = false; this.deferred = false; this.waitingSection = false; this.preparingSegment = false; this.emit();
   }
   start(owner, items, profile, { nextSection, index = 0, rate = 1, paused = false } = {}) {
     this.stop(); this.owner = owner; this.items = items; this.profile = { ...profile };
@@ -58,8 +58,7 @@ export class TtsController {
         utterance.onend = () => { if (generation === this.generation) void this.advance(generation); };
         utterance.onerror = () => this.fail(ttsError('system'), generation);
         this.utterance = utterance;
-        if (!this.paused) { this.speech.speak(utterance); this.utteranceStarted = true; }
-        else this.utteranceStarted = false;
+        this.utteranceStarted = false;
       } else {
         const result = await this.load(item, signal);
         // At faster local playback, prepare the next sentence before starting
@@ -73,11 +72,20 @@ export class TtsController {
         audio.src = this.url; audio.playbackRate = this.rate;
         audio.onended = () => { if (generation === this.generation) void this.advance(generation); };
         audio.onerror = () => this.fail(ttsError('playback'), generation);
-        if (!this.paused) await audio.play();
-        if (generation !== this.generation) return;
       }
+      // Finish page-follow before starting this segment. Overlapping location
+      // updates can otherwise be mistaken for the user browsing elsewhere.
+      this.preparingSegment = true;
+      await this.owner?.onSegment?.(item, this.index);
+      if (generation !== this.generation) return;
+      this.preparingSegment = false;
+      if (!this.paused) {
+        if (this.audio) await this.audio.play();
+        else { this.speech.speak(this.utterance); this.utteranceStarted = true; }
+      }
+      if (generation !== this.generation) return;
       this.state = this.paused ? 'paused' : 'playing';
-      this.owner?.onSegment?.(item, this.index); this.emit();
+      this.emit();
       // Local synthesis runs serially in the worker. Keep a small buffer for
       // faster playback; remote services retain one speculative request.
       const ahead = this.profile.id === 'localModel' ? 3 : 1;
@@ -90,7 +98,7 @@ export class TtsController {
   }
   fail(error, generation) {
     if (generation !== this.generation || error?.name === 'AbortError') return;
-    this.releasePlayer(); this.abort?.abort(); this.state = 'error'; this.error = error;
+    this.releasePlayer(); this.abort?.abort(); this.preparingSegment = false; this.state = 'error'; this.error = error;
     this.owner?.clearHighlight?.(); this.emit();
   }
   async advance(generation) {
@@ -119,6 +127,7 @@ export class TtsController {
     this.paused = !this.paused;
     if (this.paused) { this.audio?.pause(); if (this.utteranceStarted) this.speech?.pause(); this.state = 'paused'; }
     else {
+      if (this.preparingSegment) { this.state = 'loading'; this.emit(); return; }
       const generation = this.generation;
       if (this.audio) void this.audio.play().catch(() => this.fail(ttsError('playback'), generation));
       if (this.utterance) { if (this.utteranceStarted) this.speech.resume(); else { this.speech.speak(this.utterance); this.utteranceStarted = true; } }

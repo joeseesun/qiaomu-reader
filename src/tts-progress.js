@@ -34,7 +34,10 @@ export function speechAnchorVisible(view, anchor) {
   try {
     const spoken = view.engine?.rangeFromCfi(anchor.cfi), visible = view.engine?.currentLocation()?.range;
     if (!spoken || !visible || spoken.startContainer.ownerDocument !== visible.startContainer.ownerDocument) return false;
-    return visible.comparePoint(spoken.startContainer, spoken.startOffset) === 0;
+    // DOM Range includes its end point, but that point belongs to the next page.
+    const end = visible.cloneRange(); end.collapse(false);
+    return visible.comparePoint(spoken.startContainer, spoken.startOffset) === 0
+      && end.comparePoint(spoken.startContainer, spoken.startOffset) < 0;
   } catch { return false; }
 }
 export function speechStartMode(view, settings) {
