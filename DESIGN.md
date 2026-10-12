@@ -197,3 +197,20 @@ not be presented as available when the active provider accepts text only.
 - Main playback errors expose retry, speech settings and explicit system fallback. Never silently switch providers. No permanent untested/success messages in the pill.
 - Playback and viewport have separate positions. Reopening resumes the saved sentence if visible; after navigation, start at the current page and offer saved-position recovery. Browsing suspends follow. At a chapter boundary while browsing, pause until explicit continuation. See `docs/tts-interaction-2026-10-12.md`.
 - References: Readwise Reader floating transport and per-voice audition; independently implemented, no third-party UI code copied.
+## 14. Text documents as books
+
+Markdown, plain text and static HTML use the existing book reader and library.
+Markdown is parsed as GFM HTML by a bundled private Marked instance and rendered
+inside the reader. Tables, task lists, strikethrough, autolinks and code fences
+retain their semantics. TXT uses escaped HTML paragraphs, preserving in-paragraph
+newlines and indentation, with blank lines separating paragraphs.
+Only explicitly imported/opened text documents enter the library; ordinary vault
+notes remain in Obsidian's native editor. Headings become the contents hierarchy,
+TXT chapter labels become section entries, and existing highlights, search,
+progress and reading-note actions keep the same interaction contract.
+
+HTML supplies semantic reading content, not application UI: source scripts,
+forms, frames and styles are removed. Reader typography and theme remain the
+single presentation source. Local images resolve relative to the vault source;
+individual imports do not silently gather files from the user's filesystem.
+See `docs/text-formats.md` for format boundaries and acceptance evidence.

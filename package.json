@@ -36,6 +36,7 @@
     "foliate-js": "^1.0.1",
     "jszip": "^3.10.1",
     "localforage": "^1.10.0",
+    "marked": "18.1.1",
     "pdfjs-dist": "^6.2.108",
     "ws": "^8.22.0"
   },

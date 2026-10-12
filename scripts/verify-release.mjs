@@ -55,6 +55,9 @@ if (profile.name === "community") {
   requireCheck(!mainSource.includes("ACP installed but its executable was not found"), "installer execution code leaked into the community bundle");
 }
 const cssSource = fs.readFileSync(path.join(profile.outputDir, "styles.css"), "utf8");
+for (const name of ["edge-tts-LGPL.txt", "marked-MIT.txt"]) {
+  requireCheck(cssSource.includes(fs.readFileSync(path.join(root, "licenses", name), "utf8").replaceAll("*/", "* /")), `styles.css is missing the complete license: ${name}`);
+}
 requireCheck(!/!\s*important\b/i.test(cssSource), "styles.css contains priority overrides; use the scoped component cascade");
 requireCheck(!/:has\s*\(/i.test(cssSource), "styles.css contains relational selectors; use an explicit scoped state class");
 const fontPayloads = bundledFonts.map(({ file, family }) => {

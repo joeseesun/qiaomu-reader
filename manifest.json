@@ -3,7 +3,7 @@
   "name": "Qiaomu Reader",
   "version": "4.7.0",
   "minAppVersion": "1.11.4",
-  "description": "Read EPUB, PDF, MOBI, FB2 and comics with highlights, notes, progress, custom fonts and optional AI assistance.",
+  "description": "Read EPUB, PDF, MOBI, FB2, comics, Markdown, TXT and HTML with highlights, notes, reading progress and optional AI assistance.",
   "author": "向阳乔木",
   "authorUrl": "https://qiaomu.ai",
   "isDesktopOnly": false
