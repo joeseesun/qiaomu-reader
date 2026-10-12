@@ -297,3 +297,15 @@ test('browsing away never navigates to the next chapter until Continue is explic
   assert.equal(navigations,0);assert.equal(controller.waitingSection,true);assert.equal(controller.state,'paused');
   controller.toggle();await tick();assert.equal(navigations,1);assert.equal(controller.items[0].text,'next chapter');assert.equal(controller.state,'playing');controller.dispose();
 });
+test('Edge preserves Retry-After and server time for scheduler policy', async () => {
+  class LimitedSocket extends EventEmitter {
+    constructor() { super(); setImmediate(() => this.emit('unexpected-response', {}, {
+      statusCode: 429, headers: { date: 'Mon, 12 Oct 2026 13:26:27 GMT', 'retry-after': 'Mon, 12 Oct 2026 13:27:27 GMT' }, resume() {},
+    })); }
+    terminate() {}
+  }
+  await assert.rejects(synthesizeEdge('test', 'zh-CN-XiaoxiaoNeural', { Socket: LimitedSocket }), error => {
+    assert.equal(error.status, 429); assert.equal(error.retryAfterMs, 60000);
+    assert.equal(error.serverTime, Date.parse('Mon, 12 Oct 2026 13:26:27 GMT')); return true;
+  });
+});

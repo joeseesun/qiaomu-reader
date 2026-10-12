@@ -1,6 +1,7 @@
 import { Modal, Notice, Platform, Scope, Setting, requestUrl, setIcon } from 'obsidian';
 import { TtsController } from './tts-controller.js';
-import { checkTtsSignal, synthesizeHttp, TTS_PROVIDERS, ttsError, ttsProfile } from './tts-providers.js';
+import { EdgeSpeechClient } from './tts-edge-client.js';
+import { buildSpeechRequest, checkTtsSignal, synthesizeHttp, TTS_PROVIDERS, ttsError, ttsProfile } from './tts-providers.js';
 import { rememberSpeechProgress, restorePdfSpeechPage, savedSpeechProgress, speechAnchorVisible, speechStartMode } from './tts-progress.js';
 import { TTS_MODELS, canLoadVoiceCatalog, changeSpeechModel, loadVoiceCatalog, modelKey, uniqueChoices, voiceChoices } from './tts-choices.js';
 import { speechDocumentChunks, splitSpeechText } from './tts-text.js';
@@ -8,6 +9,12 @@ import { speechDocumentChunks, splitSpeechText } from './tts-text.js';
 // The new feature has reviewed Chinese/English copy. Other plugin languages
 // explicitly fall back to English until their TTS translations are reviewed.
 export const TTS_COPY = {
+  welcome: ['默认使用 Edge 在线朗读，无需密钥。文字会发送至微软，可在「语音设置」切换其他服务。', 'Edge online speech needs no key and sends reading text to Microsoft. Open Speech settings to configure other providers.'],
+  welcomeOther: ['点击音色可换声音、选模型和试听；语音设置可配置其他服务。', 'Click the voice to change voices, models or test speech. Open Speech settings to configure other providers.'],
+  gotIt: ['知道了', 'Got it'], voiceSettings: ['语音设置', 'Speech settings'],
+  serviceModels: ['服务与模型', 'Service and model'], configureTest: ['配置并试听', 'Set up and test'],
+  voiceSearch: ['搜索音色', 'Search voices'], noVoices: ['没有匹配的音色', 'No matching voices'],
+  customVoice: ['填写音色 ID', 'Enter a voice ID'], done: ['返回朗读', 'Back to reading'],
   returnSpeech: ['回到朗读处', 'Return to speech'], nextChapter: ['继续下一章', 'Continue next chapter'],
   browseEnd: ['本章已读完。继续会打开下一章。', 'Chapter finished. Continue opens the next chapter.'],
   fromPage: ['从当前页朗读', 'Read from current page'],
@@ -49,6 +56,8 @@ export const TTS_COPY = {
   'error-playback': ['音频未能播放，请重试。', 'Audio playback failed. Please retry.'],
   'error-mobile': ['手机端请使用系统语音或其他云端服务。', 'On mobile, use system speech or another cloud provider.'],
   'error-http': ['语音请求失败（HTTP {0}），请检查服务配置或重试。', 'Speech request failed (HTTP {0}). Check settings or retry.'],
+  rateLimitUntil: ['语音服务暂时限流，已暂停请求。{0} 后可重试，也可更换服务。', 'The voice service is rate-limiting requests. Retry after {0}, or choose another service.'],
+  'error-rateLimit': ['请求过于频繁（429），请稍后重试或更换语音服务。', 'Too many requests (429). Retry later or choose another voice service.'],
   'error-edge403': ['Edge 拒绝了本次请求（403），可重试或改用系统语音。', 'Edge rejected this request (403). Retry or use system voice.'],
   'error-emptyText': ['此处没有可朗读文字；扫描 PDF 需要先识别文字。', 'No readable text here. Scanned PDFs need text recognition first.'],
   'error-save': ['设置未能保存，请重试。', 'Could not save settings. Please retry.'],
@@ -58,7 +67,11 @@ export function ttsText(plugin, key, value = '') {
   return pair[plugin.settings.language === 'zh' ? 0 : 1].replace('{0}', String(value));
 }
 function errorText(plugin, error, provider) {
-  const key = provider === 'edge' && error?.status === 403 ? 'error-edge403'
+  if (error?.status === 429 && error.retryAt > Date.now()) {
+    const time = new Date(error.retryAt).toLocaleTimeString(plugin.settings.language === 'zh' ? 'zh-CN' : 'en-US');
+    return ttsText(plugin, 'rateLimitUntil', time);
+  }
+  const key = error?.status === 429 ? 'error-rateLimit' : provider === 'edge' && error?.status === 403 ? 'error-edge403'
     : error?.code === 'configuration' ? 'configuration' : `error-${error?.code || 'network'}`;
   return ttsText(plugin, key, error?.status);
 }
@@ -66,7 +79,7 @@ function config(plugin) {
   const saved = plugin.settings.tts;
   if (!saved || typeof saved !== 'object' || Array.isArray(saved)) plugin.settings.tts = {};
   const settings = plugin.settings.tts;
-  if (!TTS_PROVIDERS[settings.provider]) settings.provider = 'system';
+  if (!TTS_PROVIDERS[settings.provider]) settings.provider = Platform.isDesktopApp ? 'edge' : 'system';
   if (!settings.profiles || typeof settings.profiles !== 'object') settings.profiles = {};
   return settings;
 }
@@ -86,6 +99,10 @@ function button(parent, icon, label, run, text = false) {
 export function ensureTts(plugin) {
   if (plugin.tts) return plugin.tts;
   const listeners = new Set();
+  const edge = new EdgeSpeechClient(async (text, voice, options) => {
+    const { synthesizeEdge } = await import('./tts-edge.js');
+    checkTtsSignal(options.signal); return synthesizeEdge(text, voice, options);
+  });
   plugin.ttsListeners = listeners;
   plugin.tts = new TtsController({
     makeAudio: () => new window.Audio(), speech: window.speechSynthesis,
@@ -93,8 +110,7 @@ export function ensureTts(plugin) {
     synthesize: async (profile, text, signal) => {
       if (profile.id === 'edge') {
         if (!Platform.isDesktopApp) throw ttsError('mobile');
-        const { synthesizeEdge } = await import('./tts-edge.js');
-        checkTtsSignal(signal); return synthesizeEdge(text, profile.voice, { signal });
+        return edge.synthesize(text, profile.voice, { signal });
       }
       return synthesizeHttp(profile, text, { request: requestUrl, key: profile.key, signal });
     },
@@ -103,10 +119,29 @@ export function ensureTts(plugin) {
   plugin.register(() => { plugin.tts.dispose(); listeners.clear(); });
   return plugin.tts;
 }
-export function openTtsSettings(plugin) { new TtsSettingsModal(plugin).open(); }
+function captureSpeech(controller) {
+  return controller.owner?.view && controller.items.length ? {
+    owner: controller.owner, items: controller.items, nextSection: controller.nextSection,
+    index: controller.index, rate: controller.rate, waitingSection: controller.waitingSection,
+    file: controller.owner.view.file,
+  } : null;
+}
+function restoreSpeech(controller, session, plugin) {
+  const view = session?.owner?.view;
+  if (!view || view._closed || view.file !== session.file || view._ttsBar?.hidden) return;
+  controller.start(session.owner, session.items, profileFor(plugin), { ...session, paused: true });
+  if (session.waitingSection) { controller.index = session.index; controller.waitingSection = true; controller.emit(); }
+}
+function configurationError(plugin, profile = profileFor(plugin)) {
+  if (profile.id === 'system') return null;
+  if (profile.id === 'edge') return Platform.isDesktopApp ? null : ttsError('mobile');
+  try { buildSpeechRequest(profile, '', profile.key); return null; }
+  catch (error) { return error; }
+}
+export function openTtsSettings(plugin) { const modal = new TtsSettingsModal(plugin); modal.open(); return modal; }
 class SpeechChoices {
-  constructor(host, plugin, onChange) {
-    Object.assign(this, { host, plugin, onChange }); this.catalog = {}; this.provider = config(plugin).provider;
+  constructor(host, plugin, onChange, options = {}) {
+    Object.assign(this, { host, plugin, onChange, options }); this.catalog = {}; this.provider = config(plugin).provider;
     this.onVoices = () => { if (config(plugin).provider === 'system') this.render(); };
     window.speechSynthesis?.addEventListener('voiceschanged', this.onVoices); this.render();
   }
@@ -141,7 +176,39 @@ class SpeechChoices {
     };
     if (TTS_MODELS[id]) field(modelKey(profile), tx('model'), [...TTS_MODELS[id], ...(this.catalog.models || [])]);
     const voices = id === 'system' ? [{ id: '', label: tx('systemVoice') }, ...(window.speechSynthesis?.getVoices() || []).map(v => ({ id: v.voiceURI, label: `${v.name} · ${v.lang}` }))] : voiceChoices(profile, this.catalog);
-    field('voice', tx('voice'), voices, id !== 'system');
+    this.voices = voices;
+    if (!this.options.preview) field('voice', tx('voice'), voices, id !== 'system');
+    else {
+      if (!voices.some(v => v.id === profile.voice) && profile.voice) voices.push({ id: profile.voice, label: profile.voice });
+      const searchLabel = this.host.createEl('label', { cls: 'qbr-tts-search' });
+      searchLabel.createSpan({ cls: 'qbr-tts-sr', text: tx('voiceSearch') });
+      const search = searchLabel.createEl('input', { type: 'search', attr: { placeholder: tx('voiceSearch') } });
+      searchLabel.hidden = voices.length < 9;
+      const list = this.host.createDiv('qbr-tts-voice-list');
+      const empty = this.host.createDiv({ cls: 'qbr-tts-choice-feedback', text: tx('noVoices') }); empty.hidden = true;
+      for (const entry of voices) {
+        const row = list.createDiv('qbr-tts-voice-row'); row.dataset.voice = entry.id;
+        const choose = button(row, profile.voice === entry.id ? 'check' : 'audio-lines', entry.label, () => {
+          update('voice', entry.id);
+          Array.from(this.host.querySelectorAll('.qbr-tts-voice-row')).find(el => el.dataset.voice === entry.id)?.querySelector('button')?.focus();
+        }, true);
+        choose.setAttribute('aria-pressed', String(profile.voice === entry.id));
+        const preview = button(row, 'volume-2', `${tx('preview')} ${entry.label}`, () => this.options.preview(entry.id));
+        preview.addClass('qbr-tts-voice-preview');
+      }
+      search.addEventListener('input', () => {
+        const query = search.value.trim().toLocaleLowerCase(); let matches = 0;
+        for (const row of list.children) { row.hidden = !row.textContent.toLocaleLowerCase().includes(query); if (!row.hidden) matches++; }
+        empty.hidden = matches > 0;
+      });
+      if (id !== 'system') {
+        const details = this.host.createEl('details', { cls: 'qbr-tts-custom-voice' });
+        details.createEl('summary', { text: tx('customVoice') });
+        const label = details.createEl('label', { cls: 'qbr-tts-choice qbr-tts-custom' }); label.createSpan({ text: tx('customValue') });
+        const input = label.createEl('input', { type: 'text', value: profile.voice, attr: { spellcheck: 'false' } });
+        input.addEventListener('change', () => update('voice', input.value.trim()));
+      }
+    }
     if (canLoadVoiceCatalog(id)) {
       const load = button(this.host, 'refresh-cw', tx('refreshVoices'), async () => {
         this.abort?.abort(); const abort = this.abort = new AbortController(); load.disabled = true; feedback.setText(tx('loading'));
@@ -156,22 +223,27 @@ class SpeechChoices {
       }, true);
     }
     const feedback = this.host.createDiv({ cls: 'qbr-tts-choice-feedback', text: this.message || '', attr: { role: 'status' } });
+    this.options.onRender?.();
   }
 }
 class TtsSettingsModal extends Modal {
   constructor(plugin) { super(plugin.app); this.plugin = plugin; this.previewOwner = {}; }
   onOpen() {
     this.contentEl.addClass('qbr-tts-settings');
+    const controller = ensureTts(this.plugin);
+    this.session = captureSpeech(controller);
+    if (this.session && ['playing', 'loading'].includes(controller.state)) controller.toggle();
     this.render();
+    this.contentEl.querySelector('input[type="password"]')?.focus();
   }
   render() {
     const p = this.plugin, tx = key => ttsText(p, key), settings = config(p), controller = ensureTts(p);
     this.contentEl.empty(); this.setTitle(tx('settings'));
     this.picker?.destroy();
-    const changed = () => { controller.stop(); controller.cache.clear(); persist(p); };
+    const changed = () => { controller.stop(this.previewOwner); controller.cache.clear(); persist(p); };
     new Setting(this.contentEl).setName(tx('service')).addDropdown(drop => {
       for (const [id, value] of Object.entries(TTS_PROVIDERS)) {
-        if (id === 'edge' && !Platform.isDesktopApp) continue;
+        if (id === 'edge' && !Platform.isDesktopApp && settings.provider !== 'edge') continue;
         drop.addOption(id, ['system', 'doubao', 'siliconflow'].includes(id) ? tx(id) : value.label);
       }
       drop.setValue(settings.provider).onChange(value => { settings.provider = value; changed(); this.render(); });
@@ -205,8 +277,16 @@ class TtsSettingsModal extends Modal {
     p.ttsListeners.add(listener); this.unsubscribe = () => p.ttsListeners.delete(listener);
     button(this.contentEl, 'volume-2', tx('preview'), () => controller.start(this.previewOwner, [{ text: tx('sample') }], profileFor(p)), true);
     button(this.contentEl, 'square', tx('stop'), () => controller.stop(this.previewOwner), true);
+    button(this.contentEl, 'arrow-left', tx('done'), () => this.close(), true);
   }
-  onClose() { this.picker?.destroy(); this.voiceCleanup?.(); this.unsubscribe?.(); this.plugin.tts?.stop(this.previewOwner); this.contentEl.empty(); }
+  onClose() {
+    this.picker?.destroy(); this.unsubscribe?.();
+    const controller = this.plugin.tts;
+    const canRestore = !controller.owner || controller.owner === this.previewOwner || controller.owner === this.session?.owner;
+    controller.stop(this.previewOwner);
+    if (canRestore) restoreSpeech(controller, this.session, this.plugin);
+    this.session?.owner.view._ttsRefresh?.(); this.contentEl.empty();
+  }
 }
 
 function clearHighlight(view) {
@@ -314,18 +394,18 @@ export function attachTts(view, tray) {
   button(tray, 'volume-2', tx('read'), () => openTts(view));
   const bar = view._ttsBar = view.contentEl.createDiv('qbr-tts-player'); bar.hidden = true;
   const status = bar.createEl('div', { cls: 'qbr-tts-sr', attr: { role: 'status' } });
-  const detail = bar.createDiv('qbr-tts-detail'); detail.hidden = true;
-  const heading = detail.createDiv('qbr-tts-heading');
-  const position = detail.createDiv('qbr-tts-position');
+
   const controls = bar.createDiv('qbr-tts-controls');
+  const voiceButton = button(controls, 'audio-lines', tx('voice'), () => toggleChoices(), true); voiceButton.addClass('qbr-tts-current-voice');
+  voiceButton.setAttribute('aria-expanded', 'false');
   const speed = controls.createEl('button', { cls: 'qbr-tts-button qbr-tts-speed', attr: { type: 'button', 'aria-expanded': 'false' } });
   let savedSession = null, previewState = 'ready', previewError = null;
   const previewOwner = {};
-  const captureSession = () => controller.owner?.view === view && controller.items.length ? { owner: controller.owner, items: controller.items, nextSection: controller.nextSection, index: controller.index, rate: controller.rate, file: view.file } : null;
+  const captureSession = () => controller.owner?.view === view ? captureSpeech(controller) : null;
   const stopPreview = (restore = true) => {
     const session = savedSession; savedSession = null;
     if (controller.owner === previewOwner) controller.stop(previewOwner);
-    if (restore && session && session.file === view.file && !view._closed) controller.start(session.owner, session.items, profileFor(plugin), { ...session, paused: true });
+    if (restore && session) restoreSpeech(controller, session, plugin);
   };
   const previous = button(controls, 'skip-back', tx('previous'), () => controller.skip(-1));
   const play = button(controls, 'play', tx('play'), () => {
@@ -335,15 +415,8 @@ export function attachTts(view, tray) {
   });
   play.addClass('qbr-tts-play');
   const next = button(controls, 'skip-forward', tx('next'), () => controller.skip(1));
-  const expand = button(controls, 'chevron-up', tx('options'), () => {
-    detail.hidden = !detail.hidden; options.hidden = detail.hidden;
-    bar.toggleClass('qbr-tts-expanded', !detail.hidden);
-    expand.setAttribute('aria-expanded', String(!detail.hidden));
-    expand.replaceChildren(); setIcon(expand, detail.hidden ? 'chevron-up' : 'chevron-down');
-    expand.createSpan({ cls: 'qbr-tts-sr', text: tx(detail.hidden ? 'options' : 'collapse') });
-    closeRates();
-  });
-  expand.setAttribute('aria-expanded', 'false');
+  controls.appendChild(speed);
+  const close = button(controls, 'x', tx('finish'), () => { stopViewTts(view); tray.querySelector('.qbr-tts-button')?.focus(); }); close.addClass('qbr-tts-close');
   const rates = bar.createDiv('qbr-tts-rates'); rates.hidden = true;
   const rateTitle = rates.createDiv({ cls: 'qbr-tts-rate-heading', text: tx('speed') });
   const rateChoices = rates.createDiv('qbr-tts-rate-choices');
@@ -363,13 +436,17 @@ export function attachTts(view, tray) {
   const speedHint = rates.createDiv('qbr-tts-speed-hint');
   speed.addEventListener('click', () => {
     if (!rates.hidden) { closeRates(); return; }
-    rates.hidden = false; speed.setAttribute('aria-expanded', 'true');
+    closeChoices(); rates.hidden = false; fitPanels(); speed.setAttribute('aria-expanded', 'true');
     rateScope = new Scope(); rateScope.register([], 'Escape', () => { closeRates(); speed.focus(); return false; });
     plugin.app.keymap.pushScope(rateScope); rateChoices.querySelector('[aria-pressed="true"]')?.focus();
   });
-  const onOutside = event => { if (!rates.contains(event.target) && !speed.contains(event.target)) closeRates(); };
+  const onOutside = event => {
+    if (!rates.contains(event.target) && !speed.contains(event.target)) closeRates();
+    if (!options.contains(event.target) && !voiceButton.contains(event.target)) closeChoices();
+  };
   const doc = bar.ownerDocument; doc.addEventListener('pointerdown', onOutside);
   bar.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !options.hidden) { event.preventDefault(); event.stopPropagation(); closeChoices(); voiceButton.focus(); }
     if (event.key === 'Escape' && !rates.hidden) { event.preventDefault(); event.stopPropagation(); closeRates(); speed.focus(); }
   });
   const origins = bar.createDiv('qbr-tts-origins');
@@ -386,33 +463,68 @@ export function attachTts(view, tray) {
     } catch (error) { new Notice(errorText(plugin, error, config(plugin).provider)); }
   }, true);
   const options = bar.createDiv('qbr-tts-options'); options.hidden = true;
+  const popupHeader = options.createDiv('qbr-tts-popup-header');
+  popupHeader.createSpan({ text: tx('voice') });
+  button(popupHeader, 'x', tx('close'), () => { closeChoices(); voiceButton.focus(); });
+  let choiceScope;
+  const closeChoices = () => {
+    options.hidden = true; voiceButton.setAttribute('aria-expanded', 'false');
+    if (choiceScope) { plugin.app.keymap.popScope(choiceScope); choiceScope = null; }
+    if (controller.owner === previewOwner) { stopPreview(); previewState = 'ready'; refresh(); }
+  };
+  const fitPanels = () => {
+    const available = Math.max(100, bar.getBoundingClientRect().top - view.contentEl.getBoundingClientRect().top - 16);
+    bar.style.setProperty('--qbr-tts-panel-height', `${available}px`);
+  };
+  const resize = new bar.ownerDocument.defaultView.ResizeObserver(fitPanels); resize.observe(view.contentEl);
+  const toggleChoices = () => {
+    if (!options.hidden) { closeChoices(); return; }
+    closeRates(); dismissIntro(); options.hidden = false; fitPanels(); voiceButton.setAttribute('aria-expanded', 'true');
+    choiceScope = new Scope(); choiceScope.register([], 'Escape', () => { closeChoices(); voiceButton.focus(); return false; });
+    plugin.app.keymap.pushScope(choiceScope);
+    options.querySelector('.qbr-tts-voice-row button[aria-pressed="true"]')?.focus();
+  };
+  view._ttsCloseChoices = closeChoices;
   const selections = options.createDiv('qbr-tts-selections');
   const serviceLabel = selections.createEl('label', { cls: 'qbr-tts-choice' }); serviceLabel.createSpan({ text: tx('service') });
   const service = serviceLabel.createEl('select', { attr: { 'data-tts-field': 'service' } });
   for (const [id, value] of Object.entries(TTS_PROVIDERS)) {
-    if (id === 'edge' && !Platform.isDesktopApp) continue;
+    if (id === 'edge' && !Platform.isDesktopApp && config(plugin).provider !== 'edge') continue;
     service.createEl('option', { value: id, text: ['system', 'doubao', 'siliconflow'].includes(id) ? tx(id) : value.label });
   }
   const changed = () => {
     if (controller.owner === previewOwner) stopPreview();
-    else { const session = captureSession(); if (session) controller.start(session.owner, session.items, profileFor(plugin), { ...session, paused: true }); }
+    else { const session = captureSession(); if (session) restoreSpeech(controller, session, plugin); }
     previewState = 'ready'; previewError = null; refresh();
   };
-  const picker = new SpeechChoices(selections.createDiv('qbr-tts-choices'), plugin, changed);
+  let previewVoice = '';
+  const audition = voice => {
+    if (configurationError(plugin, { ...profileFor(plugin), voice })) { configure(); return; }
+    if (controller.owner === previewOwner && previewVoice === voice) { stopPreview(); previewState = 'ready'; refresh(); return; }
+    if (controller.owner !== previewOwner) savedSession = captureSession();
+    previewVoice = voice; previewError = null;
+    controller.start(previewOwner, [{ text: tx('sample') }], { ...profileFor(plugin), voice });
+  };
+  const picker = new SpeechChoices(selections.createDiv('qbr-tts-choices'), plugin, changed, { preview: audition });
   service.addEventListener('change', () => { config(plugin).provider = service.value; persist(plugin); changed(); picker.render(); });
-  const sampleRow = options.createDiv('qbr-tts-preview-row');
-  const preview = button(sampleRow, 'volume-2', tx('preview'), () => {
-    if (controller.owner === previewOwner) { stopPreview(); previewState = 'ready'; refresh(); return; }
-    savedSession = captureSession(); previewError = null;
-    controller.start(previewOwner, [{ text: tx('sample') }], profileFor(plugin));
-  }, true);
-  button(sampleRow, 'settings-2', tx('configure'), () => { stopPreview(); openTtsSettings(plugin); }, true);
   const previewFeedback = options.createDiv({ cls: 'qbr-tts-choice-feedback', attr: { role: 'status' } });
-  options.createDiv({ cls: 'qbr-tts-choice-feedback', text: tx('choiceHint') });
-  const privacy = options.createDiv('qbr-tts-choice-feedback');
-  button(options, 'square', tx('finish'), () => stopViewTts(view), true);
+  const setup = options.createDiv('qbr-tts-setup');
+  const setupMessage = setup.createDiv('qbr-tts-choice-feedback');
+  const configure = () => { stopPreview(); closeChoices(); closeRates(); dismissIntro(); openTtsSettings(plugin); };
+  button(setup, 'settings-2', tx('configureTest'), configure, true);
+  const footer = options.createDiv('qbr-tts-popup-footer');
+  button(footer, 'settings-2', tx('voiceSettings'), configure, true);
+  const privacy = footer.createDiv('qbr-tts-choice-feedback');
+  const intro = bar.createDiv('qbr-tts-intro');
+  const introText = intro.createDiv('qbr-tts-intro-text');
+  const introActions = intro.createDiv('qbr-tts-intro-actions');
+  button(introActions, 'settings-2', tx('voiceSettings'), configure, true);
+  button(introActions, 'check', tx('gotIt'), () => { dismissIntro(); play.focus(); }, true);
+  const dismissIntro = () => { if (!config(plugin).introSeen) { config(plugin).introSeen = true; persist(plugin); } intro.hidden = true; };
   const errorBox = bar.createDiv('qbr-tts-error'); errorBox.hidden = true;
   const errorMessage = errorBox.createDiv({ attr: { role: 'alert' } });
+  button(errorBox, 'rotate-ccw', tx('retry'), () => controller.retry(), true);
+  button(errorBox, 'settings-2', tx('voiceSettings'), configure, true);
   const fallback = button(errorBox, 'volume-2', tx('fallback'), () => {
     config(plugin).provider = 'system'; persist(plugin);
     if (controller.owner?.view === view && controller.items.length) {
@@ -426,10 +538,7 @@ export function attachTts(view, tray) {
     const willResume = saved && speechStartMode(view, config(plugin)) === 'resume';
     const profile = ttsProfile(config(plugin)), rate = own ? controller.rate : config(plugin).rate || 1;
     status.setText(state === 'idle' ? tx(willResume ? 'saved' : 'play') : state === 'error' ? errorText(plugin, controller.error, profile.id) : tx(state));
-    heading.setText(view.file?.basename || tx('options'));
-    position.setText(own && controller.items.length ? ttsText(plugin, 'segment', `${Math.min(controller.index + 1, controller.items.length)} / ${controller.items.length}`)
-      : tx(view._ttsSelectedText ? 'selected' : willResume ? 'saved' : 'play'));
-    if (own && controller.waitingSection) position.setText(tx('browseEnd'));
+    if (own && controller.waitingSection) status.setText(tx('browseEnd'));
     const playing = ['playing', 'loading'].includes(state);
     play.replaceChildren(); setIcon(play, state === 'loading' ? 'loader-circle' : playing ? 'pause' : 'play');
     play.createSpan({ cls: 'qbr-tts-sr', text: tx(own && controller.waitingSection ? 'nextChapter' : playing ? 'pause' : state === 'paused' ? 'resume' : state === 'error' ? 'retry' : willResume ? 'saved' : 'play') });
@@ -443,9 +552,24 @@ export function attachTts(view, tray) {
     service.value = profile.id;
     if (picker.provider !== profile.id) picker.render();
     privacy.setText(tx(profile.id === 'system' ? 'local' : profile.id === 'edge' ? 'edge' : 'cloud'));
-    preview.replaceChildren(); setIcon(preview, controller.owner === previewOwner ? 'square' : 'volume-2');
-    preview.createSpan({ text: tx(controller.owner === previewOwner ? 'previewStop' : 'preview') });
-    previewFeedback.setText(previewError ? errorText(plugin, previewError, profile.id) : tx(previewState));
+    const voices = picker.voices || voiceChoices(profile);
+    const voiceName = voices.find(v => v.id === profile.voice)?.label || profile.voice || tx('systemVoice');
+    voiceButton.replaceChildren(); setIcon(voiceButton, 'audio-lines');
+    voiceButton.createSpan({ text: voiceName.split(' · ')[0], cls: 'qbr-tts-voice-name' });
+    voiceButton.createSpan({ text: ` · ${tx('voice')}`, cls: 'qbr-tts-sr' });
+    for (const row of options.querySelectorAll('.qbr-tts-voice-row')) {
+      const auditioning = controller.owner === previewOwner && row.dataset.voice === previewVoice;
+      const preview = row.querySelector('.qbr-tts-voice-preview');
+      const name = voices.find(v => v.id === row.dataset.voice)?.label || row.dataset.voice;
+      preview.replaceChildren(); setIcon(preview, auditioning ? 'square' : 'volume-2');
+      preview.createSpan({ cls: 'qbr-tts-sr', text: `${tx(auditioning ? 'previewStop' : 'preview')} ${name}` });
+    }
+    previewFeedback.setText(previewError ? errorText(plugin, previewError, profile.id) : previewState === 'ready' || previewState === 'idle' ? '' : tx(previewState));
+    const invalid = configurationError(plugin);
+    setup.hidden = !invalid; if (invalid) setupMessage.setText(errorText(plugin, invalid, profile.id));
+    intro.hidden = !!config(plugin).introSeen || !options.hidden || !rates.hidden;
+    introText.setText(tx(profile.id === 'edge' ? 'welcome' : 'welcomeOther'));
+    bar.toggleClass('qbr-tts-with-intro', !intro.hidden);
     errorBox.hidden = state !== 'error'; bar.toggleClass('qbr-tts-has-error', state === 'error');
     if (state === 'error') errorMessage.setText(errorText(plugin, controller.error, profile.id));
     fallback.hidden = profile.id === 'system';
@@ -454,6 +578,8 @@ export function attachTts(view, tray) {
     resumeSaved.hidden = own && ['paused', 'playing', 'loading'].includes(state);
     returnSpeech.hidden = !browsing;
     fromPage.hidden = false;
+    bar.toggleClass('qbr-tts-has-context', !origins.hidden);
+    if (!bar.hidden) fitPanels();
   };
   const listener = () => {
     if (controller.owner === previewOwner) {
@@ -466,6 +592,7 @@ export function attachTts(view, tray) {
     } else if (controller.owner && savedSession) savedSession = null;
     refresh();
   };
+  picker.options.onRender = refresh;
   plugin.ttsListeners.add(listener); view._ttsRefresh = () => { picker.render(); refresh(); }; view._ttsRefreshPosition = refresh;
   view._ttsOnRelocate = () => {
     const saved = savedSpeechProgress(config(plugin), view.file);
@@ -476,14 +603,14 @@ export function attachTts(view, tray) {
   view._ttsStopPreview = () => stopPreview(false);
   view._ttsCleanup = () => {
     view._ttsRequest = (view._ttsRequest || 0) + 1;
-    closeRates(); picker.destroy(); stopPreview(false);
+    stopPreview(false); closeChoices(); closeRates(); resize.disconnect(); picker.destroy();
     doc.removeEventListener('pointerdown', onOutside);
     plugin.ttsListeners.delete(listener); if (controller.owner?.view === view) controller.stop(); clearHighlight(view); bar.remove(); view._ttsBar = null; view._ttsRefreshPosition = null; view._ttsOnRelocate = null;
   };
 }
 
 export function stopViewTts(view) {
-  view._ttsCloseRates?.(); view._ttsStopPreview?.();
+  view._ttsStopPreview?.(); view._ttsCloseChoices?.(); view._ttsCloseRates?.();
   view._ttsRequest = (view._ttsRequest || 0) + 1;
   if (view.plugin.tts?.owner?.view === view) view.plugin.tts.stop();
   view._ttsSelectedText = null;

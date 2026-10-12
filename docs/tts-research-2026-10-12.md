@@ -189,3 +189,26 @@ EPUB 文档 / PDF 文本
 - [Qwen非实时TTS](https://help.aliyun.com/en/model-studio/non-realtime-tts-user-guide) 与 [音色表](https://help.aliyun.com/en/model-studio/qwen-tts-voice-list)：仅使用现有非实时接口兼容模型；不列CosyVoice/Realtime等不同协议模型。
 
 验收：398个测试通过；真实Obsidian隔离库中硅基流动MOSS+Claire、豆包1.0/2.0联动通过。Edge云希试听实际音频4.248秒，结束后原owner、index=1、rate=1.5恢复为paused；模拟403（清空缓存后）同样保留位置并显示错误。Escape关闭倍速面板后保持阅读器活跃，焦点回倍速按钮。320px容器中播放器296px无横向溢出；纸色/夜间截图检查通过，无新增title/aria-label悬浮提示。付费服务只有协议/目录测试，未使用真实付费API Key；窄屏模拟不是手机真机证明。
+
+## 最终交互选择：Readwise 方向与首次说明
+
+用户随后明确选择 Readwise 方向：音色入口、段落前后、播放、倍速、常驻关闭按钮，替代前述 Readest 展开卡片。音色弹层内保留服务/模型及逐个试听，配置入口始终可见。首次展开说明默认 Edge 在线朗读、文字发送至微软、无需密钥，可直接打开语音设置；已读状态持久化。
+
+用户明确要求桌面新用户默认 Edge 晓晓；此决定覆盖前述默认系统语音的阶段性建议。已保存的服务不重置，手机新用户仍用当前支持的系统方案。Edge 接口为社区接入，不承诺无限额或服务可用性；失败提供重试、设置和明确的系统回退，不能悄悄切换。
+
+## Edge 稳定性复核（2026-10-12，Readwise 改版候选）
+
+- [Readest #6722](https://github.com/readest/readest/pull/6722) 于 10 月 11 日合并：新端点 `api.msedgeservices.com/tts/cognitiveservices/websocket/v1` 配 `Ocp-Apim-Subscription-Key`。本插件已经采用。其说明也明确 Edge 155 的 v2 GEC 格式尚未解析，不保证旧格式长期受支持。
+- [edge-tts #491](https://github.com/rany2/edge-tts/pull/491)，核查时未合并，修正端点和非英语 locale 下 HTTP Date 解析；[DRM 实现](https://github.com/rany2/edge-tts/blob/master/src/edge_tts/drm.py) 用服务端日期修正时钟偏差。这里只在 403 且有实际偏差时校正一次，不把所有拒绝当可无限重试。
+- [Readest EdgeTTSClient](https://github.com/readest/readest/blob/main/apps/readest-app/src/services/tts/EdgeTTSClient.ts) 使用缓存/在途合并；网页端在登录状态下可走自家 HTTPS 代理，Tauri 桌面不走这个回退。代理需要自己的授权和运维，不能把第三方服务器当免费公共接口。
+- [edge-tts #21](https://github.com/rany2/edge-tts/issues/21) 维护者关于五分钟限流的描述来自 2022 年，不能当作 2026 年的当前配额或恢复保证。
+
+本地新增防护：同一插件的 Edge 请求串行，握手至少间隔一秒；暂时网络/500/502/503/504 最多两次带抖动退避；429 不自动轰炸，遵守 Retry-After，没有该头时本插件保守冷却五分钟。停止、切书、取消试听会取消排队/等待；缓存和合并重复请求沿用既有控制器。播放器显示最早重试时间。以上是请求治理，不是解除服务端限制。
+
+实测：真实 Obsidian 音色试听返回 429，正确显示错误并保留 Edge 选择。冷却后同一网络、最多三条顺序短句探测，晓晓返回 19,728 字节音频（957ms）；第二条云希握手返回 429，未提供 Retry-After，当即停止，未发送第三条。无法据此确定配额按 IP、音色、地区还是其他服务端条件划分，也不能声称已持续稳定。没有使用代理轮换、令牌轮换或重试洪泛。
+
+发布结论：保留默认 Edge 的用户决定，但不将本候选公开为“已解决稳定性”；后续实测需与上游可用性分开记录。
+
+## 本地模型与 Mac 原生语音
+
+补充调研、固定上游版本、原生音色枚举结果和下载安装交互见 [本地语音接入方案](tts-local-2026-10-12.md)。F5-TTS、Spark-TTS、IndexTTS2 均有可评估的 Mac 接入路径，但本候选尚未实现安装器、克隆音色管理或 AVSpeech 原生桥，未下载或测试这些模型。

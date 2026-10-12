@@ -187,14 +187,13 @@ not be presented as available when the active provider accepts text only.
 
 
 
-## 13. Read-aloud transport (selected B, 2026-10-12)
+## 13. Read-aloud transport (Readwise direction, 2026-10-12)
 
-- Compact pill overlays the page above the bottom HUD; it does not change pagination. Reader-theme surface/text/border tokens apply in light and night themes.
-- Stable five-column order: visible speed, previous segment, centered play/pause, next segment, expand. The main action is a quiet solid circle. Keep all touch targets at least 44px.
-- No native select box, permanent success message, duplicated stop/close icons or service setup instructions in the compact transport.
-- Speed opens an anchored preset panel with the current value selected, keyboard focus and Escape return. A note explains next-segment speed changes for system speech.
-- Expanded options show the book and actual segment count, then inline service/model/voice choices and audition, and end reading. Service credentials remain behind an explicit configuration action. Switching voices pauses at the current segment; audition restores that paused segment with the original speed. Errors reveal recovery inline; fallback never appears during successful playback.
-- Accessible names use hidden text, avoiding Obsidian hover tooltips. Focus stays visible; loading uses a small contained indicator and respects reduced motion.
-- Reference: Readest mini-player / full-player separation. Independently implemented; no AGPL UI source copied. No fabricated duration or word-aligned progress.
-
-- Playback and viewport have separate positions. On reopen, resume the saved sentence if it is visible; after navigation, start at the current page with an explicit saved-position action. Active-session pause always resumes audio. Browsing suspends follow without moving the viewport, and exposes separate return-to-speech and read-from-page actions. At the chapter boundary while browsing, pause until explicit continuation. See `docs/tts-interaction-2026-10-12.md`.
+- Voice-first pill: current voice, previous segment, play/pause, next segment, speed, close. Close is always visible and stops audio while retaining the saved sentence. Reader-theme surface/text/border tokens apply; no page reflow or fake duration.
+- Voice opens an anchored popover with inline service/model choice, individual voice selection and independent audition. Selecting a voice and testing a voice are distinct actions; testing never saves that voice as the selection. Search appears for larger catalogs. Credentials and endpoints have a permanent Speech settings entry.
+- Desktop first use defaults to Edge with Xiaoxiao, without a key. Preserve explicit existing service choices. A dismissible first-use note explains online transfer to Microsoft and offers Speech settings directly. Acknowledging it, opening the voice picker or entering configuration dismisses it persistently. Mobile fresh installs retain system speech; Edge is desktop-only.
+- Voice and speed panels are mutually exclusive, bounded by the reader pane, dismiss on outside click/Escape, and return keyboard focus. Dismissing a panel never stops main reading. All primary touch targets are at least 44px and accessible names use hidden text rather than hover tips.
+- Unconfigured services expose a specific issue and Set up and test action. Configuration opens directly on the selected service and focuses its key. Settings and audition return to the paused sentence with the original speed; no automatic body synthesis or playback. Only an actual test result can say it passed.
+- Main playback errors expose retry, speech settings and explicit system fallback. Never silently switch providers. No permanent untested/success messages in the pill.
+- Playback and viewport have separate positions. Reopening resumes the saved sentence if visible; after navigation, start at the current page and offer saved-position recovery. Browsing suspends follow. At a chapter boundary while browsing, pause until explicit continuation. See `docs/tts-interaction-2026-10-12.md`.
+- References: Readwise Reader floating transport and per-voice audition; independently implemented, no third-party UI code copied.

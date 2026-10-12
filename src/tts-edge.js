@@ -4,9 +4,9 @@ import WebSocket from 'ws';
 import { checkTtsSignal, escapeSpeechXml, ttsError } from './tts-providers.js';
 
 const TOKEN = '6A5AA1D4EAFF4E9FB37E23D68491D6F4';
-export async function synthesizeEdge(text, voice, { signal, crypto = window.crypto, Socket = WebSocket } = {}) {
+export async function synthesizeEdge(text, voice, { signal, crypto = window.crypto, Socket = WebSocket, clockOffset = 0 } = {}) {
   checkTtsSignal(signal);
-  const ticks = (Math.floor((Date.now() / 1000 + 11644473600) / 300) * 300 * 10000000).toFixed(0);
+  const ticks = (Math.floor(((Date.now() + clockOffset) / 1000 + 11644473600) / 300) * 300 * 10000000).toFixed(0);
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${ticks}${TOKEN}`));
   const hash = Array.from(new Uint8Array(digest), x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
   checkTtsSignal(signal);
@@ -35,7 +35,18 @@ export async function synthesizeEdge(text, voice, { signal, crypto = window.cryp
     const timer = window.setTimeout(() => finish(ttsError('timeout')), 30000);
     signal?.addEventListener('abort', abort, { once: true });
     ws.on('error', () => finish(ttsError('network')));
-    ws.on('unexpected-response', (_req, res) => { res.resume(); finish(ttsError('http', res.statusCode)); });
+    ws.on('unexpected-response', (_req, res) => {
+      const error = ttsError('http', res.statusCode);
+      const serverTime = Date.parse(res.headers?.date || '');
+      if (Number.isFinite(serverTime)) error.serverTime = serverTime;
+      const retry = res.headers?.['retry-after'];
+      if (typeof retry === 'string' && retry.trim()) {
+        const seconds = Number(retry), date = Date.parse(retry);
+        const ms = Number.isFinite(seconds) ? seconds * 1000 : date - (Number.isFinite(serverTime) ? serverTime : Date.now());
+        if (Number.isFinite(ms)) error.retryAfterMs = Math.max(0, ms);
+      }
+      res.resume(); finish(error);
+    });
     ws.on('close', () => finish(ttsError('network')));
     ws.on('open', () => {
       if (settled) return;
