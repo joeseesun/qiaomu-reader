@@ -11154,7 +11154,7 @@ const ReaderView = class extends ItemView {
     this.pctEl.setText(`${pct}%`);
     syncReaderAiCapability(this);
     syncPdfZoomControls(this);
-    this._ttsRefreshPosition?.();
+    this._ttsOnRelocate?.();
     renderVisibleFigures(this);
   }
   buildSettPanel() {
@@ -12892,7 +12892,7 @@ const ReaderModal = class extends Modal {
     this.pctEl.setText(`${pct}%`);
     syncReaderAiCapability(this);
     syncPdfZoomControls(this);
-    this._ttsRefreshPosition?.();
+    this._ttsOnRelocate?.();
     renderVisibleFigures(this);
   }
   _buildSettPanel() {
