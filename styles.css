@@ -1790,6 +1790,11 @@ body.qiaomu-reader-active-view .status-bar { display: none; }
 .qbr-tts-player .qbr-tts-choice select, .qbr-tts-player .qbr-tts-choice input { width: 100%; max-width: 100%; min-width: 0; height: 44px; font-size: 13px; border: 1px solid var(--qiaomu-reader-border, var(--background-modifier-border)); border-radius: 8px; background-color: var(--qiaomu-reader-ui, var(--background-primary)); color: inherit; box-shadow: none; }
 .qbr-tts-choice-feedback { font-size: 11px; line-height: 1.5; color: var(--qiaomu-reader-muted, var(--text-muted)); padding: 3px 6px; overflow-wrap: anywhere; }
 .qbr-tts-choice-feedback:empty { display: none; }
+.qbr-tts-local-panel { margin-top: 8px; }
+.qbr-tts-local-panel progress { width: 100%; height: 4px; accent-color: var(--text-normal); }
+.qbr-tts-local-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.qbr-tts-local-panel details, .qbr-tts-voice-sources { font-size: 11px; color: var(--text-muted); padding: 6px; }
+.qbr-tts-voice-sources > div { padding-top: 4px; overflow-wrap: anywhere; }
 .qbr-tts-choice[hidden] { display: none; }
 .qbr-tts-settings .qbr-tts-choices { width: 100%; }
 .qbr-tts-choice.qbr-tts-custom { grid-template-columns: minmax(0, 1fr); }

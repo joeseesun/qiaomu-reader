@@ -187,7 +187,7 @@ const ctx = await esbuild.context({
   },
   format: "cjs",
   target: "es2018",
-  loader: { ".gz": "dataurl", ".epub": "base64" },
+  loader: { ".gz": "dataurl", ".epub": "base64", ".py": "text" },
   logLevel: "info",
   // No source map in the release build: it tripled the file size, and reviewers
   // read the sources in src/ anyway.

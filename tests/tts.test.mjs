@@ -309,3 +309,25 @@ test('Edge preserves Retry-After and server time for scheduler policy', async ()
     assert.equal(error.serverTime, Date.parse('Mon, 12 Oct 2026 13:26:27 GMT')); return true;
   });
 });
+
+test('local clause chunks retain offsets and three-ahead synthesis is cancelled together', async () => {
+  const text = '阅读让我们看见更大的世界，也理解不同的人生；' + '甲'.repeat(39) + '😀乙。';
+  const parts = splitSpeechText(text, 40, true);
+  assert.equal(parts.map(p => text.slice(p.start,p.end)).join(''), text);
+  assert.ok(parts.every(p => p.end-p.start <= 40));
+  assert.equal(parts[0].text, '阅读让我们看见更大的世界，');
+  const calls = [], signals = [];
+  const {c} = harness(async (_p,text,signal) => {calls.push(text); signals.push(signal); return audio();});
+  c.start({}, ['one','two','three','four','five'].map(text => ({text})), {id:'localModel'});
+  await tick(); assert.deepEqual(calls, ['one','two','three','four']);
+  c.stop(); assert.ok(signals.every(signal => signal.aborted)); c.dispose();
+});
+
+test('fast local playback prepares the next segment before first playback and closing cancels the wait', async () => {
+  let next;
+  const {c,audios} = harness(async (_profile,text) => text === 'two' ? new Promise(resolve => {next = resolve;}) : audio());
+  c.start({}, [{text:'one'},{text:'two'}], {id:'localModel'}, {rate:2});
+  await tick(); assert.equal(audios.length,0); assert.equal(c.state,'loading');
+  c.stop(); next(audio()); await tick(); assert.equal(audios.length,0);
+  c.dispose();
+});

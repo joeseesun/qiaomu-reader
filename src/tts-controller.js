@@ -62,6 +62,11 @@ export class TtsController {
         else this.utteranceStarted = false;
       } else {
         const result = await this.load(item, signal);
+        // At faster local playback, prepare the next sentence before starting
+        // so a cold voice does not leave the first transition unbuffered.
+        if (this.profile.id === 'localModel' && this.rate > 1 && this.items[this.index + 1]) {
+          await this.load(this.items[this.index + 1], signal).catch(() => {});
+        }
         if (generation !== this.generation) return;
         this.url = URL.createObjectURL(new Blob([result.bytes], { type: result.mime }));
         const audio = this.audio = this.makeAudio();
@@ -73,10 +78,13 @@ export class TtsController {
       }
       this.state = this.paused ? 'paused' : 'playing';
       this.owner?.onSegment?.(item, this.index); this.emit();
-      // At most one segment ahead. An unsuccessful speculative request never
-      // skips text or disrupts the current segment; it is retried on demand.
-      if (!this.paused && this.profile.id !== 'system' && this.items[this.index + 1]) {
-        void this.load(this.items[this.index + 1], signal).catch(() => {});
+      // Local synthesis runs serially in the worker. Keep a small buffer for
+      // faster playback; remote services retain one speculative request.
+      const ahead = this.profile.id === 'localModel' ? 3 : 1;
+      if (!this.paused && this.profile.id !== 'system') {
+        for (let offset = 1; offset <= ahead && this.items[this.index + offset]; offset++) {
+          void this.load(this.items[this.index + offset], signal).catch(() => {});
+        }
       }
     } catch (error) { this.fail(error, generation); }
   }

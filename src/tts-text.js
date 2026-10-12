@@ -1,11 +1,12 @@
 // Keep DOM ranges in original-text offsets; normalizing speech must not shift
 // annotations. Chunks are bounded even when a paragraph has no punctuation.
-export function splitSpeechText(text, maxLength = 240) {
+export function splitSpeechText(text, maxLength = 240, clauses = false) {
   const result = []; let start = 0;
   const pieces = typeof Intl.Segmenter === 'function'
     ? [...new Intl.Segmenter(undefined, { granularity: 'sentence' }).segment(text)].map(x => x.segment)
     : text.match(/[^。！？.!?\n]+[。！？.!?\n]*|[。！？.!?\n]+/gu) || [];
-  for (const sentence of pieces) {
+  const sentences = clauses ? pieces.flatMap(piece => piece.match(/[^，,；;]+[，,；;]*|[，,；;]+/gu) || []) : pieces;
+  for (const sentence of sentences) {
     let rest = sentence;
     while (rest.length) {
       let length = Math.min(maxLength, rest.length);
@@ -17,7 +18,7 @@ export function splitSpeechText(text, maxLength = 240) {
   }
   return result;
 }
-export function speechDocumentChunks(doc, fromRange = null, limit = 240) {
+export function speechDocumentChunks(doc, fromRange = null, limit = 240, clauses = false) {
   const skipped = 'script,style,nav,rt,rp,[hidden],[aria-hidden="true"],svg,math';
   const walker = doc.createTreeWalker(doc.body, 4); const groups = [];
   let node;
@@ -34,7 +35,7 @@ export function speechDocumentChunks(doc, fromRange = null, limit = 240) {
       const entry = group.nodes.find(x => offset < x.start + x.node.textContent.length) || group.nodes.at(-1);
       return [entry.node, offset - entry.start];
     };
-    for (const part of splitSpeechText(group.text, limit)) {
+    for (const part of splitSpeechText(group.text, limit, clauses)) {
       const range = doc.createRange(); range.setStart(...point(part.start)); range.setEnd(...point(part.end));
       if (fromRange) {
         const relation = range.comparePoint(fromRange.startContainer, fromRange.startOffset);

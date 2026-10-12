@@ -5,6 +5,9 @@ import { buildSpeechRequest, checkTtsSignal, synthesizeHttp, TTS_PROVIDERS, ttsE
 import { rememberSpeechProgress, restorePdfSpeechPage, savedSpeechProgress, speechAnchorVisible, speechStartMode } from './tts-progress.js';
 import { TTS_MODELS, canLoadVoiceCatalog, changeSpeechModel, loadVoiceCatalog, modelKey, uniqueChoices, voiceChoices } from './tts-choices.js';
 import { speechDocumentChunks, splitSpeechText } from './tts-text.js';
+import { macVoiceChoices } from './tts-mac-voices.js';
+import { createLocalTtsManager, LOCAL_MODELS, localVoiceChoices, normalizeLocalProfile } from './tts-local.js';
+import { LocalSpeechPanel } from './tts-local-ui.js';
 
 // The new feature has reviewed Chinese/English copy. Other plugin languages
 // explicitly fall back to English until their TTS translations are reviewed.
@@ -14,6 +17,32 @@ export const TTS_COPY = {
   welcomeUnavailable: ['当前设备未提供系统朗读接口。打开「语音设置」选择并配置其他服务。', 'System speech is unavailable on this device. Open Speech settings to choose and configure another provider.'],
   macos: ['Mac 本地语音', 'Mac local speech'], macosHelp: ['调用本机已安装音色，无需密钥。可用音色取决于系统版本；下载新声音后刷新列表并试听。', 'Uses installed Mac voices without a key. Availability depends on macOS; refresh and audition after downloading voices.'],
   voiceEnhanced: ['增强', 'Enhanced'], voicePremium: ['高品质', 'Premium'],
+  recommended: ['推荐', 'Recommended'], voiceDisplayName: ['使用阅读器显示名', 'Reader display name'],
+  voiceSources: ['音色来源', 'Voice sources'],
+  localModel: ['本地模型', 'Local models'],
+  localModelHelp: ['在本机合成，无需密钥；首次需联网下载模型和运行环境。', 'Synthesis stays on this computer without a key. Setup downloads models and their runtime once.'],
+  modelDownloadSize: ['模型下载约', 'Model download: about'], downloadUse: ['下载并使用', 'Download and use'], cancelDownload: ['取消下载', 'Cancel download'],
+  localDetails: ['存储与音色来源', 'Storage and voice sources'],
+  localStorage: ['模型与运行环境存放在本机应用数据目录，独立于笔记库。', 'Models and their runtime live in device application data, outside vaults.'],
+  kokoroHelp: ['知夏、言川等为阅读器显示名；提供精选中英文音色。', 'Zhixia, Yanchuan and other Chinese voice names are Reader display names. Includes selected Chinese and English voices.'],
+  meloHelp: ['提供一个中英音色；英文仅支持内置词典中的词。', 'One Chinese/English voice. English words must be present in the built-in lexicon.'],
+  'localPhase-unknown': ['正在检查安装状态…', 'Checking installation…'], 'localPhase-missing': ['尚未安装；首次安装可能需要几分钟。', 'Not installed. Initial setup can take several minutes.'],
+  'localPhase-runtime': ['正在准备运行环境…', 'Preparing runtime…'], 'localPhase-extract': ['正在校验并展开模型…', 'Verifying and extracting model…'],
+  'localPhase-environment': ['正在安装依赖…', 'Installing dependencies…'], 'localPhase-download': ['正在下载文件…', 'Downloading files…'],
+  'localPhase-downloaded': ['文件已下载，继续准备…', 'Files downloaded. Preparing…'],
+  'localPhase-installed': ['安装完成，等待合成检查…', 'Installed. Awaiting synthesis check…'], 'localPhase-verify': ['正在合成测试；首次加载可能较慢…', 'Testing synthesis. First load may take a while…'],
+  'localPhase-ready': ['已通过本机合成检查', 'Synthesis verified on this device'], 'localPhase-cancelled': ['已取消，重新下载可继续。', 'Cancelled. Download again to resume.'],
+  'localPhase-cancelling': ['正在取消下载…', 'Cancelling download…'],
+  'error-localPlatform': ['本地模型安装仅适用于桌面端，请选择系统语音或云端服务。', 'Local model installation requires desktop. Choose system speech or a cloud provider.'],
+  'error-localMissing': ['此设备尚未安装或验证该模型，请点击「下载并使用」。', 'This model is not installed or verified on this device. Choose Download and use.'],
+  'error-localModel': ['请选择列表中的本地模型。', 'Choose a local model from the list.'],
+  'error-localPath': ['存储位置不能在笔记库或插件目录内。', 'Storage must be outside vaults and plugin directories.'],
+  'error-localBusy': ['其他窗口正在准备此模型，请稍后重试。', 'Another window is preparing this model. Retry shortly.'],
+  'error-localDownload': ['下载失败，请检查网络后重试。', 'Download failed. Check the network and retry.'],
+  'error-localChecksum': ['下载校验失败，请重试。', 'Download verification failed. Retry.'], 'error-localArchive': ['安装包格式异常，请重试。', 'Invalid installation archive. Retry.'],
+  'error-localEnvironment': ['运行环境未能启动，请重新安装模型。', 'The runtime could not start. Reinstall the model.'],
+  'error-localInstall': ['安装未完成，请检查网络和剩余磁盘空间后重试。', 'Installation did not finish. Check the network and free disk space, then retry.'],
+  'error-localInference': ['本地模型未能生成音频，请重试或切换模型、音色。', 'Local synthesis failed. Retry or change the model or voice.'],
   gotIt: ['知道了', 'Got it'], voiceSettings: ['语音设置', 'Speech settings'],
   serviceModels: ['服务与模型', 'Service and model'], configureTest: ['配置并试听', 'Set up and test'],
   voiceSearch: ['搜索音色', 'Search voices'], noVoices: ['没有匹配的音色', 'No matching voices'],
@@ -87,6 +116,11 @@ function config(plugin) {
   const settings = plugin.settings.tts;
   if (!TTS_PROVIDERS[settings.provider]) settings.provider = Platform.isDesktopApp ? 'edge' : 'system';
   if (!settings.profiles || typeof settings.profiles !== 'object') settings.profiles = {};
+  if (settings.profiles.localModel) {
+    const previous = settings.profiles.localModel, next = normalizeLocalProfile(previous);
+    settings.profiles.localModel = next;
+    if (previous.model !== next.model || previous.voice !== next.voice) persist(plugin);
+  }
   return settings;
 }
 function persist(plugin) {
@@ -101,6 +135,13 @@ function button(parent, icon, label, run, text = false) {
   setIcon(el, icon);
   el.createSpan({ text: label, cls: text ? '' : 'qbr-tts-sr' });
   el.addEventListener('click', run); return el;
+}
+function ensureLocalTts(plugin) {
+  if (plugin.localTts) return plugin.localTts;
+  const vault = plugin.app.vault.adapter.getBasePath?.();
+  plugin.localTts = createLocalTtsManager({ vaultPaths: vault ? [vault] : [] });
+  plugin.register(() => plugin.localTts.dispose());
+  return plugin.localTts;
 }
 export function ensureTts(plugin) {
   if (plugin.tts) return plugin.tts;
@@ -123,6 +164,7 @@ export function ensureTts(plugin) {
         const { synthesizeMacSpeech } = await import('./tts-macos.js');
         return synthesizeMacSpeech(text, profile.voice, { signal });
       }
+      if (profile.id === 'localModel') return ensureLocalTts(plugin).synthesize(profile, text, signal);
       return synthesizeHttp(profile, text, { request: requestUrl, key: profile.key, signal });
     },
     onChange: controller => { for (const listener of listeners) listener(controller); },
@@ -147,13 +189,15 @@ function configurationError(plugin, profile = profileFor(plugin)) {
   if (profile.id === 'system') return typeof window.speechSynthesis?.speak === 'function' && typeof window.speechSynthesis?.getVoices === 'function' && typeof window.SpeechSynthesisUtterance === 'function' ? null : ttsError('systemUnavailable');
   if (profile.id === 'macos') return Platform.isDesktopApp && Platform.isMacOS ? null : ttsError('macPlatform');
   if (profile.id === 'edge') return Platform.isDesktopApp ? null : ttsError('mobile');
+  if (profile.id === 'localModel') return !Platform.isDesktopApp ? ttsError('localPlatform')
+    : ensureLocalTts(plugin).snapshot(profile.model).phase === 'ready' ? null : ttsError('localMissing');
   try { buildSpeechRequest(profile, '', profile.key); return null; }
   catch (error) { return error; }
 }
 function hideSpeechProvider(id, selected) {
-  return id !== selected && ((id === 'edge' && !Platform.isDesktopApp) || (id === 'macos' && (!Platform.isDesktopApp || !Platform.isMacOS)));
+  return id !== selected && ((['edge', 'localModel'].includes(id) && !Platform.isDesktopApp) || (id === 'macos' && (!Platform.isDesktopApp || !Platform.isMacOS)));
 }
-function speechDescription(id) { return id === 'system' ? 'local' : id === 'macos' ? 'macosHelp' : id === 'edge' ? 'edge' : 'cloud'; }
+function speechDescription(id) { return id === 'system' ? 'local' : id === 'localModel' ? 'localModelHelp' : id === 'macos' ? 'macosHelp' : id === 'edge' ? 'edge' : 'cloud'; }
 export function openTtsSettings(plugin) { const modal = new TtsSettingsModal(plugin); modal.open(); return modal; }
 class SpeechChoices {
   constructor(host, plugin, onChange, options = {}) {
@@ -161,15 +205,16 @@ class SpeechChoices {
     this.onVoices = () => { if (config(plugin).provider === 'system') this.render(); };
     window.speechSynthesis?.addEventListener('voiceschanged', this.onVoices); this.render();
   }
-  destroy() { this.disposed = true; this.abort?.abort(); window.speechSynthesis?.removeEventListener('voiceschanged', this.onVoices); }
+  destroy() { this.disposed = true; this.abort?.abort(); this.localPanel?.destroy(); window.speechSynthesis?.removeEventListener('voiceschanged', this.onVoices); }
   render() {
     const p = this.plugin, tx = key => ttsText(p, key), settings = config(p), profile = ttsProfile(settings), id = profile.id;
-    if (this.provider !== id) { this.abort?.abort(); this.catalog = {}; this.message = ''; this.nativeLoaded = false; this.provider = id; }
-    this.host.empty();
+    if (this.provider !== id) { this.abort?.abort(); this.catalog = {}; this.message = ''; this.nativeLoaded = false; this.localLoaded = false; this.provider = id; }
+    this.localPanel?.destroy(); this.host.empty();
     const update = (key, value) => {
       const current = ttsProfile(config(p));
-      const next = key === modelKey(current) ? changeSpeechModel(current, value, this.catalog) : { ...current, [key]: value };
-      const { id: _id, label: _label, ...saved } = next;
+      const next = key === modelKey(current) && id !== 'localModel' ? changeSpeechModel(current, value, this.catalog) : { ...current, [key]: value };
+      const normalized = id === 'localModel' ? normalizeLocalProfile(key === 'model' ? { ...next, voice: '' } : next) : next;
+      const { id: _id, label: _label, ...saved } = normalized;
       config(p).profiles[id] = saved; persist(p); this.message = ''; this.onChange(); this.render();
     };
     const field = (key, label, values, custom = true) => {
@@ -191,10 +236,11 @@ class SpeechChoices {
       input.addEventListener('change', () => update(key, input.value.trim()));
     };
     if (TTS_MODELS[id]) field(modelKey(profile), tx('model'), [...TTS_MODELS[id], ...(this.catalog.models || [])]);
+    if (id === 'localModel') field('model', tx('model'), LOCAL_MODELS.map(x => ({ id: x.id, label: x.label })), false);
     const voices = id === 'system' ? [{ id: '', label: tx('systemVoice') }, ...(window.speechSynthesis?.getVoices?.() || []).map(v => ({ id: v.voiceURI, label: `${v.name} · ${v.lang}` }))]
-      : id === 'macos' ? [{ id: '', label: tx('systemVoice') }, ...(this.catalog.voices || [])] : voiceChoices(profile, this.catalog);
+      : id === 'macos' ? [{ id: '', label: tx('systemVoice') }, ...(this.catalog.voices || [])] : id === 'localModel' ? localVoiceChoices(profile.model, p.settings.language === 'zh') : voiceChoices(profile, this.catalog);
     this.voices = voices;
-    if (!this.options.preview) field('voice', tx('voice'), voices, id !== 'system');
+    if (!this.options.preview) field('voice', tx('voice'), voices, !['system', 'localModel'].includes(id));
     else {
       if (!voices.some(v => v.id === profile.voice) && profile.voice) voices.push({ id: profile.voice, label: profile.voice });
       const searchLabel = this.host.createEl('label', { cls: 'qbr-tts-search' });
@@ -210,6 +256,7 @@ class SpeechChoices {
           Array.from(this.host.querySelectorAll('.qbr-tts-voice-row')).find(el => el.dataset.voice === entry.id)?.querySelector('button')?.focus();
         }, true);
         choose.setAttribute('aria-pressed', String(profile.voice === entry.id));
+        if (entry.sourceName) choose.createSpan({ cls: 'qbr-tts-voice-source qbr-tts-sr', text: entry.sourceName });
         const preview = button(row, 'volume-2', `${tx('preview')} ${entry.label}`, () => this.options.preview(entry.id));
         preview.addClass('qbr-tts-voice-preview');
       }
@@ -218,13 +265,28 @@ class SpeechChoices {
         for (const row of list.children) { row.hidden = !row.textContent.toLocaleLowerCase().includes(query); if (!row.hidden) matches++; }
         empty.hidden = matches > 0;
       });
-      if (id !== 'system') {
+      if (!['system', 'localModel', 'macos'].includes(id)) {
         const details = this.host.createEl('details', { cls: 'qbr-tts-custom-voice' });
         details.createEl('summary', { text: tx('customVoice') });
         const label = details.createEl('label', { cls: 'qbr-tts-choice qbr-tts-custom' }); label.createSpan({ text: tx('customValue') });
         const input = label.createEl('input', { type: 'text', value: profile.voice, attr: { spellcheck: 'false' } });
         input.addEventListener('change', () => update('voice', input.value.trim()));
       }
+    }
+    if (voices.some(v => v.sourceName)) {
+      const sources = this.host.createEl('details', { cls: 'qbr-tts-voice-sources' }); sources.createEl('summary', { text: tx('voiceSources') });
+      for (const v of voices.filter(v => v.sourceName)) sources.createDiv({ text: `${v.label.split(' · ')[0]} · ${v.sourceName}` });
+    }
+    if (id === 'localModel' && Platform.isDesktopApp) {
+      const manager = ensureLocalTts(p);
+      const load = async () => {
+        const voices = await manager.voices(profile.model, p.settings.language === 'zh');
+        if (this.disposed || config(p).provider !== id) return;
+        this.catalog.voices = voices; this.render(); p.tts?.emit();
+      };
+      this.localPanel = new LocalSpeechPanel(this.host.createDiv(), { manager, app: p.app, model: profile.model, tx,
+        errorText: error => errorText(p, error, id), onReady: load, onState: state => { if (['ready', 'missing', 'error'].includes(state.phase)) p.tts?.emit(); } });
+      if (!this.localLoaded) { this.localLoaded = true; void load().catch(error => { this.message = errorText(p, error, id); }); }
     }
     let nativeLoad;
     if (canLoadVoiceCatalog(id) || id === 'macos') {
@@ -237,7 +299,7 @@ class SpeechChoices {
             if (!Platform.isDesktopApp || !Platform.isMacOS) throw ttsError('macPlatform');
             const { macSpeechVoices } = await import('./tts-macos.js');
             const voices = await macSpeechVoices(abort.signal);
-            result = { voices: voices.sort((a, b) => Number(/^zh|^yue/.test(b.lang)) - Number(/^zh|^yue/.test(a.lang)) || b.quality - a.quality).map(v => ({ id: v.id, label: `${v.name} · ${v.lang}${v.quality > 1 ? ` · ${tx(v.quality === 3 ? 'voicePremium' : 'voiceEnhanced')}` : ''}` })) };
+            result = { voices: macVoiceChoices(voices, tx, p.settings.language === 'zh') };
           } else result = await loadVoiceCatalog(profile, { request: requestUrl, key: profile.key, signal: abort.signal });
           if (abort.signal.aborted || this.disposed || config(p).provider !== id) return;
           this.catalog = result; this.message = tx(result.more ? 'catalogPartial' : 'catalogReady'); this.render();
@@ -270,7 +332,7 @@ class TtsSettingsModal extends Modal {
     new Setting(this.contentEl).setName(tx('service')).addDropdown(drop => {
       for (const [id, value] of Object.entries(TTS_PROVIDERS)) {
         if (hideSpeechProvider(id, settings.provider)) continue;
-        drop.addOption(id, ['system', 'macos', 'doubao', 'siliconflow'].includes(id) ? tx(id) : value.label);
+        drop.addOption(id, ['system', 'macos', 'localModel', 'doubao', 'siliconflow'].includes(id) ? tx(id) : value.label);
       }
       drop.setValue(settings.provider).onChange(value => { settings.provider = value; changed(); this.render(); });
     });
@@ -281,7 +343,7 @@ class TtsSettingsModal extends Modal {
       settings.profiles[id] = { ...settings.profiles[id], [key]: value.trim() }; changed();
     };
     const field = (host, key, label = key) => new Setting(host).setName(tx(label)).addText(input => input.setValue(profile[key] || '').onChange(value => update(key, value)));
-    if (!['system', 'macos', 'edge'].includes(id)) new Setting(this.contentEl).setName(tx('key')).addText(input => {
+    if (!['system', 'macos', 'edge', 'localModel'].includes(id)) new Setting(this.contentEl).setName(tx('key')).addText(input => {
       input.inputEl.type = 'password'; input.inputEl.autocomplete = 'off';
       input.setValue(p.app.secretStorage?.getSecret(`qiaomu-reader-tts-${id}`) || '').onChange(value => {
         try { p.app.secretStorage.setSecret(`qiaomu-reader-tts-${id}`, value.trim()); changed(); }
@@ -341,7 +403,8 @@ function engineItems(view, fromCurrent = false, exactRange = null) {
   const { doc, index } = (exactRange ? contents.find(c => c.doc === exactRange.startContainer.ownerDocument) : contents[0]) || {};
   if (!doc?.body) return [];
   const range = exactRange || (fromCurrent ? view.engine.currentLocation()?.range : null);
-  return speechDocumentChunks(doc, range?.startContainer.ownerDocument === doc ? range : null).map(item => ({ ...item, section: index }));
+  const local = config(view.plugin).provider === 'localModel';
+  return speechDocumentChunks(doc, range?.startContainer.ownerDocument === doc ? range : null, local ? 40 : 240, local).map(item => ({ ...item, section: index }));
 }
 async function startReading(view, selectedText, resume = 'auto') {
   const plugin = view.plugin, controller = ensureTts(plugin), file = view.file;
@@ -366,7 +429,8 @@ async function startReading(view, selectedText, resume = 'auto') {
     }
     if (token !== controller.generation || request !== view._ttsRequest || file !== view.file || view._closed) return;
     let items, nextSection;
-    if (selectedText) items = splitSpeechText(selectedText);
+    const local = settings.provider === 'localModel';
+    if (selectedText) items = splitSpeechText(selectedText, local ? 40 : 240, local);
     else if (view.engine) {
       const engine = view.engine; items = engineItems(view, true, exactRange);
       let section = engine.contents()[0]?.index;
@@ -383,7 +447,7 @@ async function startReading(view, selectedText, resume = 'auto') {
     } else {
       const page = saved?.page || view.pager?.currentPdfPageNumber?.() || 1;
       if (saved?.page && !restorePdfSpeechPage(view, page)) throw ttsError('resume');
-      items = splitSpeechText(view._pdfLazy?.textFor(page) || '').filter(item => !saved || item.end > saved.offset).map(item => ({ ...item, page }));
+      items = splitSpeechText(view._pdfLazy?.textFor(page) || '', local ? 40 : 240, local).filter(item => !saved || item.end > saved.offset).map(item => ({ ...item, page }));
     }
     if (!items.length) { new Notice(ttsText(plugin, 'error-emptyText')); return; }
     const owner = {
@@ -516,7 +580,7 @@ export function attachTts(view, tray) {
   const service = serviceLabel.createEl('select', { attr: { 'data-tts-field': 'service' } });
   for (const [id, value] of Object.entries(TTS_PROVIDERS)) {
     if (hideSpeechProvider(id, config(plugin).provider)) continue;
-    service.createEl('option', { value: id, text: ['system', 'macos', 'doubao', 'siliconflow'].includes(id) ? tx(id) : value.label });
+    service.createEl('option', { value: id, text: ['system', 'macos', 'localModel', 'doubao', 'siliconflow'].includes(id) ? tx(id) : value.label });
   }
   const changed = () => {
     if (controller.owner === previewOwner) stopPreview();

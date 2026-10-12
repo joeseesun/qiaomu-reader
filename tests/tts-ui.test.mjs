@@ -4,7 +4,7 @@ import { build } from 'esbuild';
 import { JSDOM } from 'jsdom';
 import { TtsController } from '../src/tts-controller.js';
 
-const bundle = await build({ entryPoints: ['src/tts-ui.js'], bundle: true, write: false, format: 'esm', platform: 'node', plugins: [{ name: 'host', setup(b) {
+const bundle = await build({ entryPoints: ['src/tts-ui.js'], bundle: true, write: false, format: 'esm', platform: 'node', loader: { '.py': 'text' }, plugins: [{ name: 'host', setup(b) {
   b.onResolve({ filter: /^obsidian$/ }, () => ({ path: 'host', namespace: 'mock' }));
   b.onLoad({ filter: /.*/, namespace: 'mock' }, () => ({ contents: 'export const {Modal,Notice,Platform,Scope,Setting,requestUrl,setIcon}=globalThis.ttsHost;' }));
 } }] });

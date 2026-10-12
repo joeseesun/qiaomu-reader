@@ -2,6 +2,7 @@
 export const TTS_PROVIDERS = Object.freeze({
   system: { label: 'System voice', voice: '', model: '' },
   macos: { label: 'Mac local speech', voice: '', model: '' },
+  localModel: { label: 'Local models', voice: 'zf_001', model: 'kokoro' },
   edge: { label: 'Edge TTS', voice: 'zh-CN-XiaoxiaoNeural', model: '' },
   openai: { label: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini-tts', voice: 'coral' },
   compatible: { label: 'OpenAI-compatible', baseUrl: '', model: '', voice: '' },
