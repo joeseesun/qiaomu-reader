@@ -16,7 +16,7 @@ export class TtsController {
     if (owner && this.owner !== owner) return;
     ++this.generation; this.abort?.abort(); this.releasePlayer(); this.pending.clear();
     this.owner?.clearHighlight?.(); this.owner = null; this.items = []; this.nextSection = null;
-    this.state = 'idle'; this.error = null; this.paused = false; this.deferred = false; this.emit();
+    this.state = 'idle'; this.error = null; this.paused = false; this.deferred = false; this.waitingSection = false; this.emit();
   }
   start(owner, items, profile, { nextSection, index = 0, rate = 1, paused = false } = {}) {
     this.stop(); this.owner = owner; this.items = items; this.profile = { ...profile };
@@ -89,6 +89,9 @@ export class TtsController {
     if (generation !== this.generation) return;
     this.index++;
     if (this.index >= this.items.length && this.nextSection) {
+      if (this.owner?.follow === false) {
+        this.releasePlayer(); this.paused = true; this.waitingSection = true; this.state = 'paused'; this.emit(); return;
+      }
       this.state = 'loading'; this.emit();
       try {
         const items = await this.nextSection(this.abort.signal);
@@ -99,6 +102,10 @@ export class TtsController {
     await this.playCurrent(generation);
   }
   toggle() {
+    if (this.waitingSection) {
+      this.waitingSection = false; this.paused = false; this.owner.follow = true; this.index--;
+      void this.advance(this.generation); return;
+    }
     if (this.deferred) { this.deferred = false; this.paused = false; void this.playCurrent(this.generation); return; }
     if (this.state === 'error' || this.state === 'ended') { this.retry(); return; }
     this.paused = !this.paused;
@@ -113,7 +120,7 @@ export class TtsController {
   }
   retry() {
     ++this.generation; this.abort?.abort(); this.pending.clear(); this.abort = new AbortController();
-    this.paused = false; this.deferred = false; this.index = Math.min(this.index, Math.max(0, this.items.length - 1));
+    this.paused = false; this.deferred = false; this.waitingSection = false; this.index = Math.min(this.index, Math.max(0, this.items.length - 1));
     void this.playCurrent(this.generation);
   }
   skip(delta) {

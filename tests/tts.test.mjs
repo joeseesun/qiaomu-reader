@@ -219,3 +219,77 @@ test('paused session restoration retains segment and rate without synthesis or a
   assert.equal(controller.index, 1); assert.equal(controller.rate, 1.5); assert.equal(controller.state, 'paused');
   controller.toggle(); await tick(); assert.equal(synthesized, 1); assert.equal(played, 1); controller.dispose();
 });
+
+test('primary playback restores exact saved sentence, while explicit from-page and changed files start here', async () => {
+  const { rememberSpeechProgress, savedSpeechProgress, restorePdfSpeechPage, speechStartMode } = await import('../src/tts-progress.js');
+  const doc = new JSDOM('<body><p>第一页第一句。第一页第二句。第一页第三句。</p></body>').window.document;
+  const textNode = doc.querySelector('p').firstChild;
+  const pageRange = doc.createRange(); pageRange.selectNodeContents(doc.querySelector('p'));
+  const exact = doc.createRange(); exact.setStart(textNode, 7); exact.setEnd(textNode, 14);
+  const navigated = [], notices = [], starts = [];
+  const controller = { generation: 0, stop() { this.generation++; }, start(...args) { starts.push(args); } };
+  const file = { path: 'Book.epub', stat: { mtime: 123 } };
+  const settings = { progress: { [file.path]: { cfi: 'epubcfi(saved)', mtime: 123 } } };
+  const view = { file, plugin: { settings }, contentEl: doc.body, engine: {
+    goTo: async target => { navigated.push(target); }, rangeFromCfi: () => exact,
+    contents: () => [{ doc, index: 2 }], currentLocation: () => ({ range: pageRange }),
+    cfiFromRange: () => 'epubcfi(saved)', nextReadingSection: () => null,
+  } };
+  const source = readFileSync(new URL('../src/tts-ui.js', import.meta.url), 'utf8');
+  const code = source.slice(source.indexOf('async function navigateSpeech('), source.indexOf('export function openTts(view'));
+  const context = { config: () => settings, ensureTts: () => controller, savedSpeechProgress, rememberSpeechProgress, restorePdfSpeechPage, speechStartMode,
+    speechDocumentChunks, splitSpeechText, profileFor: () => ({ id: 'system' }), checkTtsSignal: () => {}, highlight() {}, clearHighlight() {}, persist() {},
+    Notice: class { constructor(message) { notices.push(message); } }, ttsText: (_, key) => key, errorText: (_, e) => e.code, ttsError: code => ({ code }), view };
+  vm.createContext(context); vm.runInContext(code + ';this.startReading = startReading;', context);
+  await context.startReading(view);
+  assert.deepEqual(navigated, ['epubcfi(saved)']); assert.equal(starts.at(-1)[1][0].text, '第一页第二句。');
+  await context.startReading(view, null, false);
+  assert.equal(starts.at(-1)[1][0].text, '第一页第一句。');
+  file.stat.mtime = 456; await context.startReading(view);
+  assert.equal(starts.at(-1)[1][0].text, '第一页第一句。');
+  file.stat.mtime = 123; view.engine.rangeFromCfi = () => null;
+  const before = starts.length; await context.startReading(view, null, true);
+  assert.equal(starts.length, before); assert.equal(notices.at(-1), 'resume');
+  // PDF resumes its saved page and segment, independent of the visible page.
+  view.engine = null; view.file = { path: 'Book.pdf', stat: { mtime: 123 } };
+  doc.body.innerHTML = '<div class="qiaomu-reader-pdf-page-break" data-pdf-page-no="3"></div>';
+  view.pager = { flow: doc.body, currentPdfPageNumber: () => 1, sw: 500, cols: 1, jumpTo() {} };
+  view._pdfLazy = { textFor: page => page === 3 ? '第一句。第二句。第三句。' : '错误页。' };
+  rememberSpeechProgress(settings, view.file, { page: 3, offset: 4 });
+  await context.startReading(view, null, true);
+  assert.equal(starts.at(-1)[1][0].text, '第二句。'); assert.equal(starts.at(-1)[1][0].page, 3);
+  starts.at(-1)[0].onSegment(starts.at(-1)[1][1]);
+  assert.equal(settings.progress['Book.pdf'].offset, 8);
+});
+test('speech bookmarks retain recently reused books within the bounded persistent history', async () => {
+  const { rememberSpeechProgress, savedSpeechProgress } = await import('../src/tts-progress.js');
+  const settings = {};
+  for (let i=0;i<100;i++) rememberSpeechProgress(settings, {path:String(i),stat:{mtime:1}}, {cfi:'epubcfi(saved)'});
+  rememberSpeechProgress(settings, {path:'0',stat:{mtime:1}}, {cfi:'epubcfi(new)'});
+  rememberSpeechProgress(settings, {path:'book101',stat:{mtime:1}}, {page:2,offset:4});
+  assert.equal(Object.keys(settings.progress).length,100);
+  assert.ok(savedSpeechProgress(JSON.parse(JSON.stringify(settings)),{path:'book101',stat:{mtime:1}}));
+  assert.equal(savedSpeechProgress(settings,{path:'book101',stat:{mtime:2}}),null);
+});
+
+test('start intent distinguishes a saved sentence on this page from a user-navigated page', async () => {
+  const { speechStartMode } = await import('../src/tts-progress.js');
+  const doc = new JSDOM('<p>甲。乙。丙。丁。</p>').window.document, node = doc.querySelector('p').firstChild;
+  const spoken=doc.createRange();spoken.setStart(node,2);spoken.setEnd(node,4);
+  const visible=doc.createRange();visible.setStart(node,0);visible.setEnd(node,4);
+  const file={path:'book',stat:{mtime:1}},settings={progress:{book:{cfi:'epubcfi(saved)',mtime:1}}};
+  const view={file,engine:{rangeFromCfi:()=>spoken,currentLocation:()=>({range:visible})}};
+  assert.equal(speechStartMode(view,settings),'resume');
+  visible.setStart(node,4);visible.setEnd(node,8);assert.equal(speechStartMode(view,settings),'page');
+  view.engine.rangeFromCfi=()=>null;assert.equal(speechStartMode(view,settings),'page');
+  view.engine=null;view.pager={currentPdfPageNumber:()=>4};settings.progress.book={page:3,offset:2,mtime:1};
+  assert.equal(speechStartMode(view,settings),'page');view.pager.currentPdfPageNumber=()=>3;assert.equal(speechStartMode(view,settings),'resume');
+});
+test('browsing away never navigates to the next chapter until Continue is explicit', async () => {
+  let navigations=0;
+  const controller=new TtsController({speech:{getVoices:()=>[],speak(){},cancel(){}},makeUtterance:text=>({text})});
+  controller.start({follow:false},[{text:'last sentence'}],{id:'system',voice:''},{nextSection:async()=>{navigations++;return [{text:'next chapter'}];}});
+  await controller.advance(controller.generation);
+  assert.equal(navigations,0);assert.equal(controller.waitingSection,true);assert.equal(controller.state,'paused');
+  controller.toggle();await tick();assert.equal(navigations,1);assert.equal(controller.items[0].text,'next chapter');assert.equal(controller.state,'playing');controller.dispose();
+});

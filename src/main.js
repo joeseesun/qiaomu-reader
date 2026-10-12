@@ -10757,6 +10757,7 @@ const ReaderView = class extends ItemView {
       onRelocate: (detail) => {
         if (this.file?.path !== file.path || this.engine !== engine || loadToken.signal.aborted) return;
         updateEngineLocation(this, detail);
+        this._ttsOnRelocate?.();
       },
     });
     try {
@@ -11153,6 +11154,7 @@ const ReaderView = class extends ItemView {
     this.pctEl.setText(`${pct}%`);
     syncReaderAiCapability(this);
     syncPdfZoomControls(this);
+    this._ttsRefreshPosition?.();
     renderVisibleFigures(this);
   }
   buildSettPanel() {
@@ -12806,6 +12808,7 @@ const ReaderModal = class extends Modal {
       onRelocate: (detail) => {
         if (this.file?.path !== file.path || this.engine !== engine || loadToken.signal.aborted) return;
         updateEngineLocation(this, detail);
+        this._ttsOnRelocate?.();
       },
     });
     try {
@@ -12889,6 +12892,7 @@ const ReaderModal = class extends Modal {
     this.pctEl.setText(`${pct}%`);
     syncReaderAiCapability(this);
     syncPdfZoomControls(this);
+    this._ttsRefreshPosition?.();
     renderVisibleFigures(this);
   }
   _buildSettPanel() {

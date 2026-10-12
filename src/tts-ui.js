@@ -1,12 +1,17 @@
 import { Modal, Notice, Platform, Scope, Setting, requestUrl, setIcon } from 'obsidian';
 import { TtsController } from './tts-controller.js';
 import { checkTtsSignal, synthesizeHttp, TTS_PROVIDERS, ttsError, ttsProfile } from './tts-providers.js';
+import { rememberSpeechProgress, restorePdfSpeechPage, savedSpeechProgress, speechAnchorVisible, speechStartMode } from './tts-progress.js';
 import { TTS_MODELS, canLoadVoiceCatalog, changeSpeechModel, loadVoiceCatalog, modelKey, uniqueChoices, voiceChoices } from './tts-choices.js';
 import { speechDocumentChunks, splitSpeechText } from './tts-text.js';
 
 // The new feature has reviewed Chinese/English copy. Other plugin languages
 // explicitly fall back to English until their TTS translations are reviewed.
 export const TTS_COPY = {
+  returnSpeech: ['回到朗读处', 'Return to speech'], nextChapter: ['继续下一章', 'Continue next chapter'],
+  browseEnd: ['本章已读完。继续会打开下一章。', 'Chapter finished. Continue opens the next chapter.'],
+  fromPage: ['从当前页朗读', 'Read from current page'],
+  'error-resume': ['无法恢复保存的位置。可选择「从当前页朗读」重新开始。', 'Could not restore the saved position. Choose Read from current page to start again.'],
   custom: ['自定义…', 'Custom…'], customValue: ['自定义 ID', 'Custom ID'],
   refreshVoices: ['更新音色列表', 'Refresh voice list'], catalogReady: ['音色列表已更新', 'Voice list updated'],
   catalogPartial: ['已加载前 1000 个音色；其他音色可填 ID。', 'Loaded the first 1,000 voices; enter an ID for others.'],
@@ -220,26 +225,44 @@ function highlight(view, range) {
   win.CSS.highlights.set('qbr-speech', new win.Highlight(range));
   (view._ttsHighlightDocs ||= new Set()).add(doc);
 }
-function engineItems(view, fromCurrent = false) {
-  const { doc, index } = view.engine.contents()[0] || {};
+async function navigateSpeech(view, target) {
+  view._ttsNavigating = (view._ttsNavigating || 0) + 1;
+  try { return await view.engine.goTo(target); }
+  finally { view._ttsNavigating--; }
+}
+function engineItems(view, fromCurrent = false, exactRange = null) {
+  const contents = view.engine.contents();
+  const { doc, index } = (exactRange ? contents.find(c => c.doc === exactRange.startContainer.ownerDocument) : contents[0]) || {};
   if (!doc?.body) return [];
-  const range = fromCurrent ? view.engine.currentLocation()?.range : null;
+  const range = exactRange || (fromCurrent ? view.engine.currentLocation()?.range : null);
   return speechDocumentChunks(doc, range?.startContainer.ownerDocument === doc ? range : null).map(item => ({ ...item, section: index }));
 }
-async function startReading(view, selectedText, resume = false) {
+async function startReading(view, selectedText, resume = 'auto') {
   const plugin = view.plugin, controller = ensureTts(plugin), file = view.file;
   if (!file || view._openingBook) return;
-  const settings = config(plugin), saved = settings.progress?.[file.path];
+  const settings = config(plugin);
+  const shouldResume = resume === 'auto' ? speechStartMode(view, settings) === 'resume' : resume;
+  const saved = !selectedText && shouldResume ? savedSpeechProgress(settings, file) : null;
   const request = view._ttsRequest = (view._ttsRequest || 0) + 1;
   controller.stop();
   const token = controller.generation;
   try {
-    if (resume && saved?.mtime === file.stat?.mtime && saved.cfi && view.engine) await view.engine.goTo(saved.cfi);
+    let exactRange = null;
+    if (saved?.cfi && view.engine) {
+      const engine = view.engine;
+      try {
+        await engine.goTo(saved.cfi);
+        if (token !== controller.generation || request !== view._ttsRequest || file !== view.file || view._closed || view.engine !== engine) return;
+        exactRange = engine.rangeFromCfi(saved.cfi);
+      }
+      catch { throw ttsError('resume'); }
+      if (!exactRange) throw ttsError('resume');
+    }
     if (token !== controller.generation || request !== view._ttsRequest || file !== view.file || view._closed) return;
     let items, nextSection;
     if (selectedText) items = splitSpeechText(selectedText);
     else if (view.engine) {
-      const engine = view.engine; items = engineItems(view, true);
+      const engine = view.engine; items = engineItems(view, true, exactRange);
       let section = engine.contents()[0]?.index;
       nextSection = async signal => {
         for (;;) {
@@ -247,29 +270,30 @@ async function startReading(view, selectedText, resume = false) {
           if (next === null) return [];
           checkTtsSignal(signal);
           if (view.engine !== engine || view.file !== file) throw Object.assign(new Error('Cancelled'), { name: 'AbortError' });
-          await engine.goTo(next); checkTtsSignal(signal); section = next;
+          await navigateSpeech(view, next); checkTtsSignal(signal); section = next;
           const chunks = engineItems(view); if (chunks.length) return chunks;
         }
       };
     } else {
-      const page = view.pager?.currentPdfPageNumber?.() || 1;
-      items = splitSpeechText(view._pdfLazy?.textFor(page) || '');
+      const page = saved?.page || view.pager?.currentPdfPageNumber?.() || 1;
+      if (saved?.page && !restorePdfSpeechPage(view, page)) throw ttsError('resume');
+      items = splitSpeechText(view._pdfLazy?.textFor(page) || '').filter(item => !saved || item.end > saved.offset).map(item => ({ ...item, page }));
     }
     if (!items.length) { new Notice(ttsText(plugin, 'error-emptyText')); return; }
     const owner = {
-      view, clearHighlight: () => clearHighlight(view),
+      view, follow: true, clearHighlight: () => clearHighlight(view),
       onSegment: item => {
         if (file !== view.file) { controller.stop(owner); return; }
         highlight(view, item.range);
         if (!selectedText && item.range && view.engine) {
           const cfi = view.engine.cfiFromRange(item.section, item.range);
           if (cfi) {
-            settings.progress ||= {}; settings.progress[file.path] = { cfi, mtime: file.stat?.mtime };
-            // Keep the bounded set of most recently heard books, not full text.
-            const entries = Object.entries(settings.progress); if (entries.length > 100) delete settings.progress[entries[0][0]];
+            rememberSpeechProgress(settings, file, { cfi });
             persist(plugin);
-            void view.engine.goTo(cfi).catch(() => {});
+            if (owner.follow) void navigateSpeech(view, cfi).catch(() => {});
           }
+        } else if (!selectedText && item.page) {
+          rememberSpeechProgress(settings, file, { page: item.page, offset: item.start }); persist(plugin);
         }
       },
     };
@@ -348,6 +372,19 @@ export function attachTts(view, tray) {
   bar.addEventListener('keydown', event => {
     if (event.key === 'Escape' && !rates.hidden) { event.preventDefault(); event.stopPropagation(); closeRates(); speed.focus(); }
   });
+  const origins = bar.createDiv('qbr-tts-origins');
+  const resumeSaved = button(origins, 'history', tx('saved'), () => { stopPreview(false); void startReading(view, null, true); }, true);
+  const fromPage = button(origins, 'text-cursor-input', tx('fromPage'), () => { stopPreview(false); void startReading(view, null, false); }, true);
+  const returnSpeech = button(origins, 'locate', tx('returnSpeech'), async () => {
+    const saved = savedSpeechProgress(config(plugin), view.file);
+    if (!saved) return;
+    try {
+      if (saved.cfi && view.engine) await navigateSpeech(view, saved.cfi);
+      else restorePdfSpeechPage(view, saved.page);
+      if (controller.owner?.view === view) controller.owner.follow = true;
+      refresh();
+    } catch (error) { new Notice(errorText(plugin, error, config(plugin).provider)); }
+  }, true);
   const options = bar.createDiv('qbr-tts-options'); options.hidden = true;
   const selections = options.createDiv('qbr-tts-selections');
   const serviceLabel = selections.createEl('label', { cls: 'qbr-tts-choice' }); serviceLabel.createSpan({ text: tx('service') });
@@ -373,7 +410,6 @@ export function attachTts(view, tray) {
   const previewFeedback = options.createDiv({ cls: 'qbr-tts-choice-feedback', attr: { role: 'status' } });
   options.createDiv({ cls: 'qbr-tts-choice-feedback', text: tx('choiceHint') });
   const privacy = options.createDiv('qbr-tts-choice-feedback');
-  const resume = button(options, 'history', tx('saved'), () => void startReading(view, null, true), true);
   button(options, 'square', tx('finish'), () => stopViewTts(view), true);
   const errorBox = bar.createDiv('qbr-tts-error'); errorBox.hidden = true;
   const errorMessage = errorBox.createDiv({ attr: { role: 'alert' } });
@@ -386,14 +422,17 @@ export function attachTts(view, tray) {
   }, true);
   const refresh = () => {
     const own = controller.owner?.view === view, state = own ? controller.state : 'idle';
+    const saved = !view._ttsSelectedText && savedSpeechProgress(config(plugin), view.file);
+    const willResume = saved && speechStartMode(view, config(plugin)) === 'resume';
     const profile = ttsProfile(config(plugin)), rate = own ? controller.rate : config(plugin).rate || 1;
-    status.setText(state === 'idle' ? tx('play') : state === 'error' ? errorText(plugin, controller.error, profile.id) : tx(state));
+    status.setText(state === 'idle' ? tx(willResume ? 'saved' : 'play') : state === 'error' ? errorText(plugin, controller.error, profile.id) : tx(state));
     heading.setText(view.file?.basename || tx('options'));
     position.setText(own && controller.items.length ? ttsText(plugin, 'segment', `${Math.min(controller.index + 1, controller.items.length)} / ${controller.items.length}`)
-      : tx(view._ttsSelectedText ? 'selected' : 'play'));
+      : tx(view._ttsSelectedText ? 'selected' : willResume ? 'saved' : 'play'));
+    if (own && controller.waitingSection) position.setText(tx('browseEnd'));
     const playing = ['playing', 'loading'].includes(state);
     play.replaceChildren(); setIcon(play, state === 'loading' ? 'loader-circle' : playing ? 'pause' : 'play');
-    play.createSpan({ cls: 'qbr-tts-sr', text: tx(playing ? 'pause' : state === 'paused' ? 'resume' : state === 'error' ? 'retry' : 'play') });
+    play.createSpan({ cls: 'qbr-tts-sr', text: tx(own && controller.waitingSection ? 'nextChapter' : playing ? 'pause' : state === 'paused' ? 'resume' : state === 'error' ? 'retry' : willResume ? 'saved' : 'play') });
     play.setAttribute('aria-busy', String(state === 'loading'));
     previous.disabled = !own || controller.index <= 0;
     next.disabled = !own || controller.index >= controller.items.length - 1;
@@ -410,7 +449,11 @@ export function attachTts(view, tray) {
     errorBox.hidden = state !== 'error'; bar.toggleClass('qbr-tts-has-error', state === 'error');
     if (state === 'error') errorMessage.setText(errorText(plugin, controller.error, profile.id));
     fallback.hidden = profile.id === 'system';
-    resume.hidden = !['idle', 'ended'].includes(state) || !!view._ttsSelectedText || !config(plugin).progress?.[view.file?.path]?.cfi || !view.engine;
+    const browsing = own && controller.owner.follow === false;
+    origins.hidden = !saved || (!browsing && !['idle', 'ended', 'paused', 'error'].includes(state));
+    resumeSaved.hidden = own && ['paused', 'playing', 'loading'].includes(state);
+    returnSpeech.hidden = !browsing;
+    fromPage.hidden = false;
   };
   const listener = () => {
     if (controller.owner === previewOwner) {
@@ -423,13 +466,19 @@ export function attachTts(view, tray) {
     } else if (controller.owner && savedSession) savedSession = null;
     refresh();
   };
-  plugin.ttsListeners.add(listener); view._ttsRefresh = () => { picker.render(); refresh(); }; refresh();
+  plugin.ttsListeners.add(listener); view._ttsRefresh = () => { picker.render(); refresh(); }; view._ttsRefreshPosition = refresh;
+  view._ttsOnRelocate = () => {
+    const saved = savedSpeechProgress(config(plugin), view.file);
+    if (!view._ttsNavigating && controller.owner?.view === view && saved && !speechAnchorVisible(view, saved)) controller.owner.follow = false;
+    refresh();
+  };
+  refresh();
   view._ttsStopPreview = () => stopPreview(false);
   view._ttsCleanup = () => {
     view._ttsRequest = (view._ttsRequest || 0) + 1;
     closeRates(); picker.destroy(); stopPreview(false);
     doc.removeEventListener('pointerdown', onOutside);
-    plugin.ttsListeners.delete(listener); if (controller.owner?.view === view) controller.stop(); clearHighlight(view); bar.remove(); view._ttsBar = null;
+    plugin.ttsListeners.delete(listener); if (controller.owner?.view === view) controller.stop(); clearHighlight(view); bar.remove(); view._ttsBar = null; view._ttsRefreshPosition = null; view._ttsOnRelocate = null;
   };
 }
 

@@ -311,6 +311,16 @@ export class EpubEngine {
         return this.#view ? this.#view.getCFI(index, range) : null;
     }
 
+    // Resolve the exact saved range after navigation; lastLocation.range is
+    // the visible page boundary and may start before the spoken sentence.
+    rangeFromCfi(cfi) {
+        const destination = this.#view?.resolveNavigation(cfi);
+        const content = this.contents().find(({ index }) => index === destination?.index);
+        if (!content?.doc || typeof destination?.anchor !== "function") return null;
+        const range = destination.anchor(content.doc);
+        return range?.startContainer ? range : null;
+    }
+
     // Text of the visible page, for AI context and the copy helpers. The
     // relocate event carries the range the renderer considers visible.
     visibleText() {
