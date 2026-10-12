@@ -1,4 +1,11 @@
 export default {
+  "library-remove": "Quitar de la biblioteca",
+  "library-removed": "“{0}” retirado. Se conservan el archivo y los datos de lectura.",
+  "library-change-failed": "No se pudo actualizar la biblioteca. Comprueba el acceso y reintenta.",
+  "delete-source-file": "Eliminar archivo original",
+  "delete-source-title": "¿Eliminar el archivo original?",
+  "delete-source-description": "Eliminar “{0}” según la configuración de papelera de Obsidian, junto con su progreso y resaltados. Se conservan las notas y los archivos fuera de este almacén.",
+
   "open-text-reader": "Abrir el texto actual en Qiaomu Reader",
   "text-book-empty": "El archivo no tiene contenido legible. Añade texto y vuelve a intentarlo.",
   "text-book-too-large": "El archivo supera los 20 MB. Divídelo en capítulos.",
@@ -928,11 +935,8 @@ export default {
   "scrolling": "Desplazamiento",
   "auto": "Automático",
   "how-many-characters-fit-on-a-line-shorter-lines-are-easier-to-re": "Cuántos caracteres caben en una línea. Las líneas más cortas son más fáciles de leer.",
-  "delete-the-book": "¿Eliminar el libro?",
-  "0-will-be-deleted-from-the-vault-together-with-its-reading-progr": "«{0}» se eliminará de la bóveda junto con su progreso de lectura y resaltados. La nota del libro permanecerá.",
   "book-deleted-0": "Libro eliminado: {0}",
   "could-not-delete-the-book": "No se pudo eliminar el libro",
-  "delete-book": "Eliminar libro",
   "book-actions": "Acciones del libro",
   "reading-note-template": "Plantilla de nota de lectura",
   "used-only-for-the-single-reading-note-created-for-a-book-where-h": "Se usa solo para la única nota de lectura creada para un libro, donde se recogen resaltados y comentarios. No se usa para notas de extractos independientes. Vacío significa un encabezado y propiedades del libro sin plantilla.",

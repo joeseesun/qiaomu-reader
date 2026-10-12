@@ -1,6 +1,13 @@
 // Generated from the complete source UI dictionary and reviewed for core reading terms.
 // Keep placeholders, Markdown and HTML structure identical to the source strings.
 export const QIAOMU_READER_ZH_CN = {
+  "library-remove": "从书库移除",
+  "library-removed": "已移除《{0}》；原文件和阅读记录保留。",
+  "library-change-failed": "无法更新书库，请检查仓库权限后重试。",
+  "delete-source-file": "删除原文件",
+  "delete-source-title": "删除原文件？",
+  "delete-source-description": "将按 Obsidian 的回收站设置删除仓库内的“{0}”，并清除它的阅读进度和划线。阅读笔记、仓库外的文件会保留。",
+
   "open-text-reader": "用乔木阅读器打开当前文本",
   "text-book-empty": "文件中没有可阅读的正文。请添加内容后重试。",
   "text-book-too-large": "文本文件超过 20 MB。请按章节拆分后再打开。",
@@ -862,11 +869,8 @@ export const QIAOMU_READER_ZH_CN = {
   "scrolling": "上下滚动",
   "auto": "自动",
   "how-many-characters-fit-on-a-line-shorter-lines-are-easier-to-re": "一行可以容纳多少个字符。短行更容易阅读。",
-  "delete-the-book": "删除图书？",
-  "0-will-be-deleted-from-the-vault-together-with-its-reading-progr": "将从仓库中删除《{0}》及其阅读进度和高亮。图书笔记会保留。",
   "book-deleted-0": "已删除图书：{0}",
   "could-not-delete-the-book": "无法删除图书",
-  "delete-book": "删除图书",
   "book-actions": "图书操作",
 
   // Former Chinese source keys, now addressed by their semantic slugs; display text is unchanged.
@@ -1469,7 +1473,6 @@ Object.assign(QIAOMU_READER_ZH_CN, {
   "kept-in-the-plugin-s-settings-inside-your-vault-if-the-vault-syn": "API 密钥保存在插件的本地配置中。若同步整个仓库，密钥也可能随配置同步，请注意安全。",
   "a-note-made-from-a-highlight-is-created-in-the-same-folder-as-th": "开启后，单独的摘录笔记默认保存在图书所在文件夹；如果在创建窗口手动选择了文件夹，则以手动选择为准。",
   "quotes-can-pile-up-in-one-book-note-the-title-dialog-now-has-an": "摘录可以集中添加到阅读笔记，也可以单独创建为摘录笔记。",
-  "0-will-be-deleted-from-the-vault-together-with-its-reading-progr": "将从仓库中删除《{0}》及其阅读进度和划线；对应的阅读笔记会保留。"
 });
 
 Object.assign(QIAOMU_READER_ZH_CN, {

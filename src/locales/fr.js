@@ -1,4 +1,11 @@
 export default {
+  "library-remove": "Retirer de la bibliothèque",
+  "library-removed": "« {0} » retiré. Fichier et données de lecture conservés.",
+  "library-change-failed": "Impossible de mettre à jour la bibliothèque. Vérifiez l’accès et réessayez.",
+  "delete-source-file": "Supprimer le fichier source",
+  "delete-source-title": "Supprimer le fichier source ?",
+  "delete-source-description": "Supprimer « {0} » selon le réglage de corbeille d’Obsidian, ainsi que sa progression et ses surlignages. Les notes de lecture et les fichiers hors de ce coffre sont conservés.",
+
   "open-text-reader": "Ouvrir le texte actuel dans Qiaomu Reader",
   "text-book-empty": "Ce fichier ne contient aucun texte lisible. Ajoutez du texte et réessayez.",
   "text-book-too-large": "Ce fichier dépasse 20 Mo. Divisez-le en chapitres.",
@@ -928,11 +935,8 @@ export default {
   "scrolling": "Défilement",
   "auto": "Auto",
   "how-many-characters-fit-on-a-line-shorter-lines-are-easier-to-re": "Combien de caractères tiennent sur une ligne. Les lignes plus courtes sont plus faciles à lire.",
-  "delete-the-book": "Supprimer le livre ?",
-  "0-will-be-deleted-from-the-vault-together-with-its-reading-progr": "«{0}» sera supprimé du coffre avec sa progression de lecture et ses surlignages. La note du livre restera.",
   "book-deleted-0": "Livre supprimé : {0}",
   "could-not-delete-the-book": "Impossible de supprimer le livre",
-  "delete-book": "Supprimer le livre",
   "book-actions": "Actions du livre",
   "reading-note-template": "Modèle de note de lecture",
   "used-only-for-the-single-reading-note-created-for-a-book-where-h": "Utilisé uniquement pour la note de lecture unique créée pour un livre, où les surlignages et les commentaires sont collectés. Il n'est pas utilisé pour les notes d'extraits autonomes. Vide signifie un titre et des propriétés de livre sans modèle.",

@@ -1,4 +1,11 @@
 export default {
+  "library-remove": "Remover da biblioteca",
+  "library-removed": "“{0}” removido. Arquivo e registros de leitura preservados.",
+  "library-change-failed": "Não foi possível atualizar a biblioteca. Verifique o acesso e tente novamente.",
+  "delete-source-file": "Excluir arquivo original",
+  "delete-source-title": "Excluir arquivo original?",
+  "delete-source-description": "Excluir “{0}” conforme a configuração de lixeira do Obsidian, junto com o progresso e os destaques. Notas de leitura e arquivos fora deste cofre serão preservados.",
+
   "open-text-reader": "Abrir o texto atual no Qiaomu Reader",
   "text-book-empty": "O arquivo não tem conteúdo legível. Adicione texto e tente novamente.",
   "text-book-too-large": "O arquivo excede 20 MB. Divida-o em capítulos.",
@@ -928,11 +935,8 @@ export default {
   "scrolling": "Rolagem",
   "auto": "Automático",
   "how-many-characters-fit-on-a-line-shorter-lines-are-easier-to-re": "Quantos caracteres cabem em uma linha. Linhas mais curtas são mais fáceis de ler.",
-  "delete-the-book": "Excluir o livro?",
-  "0-will-be-deleted-from-the-vault-together-with-its-reading-progr": "«{0}» será excluído do cofre junto com seu progresso de leitura e destaques. A nota do livro permanecerá.",
   "book-deleted-0": "Livro excluído: {0}",
   "could-not-delete-the-book": "Não foi possível excluir o livro",
-  "delete-book": "Excluir livro",
   "book-actions": "Ações do livro",
   "reading-note-template": "Modelo de nota de leitura",
   "used-only-for-the-single-reading-note-created-for-a-book-where-h": "Usado apenas para a única nota de leitura criada para um livro, onde destaques e comentários são coletados. Não é usado para notas de trechos independentes. Vazio significa um título e propriedades do livro sem modelo.",

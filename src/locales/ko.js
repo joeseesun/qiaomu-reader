@@ -1,4 +1,11 @@
 export default {
+  "library-remove": "서재에서 제거",
+  "library-removed": "“{0}” 제거됨. 파일과 독서 기록은 유지됩니다.",
+  "library-change-failed": "서재를 업데이트할 수 없습니다. 보관소 접근 권한을 확인하고 다시 시도하세요.",
+  "delete-source-file": "원본 파일 삭제",
+  "delete-source-title": "원본 파일을 삭제할까요?",
+  "delete-source-description": "Obsidian 휴지통 설정에 따라 “{0}”와 독서 진행도 및 하이라이트를 삭제합니다. 독서 노트와 보관소 밖의 파일은 유지됩니다.",
+
   "open-text-reader": "현재 텍스트를 Qiaomu Reader에서 열기",
   "text-book-empty": "읽을 수 있는 본문이 없습니다. 내용을 추가한 후 다시 시도하세요.",
   "text-book-too-large": "20 MB를 초과했습니다. 장별로 나누어 주세요.",
@@ -928,11 +935,8 @@ export default {
   "scrolling": "스크롤",
   "auto": "자동",
   "how-many-characters-fit-on-a-line-shorter-lines-are-easier-to-re": "한 줄에 들어가는 문자 수. 줄이 짧을수록 읽기 쉽습니다.",
-  "delete-the-book": "책을 삭제하시겠습니까?",
-  "0-will-be-deleted-from-the-vault-together-with-its-reading-progr": "«{0}»은(는) 읽기 진행 상황 및 하이라이트와 함께 볼트에서 삭제됩니다. 책 노트는 남아 있습니다.",
   "book-deleted-0": "책 삭제됨: {0}",
   "could-not-delete-the-book": "책을 삭제할 수 없습니다",
-  "delete-book": "책 삭제",
   "book-actions": "책 작업",
   "reading-note-template": "독서 노트 템플릿",
   "used-only-for-the-single-reading-note-created-for-a-book-where-h": "책에 대해 생성된 단일 독서 노트에만 사용되며 하이라이트와 댓글이 수집됩니다. 독립형 발췌 노트에는 사용되지 않습니다. 비어 있으면 템플릿 없이 제목과 책 속성을 의미합니다.",

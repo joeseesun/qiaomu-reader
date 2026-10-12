@@ -1,4 +1,6 @@
 import { isTextBook, isListedBook } from "./text-book.js";
+import { setBookMembership } from "./library-membership.js";
+import { openReaderLeaf } from "./open-reader.js";
 import { AiAccountModal } from './ai-account-modal.js';
 import { completeChatGPT, connectionToken } from './model-access/client.js';
 import { cancelAccountLogins, readAccount } from './model-access/services/provider-auth.js';
@@ -133,6 +135,7 @@ const DEFAULT_TRANSLATION = {
 };
 const DEFAULT_LIBRARY_UI = {
   bookNoteLinks: {}, locationMarks: [], bookNotePrompted: {}, coverFits: {},
+  textBookPaths: [], removedBookPaths: [],
   syncMode: "auto", libCategory: "all",
 };
 const DEFAULT_READER_SESSION = {
@@ -1829,11 +1832,14 @@ const QiaomuBookReader = class extends Plugin {
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
       let changed = false;
       const selected = this.settings.textBookPaths || [];
-      this.settings.textBookPaths = selected.map(path => {
+      const moved = new Set();
+      const rename = path => {
         if (path !== oldPath && !path.startsWith(`${oldPath}/`)) return path;
         changed = true;
         const next = file.path + path.slice(oldPath.length);
-        for (const store of [this.progress, this.settings.bookNoteLinks, this.settings.bookNotePrompted]) {
+        if (moved.has(path)) return next;
+        moved.add(path);
+        for (const store of [this.progress, this.progressBackups, this.settings.bookNoteLinks, this.settings.bookNotePrompted, this.settings.coverFits, this.settings.bookTags]) {
           if (store && Object.hasOwn(store, path)) { store[next] = store[path]; delete store[path]; }
         }
         void this._persistHighlights(next, disk => {
@@ -1842,7 +1848,9 @@ const QiaomuBookReader = class extends Plugin {
         if (this._lastBookPath === path) this._lastBookPath = next;
         if (this.settings.lastBookPath === path) this.settings.lastBookPath = next;
         return next;
-      });
+      };
+      this.settings.textBookPaths = selected.map(rename);
+      this.settings.removedBookPaths = (this.settings.removedBookPaths || []).map(rename);
       if (changed) { void this.saveAll(); this.registerBookCommands(); }
       for (const [book, target] of Object.entries(this.settings.bookNoteLinks || {})) {
         if (typeof target === "string" && (target === oldPath || target.startsWith(`${oldPath}/`))) {
@@ -1857,12 +1865,13 @@ const QiaomuBookReader = class extends Plugin {
       if (changed) void this._saveLocalData();
     }));
     this.registerEvent(this.app.vault.on("delete", file => {
-      const paths = this.settings.textBookPaths || [];
-      const remaining = paths.filter(path => path !== file.path && !path.startsWith(`${file.path}/`));
-      if (remaining.length !== paths.length) {
-        this.settings.textBookPaths = remaining;
-        void this._saveLocalData();
+      let changed = false;
+      for (const key of ["textBookPaths", "removedBookPaths"]) {
+        const paths = this.settings[key] || [];
+        const remaining = paths.filter(path => path !== file.path && !path.startsWith(`${file.path}/`));
+        if (remaining.length !== paths.length) { this.settings[key] = remaining; changed = true; }
       }
+      if (changed) void this._saveLocalData();
     }));
     this.registerBookCommands(); const scheduleRefresh = () => {
       window.clearTimeout(this._bookCmdTimer); this._bookCmdTimer = window.setTimeout(() => this.registerBookCommands(), 1500);
@@ -1930,12 +1939,10 @@ const QiaomuBookReader = class extends Plugin {
     void Promise.allSettled(pending);
   }
   async rememberTextBook(file) {
-    if (!isTextBook(file.name)) return;
-    const selected = this.settings.textBookPaths || [];
-    if (selected.includes(file.path)) return;
-    this.settings.textBookPaths = [...selected, file.path];
-    await this._saveLocalData();
-    this.registerBookCommands();
+    return setBookMembership(this, file, true, isTextBook(file.name));
+  }
+  async removeBookFromLibrary(file) {
+    return setBookMembership(this, file, false, isTextBook(file.name));
   }
   async openFile(file) {
     await this.rememberTextBook(file);
@@ -1944,10 +1951,7 @@ const QiaomuBookReader = class extends Plugin {
       modal.open();
       return modal;
     }
-    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE);
-    const leaf = leaves.find((item) => item.view.file?.path === file.path) || leaves[0] || this.app.workspace.getLeaf("tab");
-    await leaf.setViewState({ type: VIEW_TYPE, state: { path: file.path }, active: true });
-    await this.app.workspace.revealLeaf(leaf);
+    const leaf = await openReaderLeaf(this.app.workspace, file, VIEW_TYPE);
     void this._showCompanionForBook(leaf.view);
     return leaf.view;
   }
@@ -2365,18 +2369,19 @@ const QiaomuBookReader = class extends Plugin {
     const folder = qiaomuReaderPath(this.settings.booksFolder || "");
     return this.app.vault.getFiles().filter(
       (f) => BOOK_EXTENSIONS.has(f.extension.toLowerCase())
-        && isListedBook(f, folder, this.settings.textBookPaths)
+        && isListedBook(f, folder, this.settings.textBookPaths, this.settings.removedBookPaths)
     );
   }
   lastReadBookFile() {
     const prog = this.progress || {};
     let bestPath = "", bestAt = -1;
     for (const p of Object.keys(prog)) {
+      if (this.settings.removedBookPaths?.includes(p) || !this.app.vault.getAbstractFileByPath(p)) continue;
       const at = (prog[p] && (prog[p].lastRead || prog[p].updated)) || 0;
       const ts = typeof at === "number" ? at : Date.parse(at) || 0;
       if (ts > bestAt) { bestAt = ts; bestPath = p; }
     }
-    if (!bestPath) bestPath = this.settings.lastBookPath || "";
+    if (!bestPath && !this.settings.removedBookPaths?.includes(this.settings.lastBookPath)) bestPath = this.settings.lastBookPath || "";
     if (!bestPath) return null;
     const f = this.app.vault.getAbstractFileByPath(bestPath);
     return f && f.extension ? f : null;
@@ -9476,7 +9481,15 @@ function addBookFileMenu(app, menu, file) {
 // Path-keyed stores have to forget the removed book, otherwise stale progress,
 // backups, highlights and cover fits resurface if the path is ever reused.
 async function dropBookState(plugin, bookPath) {
-  const stores = [plugin.progress, plugin.progressBackups, plugin.highlights, plugin.settings && plugin.settings.coverFits];
+  const purge = (plugin._hlChain || Promise.resolve()).then(async () => {
+    const disk = await plugin._readHighlightStore(plugin._highlightsFilePath());
+    delete disk[bookPath];
+    plugin.highlights = disk;
+    await plugin._saveHighlightsToVault();
+  });
+  plugin._hlChain = purge.catch(() => {});
+  await purge;
+  const stores = [plugin.progress, plugin.progressBackups, plugin.highlightsBackups, plugin.settings?.coverFits, plugin.settings?.tts?.progress];
   for (const store of stores) if (store) delete store[bookPath];
   if (plugin.settings) forgetCalibreImportByPath(plugin.settings, bookPath);
   return plugin.saveAll();
@@ -9498,9 +9511,10 @@ function deleteBookFromVault(app, plugin, file, onDone) {
     }
   };
   const confirmDelete = new ConfirmModal(app, {
-    title: qiaomuReaderTranslate("delete-the-book"),
-    body: qiaomuReaderTranslate("0-will-be-deleted-from-the-vault-together-with-its-reading-progr", file.basename),
-    okText: qiaomuReaderTranslate("delete"),
+    title: qiaomuReaderTranslate("delete-source-title"),
+    body: qiaomuReaderTranslate("delete-source-description", file.path),
+    okText: qiaomuReaderTranslate("delete-source-file"),
+    focusCancel: true,
     cancelText: qiaomuReaderTranslate("cancel"),
     onYes: wipe
   });
@@ -9617,7 +9631,7 @@ const ConfirmModal = class extends Modal {
       this.close();
       this.opts.onYes && this.opts.onYes();
     });
-    window.setTimeout(() => yes.focus(), 0);
+    window.setTimeout(() => (this.opts.focusCancel ? no : yes).focus(), 0);
   }
   onClose() {
     this.contentEl.empty();
@@ -10770,7 +10784,11 @@ const ReaderView = class extends ItemView {
     this._pdfOutline = result.outline;
   }
   _finishBookOpen(file) {
-    void this.plugin.rememberTextBook(file);
+    // Restoring an open tab is not a request to re-add a removed library item.
+    // Explicit card/command/file-menu opens restore membership in plugin.openFile.
+    if (!this.plugin.settings.removedBookPaths?.includes(file.path)) {
+      void this.plugin.rememberTextBook(file).catch(() => new Notice(qiaomuReaderTranslate("library-change-failed")));
+    }
     syncReaderAiCapability(this);
     this.buildSettPanel(); this._maybePromptBookNote(file);
     this._sessionSec = 0; this._running = false;
@@ -11840,7 +11858,7 @@ const LibraryModal = class extends Modal {
     return { input };
   }
   _libVaultBooks(folder) {
-    return this.app.vault.getFiles().filter((f) => BOOK_EXTENSIONS.has(f.extension.toLowerCase()) && isListedBook(f, folder, this.plugin.settings.textBookPaths));
+    return this.app.vault.getFiles().filter((f) => BOOK_EXTENSIONS.has(f.extension.toLowerCase()) && isListedBook(f, folder, this.plugin.settings.textBookPaths, this.plugin.settings.removedBookPaths));
   }
   _sortLibBooks(bookFiles) {
     const lastRead = (p) => this.plugin.getProgress(p)?.lastRead ?? 0;
@@ -12055,9 +12073,25 @@ const LibraryModal = class extends Modal {
     if (view.panelOpen !== "highlights") (view.togglePanel || view._togglePanel).call(view, "highlights");
   }
   _libCardMenu(file) {
-    const removeItem = (menu) => menu.addItem((it) => it.setTitle(qiaomuReaderTranslate("delete-book")).setIcon("trash").onClick(() => {
-      const afterGone = () => this._refresh();
-      deleteBookFromVault(this.app, this.plugin, file, afterGone);
+    const removeItem = menu => menu.addItem(it => it.setTitle(qiaomuReaderTranslate("library-remove")).setIcon("book-minus").onClick(async () => {
+      try {
+        if (!await this.plugin.removeBookFromLibrary(file)) return;
+        this._refresh();
+        const message = docOf(this.contentEl).createElement("div");
+        message.className = "qiaomu-reader-library-notice";
+        message.createSpan({ text: qiaomuReaderTranslate("library-removed", file.basename) });
+        const undo = message.createEl("button", { text: qiaomuReaderTranslate("undo") });
+        const notice = new Notice(message, 10000);
+        undo.addEventListener("click", async () => {
+          if (undo.disabled) return;
+          undo.disabled = true;
+          try {
+            if (this.app.vault.getAbstractFileByPath(file.path) !== file) throw new Error("book-no-longer-exists");
+            await this.plugin.rememberTextBook(file);
+            notice.hide(); this._refresh();
+          } catch { undo.disabled = false; new Notice(qiaomuReaderTranslate("library-change-failed")); }
+        });
+      } catch { new Notice(qiaomuReaderTranslate("library-change-failed")); }
     }));
     return (ev) => {
       ev.preventDefault(); ev.stopPropagation();
@@ -12070,6 +12104,10 @@ const LibraryModal = class extends Modal {
         }));
       }
       menu.addSeparator(); removeItem(menu);
+      menu.addSeparator();
+      menu.addItem(it => it.setTitle(qiaomuReaderTranslate("delete-source-file") + "…").setIcon("trash").onClick(() => {
+        deleteBookFromVault(this.app, this.plugin, file, () => this._refresh());
+      }));
       menu.showAtMouseEvent(ev);
     };
   }
@@ -12133,7 +12171,7 @@ const LibraryModal = class extends Modal {
     notesButton.addEventListener("click", ev => { ev.stopPropagation(); this.close(); void openOrCreateBookNoteBeside(this.plugin, file); });
     const openBook = () => {
       this.close();
-      void this.plugin.openFile(file);
+      void this.plugin.openFile(file).catch(() => new Notice(qiaomuReaderTranslate("could-not-open-the-book")));
     };
     const bookMenu = this._libCardMenu(file); card.addEventListener("contextmenu", bookMenu);
     const menuBtn = cover.createEl("button", { cls: "qiaomu-reader-lib-morebtn", attr: { type: "button" } });

@@ -3,9 +3,8 @@ import { createEngineObjectURL, revokeEngineObjectURL } from "./engine-frame.js"
 
 export const TEXT_EXTENSIONS = ["md", "markdown", "txt", "html", "htm"];
 export const isTextBook = name => TEXT_EXTENSIONS.includes(String(name).split(".").at(-1).toLowerCase());
-export const isListedBook = (file, folder, selected = []) => isTextBook(file.name)
-    ? selected.includes(file.path)
-    : !folder || file.path.startsWith(`${folder}/`);
+export const isListedBook = (file, folder, selected = [], removed = []) => !removed.includes(file.path)
+    && (isTextBook(file.name) ? selected.includes(file.path) : !folder || file.path.startsWith(`${folder}/`));
 
 // BOMs are authoritative. UTF-8 is preferred; GB18030 covers common Chinese
 // TXT exports. Never silently replace undecodable bytes with replacement glyphs.
