@@ -133,6 +133,36 @@ function evaluate(dom, code) {
   return dom.window.module.exports;
 }
 
+test("engine retains renderer relocation reasons even when Foliate's view omits them", async () => {
+  const dom = new JSDOM("<body><main></main></body>", { runScripts: "outside-only" });
+  const elements = foliateElements(root);
+  const { EpubEngine } = evaluate(dom, await bundle(elements));
+  const View = dom.window.customElements.get(JSON.parse(elements.define.__QBR_ENGINE_VIEW_TAG__));
+  View.prototype.open = async function () {
+    this.book = { sections: [{}], metadata: {} };
+    this.renderer = dom.window.document.createElement("div");
+    this.renderer.getContents = () => [{ doc: dom.window.document }];
+    this.renderer.addEventListener("relocate", e => {
+      // Upstream strips reason before emitting its visible range.
+      const detail = { cfi: "test", range: e.detail.range };
+      this.lastLocation = detail;
+      this.dispatchEvent(new dom.window.CustomEvent("relocate", { detail }));
+    });
+  };
+  View.prototype.init = async function () { this.lastLocation = { cfi: "test" }; };
+  View.prototype.close = function () {};
+  const reasons = [];
+  const engine = new EpubEngine(engineHost(dom), { onRelocate: detail => reasons.push(detail.reason) });
+  try {
+    await engine.open(new Uint8Array(), "test.epub");
+    const renderer = engineHost(dom).firstElementChild.renderer;
+    for (const reason of ["navigation", "anchor", "page", "scroll"]) {
+      renderer.dispatchEvent(new dom.window.CustomEvent("relocate", { detail: { reason } }));
+    }
+    assert.deepEqual(reasons, ["navigation", "anchor", "page", "scroll"]);
+  } finally { engine.destroy(); dom.window.close(); }
+});
+
 test("built Foliate elements load twice in one host and coexist with older dependency builds", async () => {
   const dom = new JSDOM("<body></body>", { runScripts: "outside-only" });
   const elements = foliateElements(root);

@@ -186,7 +186,18 @@ not be presented as available when the active provider accepts text only.
 - Verify in light, dark and one tinted reading theme; no accent colour may appear.
 
 
-## 13. Text documents as books
+
+## 13. Read-aloud transport (Readwise direction, 2026-10-12)
+
+- Voice-first pill: current voice, previous segment, play/pause, next segment, speed, close. Close is always visible and stops audio while retaining the saved sentence. Reader-theme surface/text/border tokens apply; no page reflow or fake duration.
+- Voice opens an anchored popover with inline service/model choice, individual voice selection and independent audition. Selecting a voice and testing a voice are distinct actions; testing never saves that voice as the selection. Search appears for larger catalogs. Credentials and endpoints have a permanent Speech settings entry.
+- Desktop first use defaults to Edge with Xiaoxiao, without a key. Preserve explicit existing service choices. A dismissible first-use note explains online transfer to Microsoft and offers Speech settings directly. Acknowledging it, opening the voice picker or entering configuration dismisses it persistently. Mobile fresh installs retain system speech; Edge is desktop-only.
+- Voice and speed panels are mutually exclusive, bounded by the reader pane, dismiss on outside click/Escape, and return keyboard focus. Dismissing a panel never stops main reading. All primary touch targets are at least 44px and accessible names use hidden text rather than hover tips.
+- Unconfigured services expose a specific issue and Set up and test action. Configuration opens directly on the selected service and focuses its key. Settings and audition return to the paused sentence with the original speed; no automatic body synthesis or playback. Only an actual test result can say it passed.
+- Main playback errors expose retry, speech settings and explicit system fallback. Never silently switch providers. No permanent untested/success messages in the pill.
+- Playback and viewport have separate positions. Reopening resumes the saved sentence if visible; after navigation, start at the current page and offer saved-position recovery. Browsing suspends follow. At a chapter boundary while browsing, pause until explicit continuation. See `docs/tts-interaction-2026-10-12.md`.
+- References: Readwise Reader floating transport and per-voice audition; independently implemented, no third-party UI code copied.
+## 14. Text documents as books
 
 Markdown, plain text and static HTML use the existing book reader and library.
 Markdown is parsed as GFM HTML by a bundled private Marked instance and rendered

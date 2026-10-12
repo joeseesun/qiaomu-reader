@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildProfile } from "./build-profile.mjs";
+import { buildProfile, RELEASE_ASSET_BUDGET_BYTES } from "./build-profile.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -39,7 +39,7 @@ requireCheck(versions[manifest.version] === manifest.minAppVersion, "versions.js
 const assets = Object.fromEntries(releaseFiles.map((name) => {
   const file = path.join(profile.outputDir, name);
   requireCheck(fs.existsSync(file), `missing release asset: ${name}`);
-  requireCheck(fs.statSync(file).size <= 5_000_000, `release asset exceeds 5 MB: ${name}`);
+  requireCheck(fs.statSync(file).size <= RELEASE_ASSET_BUDGET_BYTES, `release asset exceeds ${RELEASE_ASSET_BUDGET_BYTES} bytes: ${name}`);
   requireCheck(fs.statSync(file).size > 0, `empty release asset: ${name}`);
   return [name, { bytes: fs.statSync(file).size, sha256: sha256(file) }];
 }));
@@ -55,6 +55,9 @@ if (profile.name === "community") {
   requireCheck(!mainSource.includes("ACP installed but its executable was not found"), "installer execution code leaked into the community bundle");
 }
 const cssSource = fs.readFileSync(path.join(profile.outputDir, "styles.css"), "utf8");
+for (const name of ["edge-tts-LGPL.txt", "marked-MIT.txt"]) {
+  requireCheck(cssSource.includes(fs.readFileSync(path.join(root, "licenses", name), "utf8").replaceAll("*/", "* /")), `styles.css is missing the complete license: ${name}`);
+}
 requireCheck(!/!\s*important\b/i.test(cssSource), "styles.css contains priority overrides; use the scoped component cascade");
 requireCheck(!/:has\s*\(/i.test(cssSource), "styles.css contains relational selectors; use an explicit scoped state class");
 const fontPayloads = bundledFonts.map(({ file, family }) => {
