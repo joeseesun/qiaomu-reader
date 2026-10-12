@@ -185,3 +185,14 @@ not be presented as available when the active provider accepts text only.
 - Header: term (17px/600) with phonetic in small muted monospace, and a ghost target-language chip. Body: in-context meaning first, then senses with a monospace part-of-speech column, a muted note and a tinted example block. Footer: engine name, one-click engine switch, **Add word**, copy, save.
 - Verify in light, dark and one tinted reading theme; no accent colour may appear.
 
+
+
+## 13. Read-aloud transport (selected B, 2026-10-12)
+
+- Compact pill overlays the page above the bottom HUD; it does not change pagination. Reader-theme surface/text/border tokens apply in light and night themes.
+- Stable five-column order: visible speed, previous segment, centered play/pause, next segment, expand. The main action is a quiet solid circle. Keep all touch targets at least 44px.
+- No native select box, permanent success message, duplicated stop/close icons or service setup instructions in the compact transport.
+- Speed opens an anchored preset panel with the current value selected, keyboard focus and Escape return. A note explains next-segment speed changes for system speech.
+- Expanded options show the book and actual segment count, then inline service/model/voice choices and audition, saved-position resume when idle, and end reading. Service credentials remain behind an explicit configuration action. Switching voices pauses at the current segment; audition restores that paused segment with the original speed. Errors reveal recovery inline; fallback never appears during successful playback.
+- Accessible names use hidden text, avoiding Obsidian hover tooltips. Focus stays visible; loading uses a small contained indicator and respects reduced motion.
+- Reference: Readest mini-player / full-player separation. Independently implemented; no AGPL UI source copied. No fabricated duration or word-aligned progress.

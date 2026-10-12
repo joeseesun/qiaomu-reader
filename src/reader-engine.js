@@ -251,6 +251,14 @@ export class EpubEngine {
         return this.#view?.renderer?.getContents() ?? [];
     }
 
+    nextReadingSection(index) {
+        const sections = this.#book?.sections || [];
+        for (let next = index + 1; next < sections.length; next++) {
+            if (sections[next].linear !== "no") return next;
+        }
+        return null;
+    }
+
     // ── navigation ──────────────────────────────────────────────────────────
     #turnPage(direction, distance) {
         const view = this.#view;

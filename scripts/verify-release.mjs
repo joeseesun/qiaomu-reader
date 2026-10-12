@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildProfile } from "./build-profile.mjs";
+import { buildProfile, RELEASE_ASSET_BUDGET_BYTES } from "./build-profile.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -39,7 +39,7 @@ requireCheck(versions[manifest.version] === manifest.minAppVersion, "versions.js
 const assets = Object.fromEntries(releaseFiles.map((name) => {
   const file = path.join(profile.outputDir, name);
   requireCheck(fs.existsSync(file), `missing release asset: ${name}`);
-  requireCheck(fs.statSync(file).size <= 5_000_000, `release asset exceeds 5 MB: ${name}`);
+  requireCheck(fs.statSync(file).size <= RELEASE_ASSET_BUDGET_BYTES, `release asset exceeds ${RELEASE_ASSET_BUDGET_BYTES} bytes: ${name}`);
   requireCheck(fs.statSync(file).size > 0, `empty release asset: ${name}`);
   return [name, { bytes: fs.statSync(file).size, sha256: sha256(file) }];
 }));

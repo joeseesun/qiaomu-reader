@@ -65,6 +65,8 @@ function setup() {
     docOf: el => el.ownerDocument, selOf: el => el.ownerDocument.getSelection(), readerIsPdf: () => false,
     qiaomuReaderRefreshHlPanel() {}, qiaomuReaderAutoFocus() {}, positionHlPopup() {},
     hlCommentQuoteBlock() {}, Notice: class {},
+    ttsText: (_plugin, key) => key,
+    openTts: (_view, text) => { view._spokenSelection = text; },
     copyToClipboard: async text => { copied.push(text); return true; },
     hlColorCss: color => color, QUICK_HL_COLOR_IDS: ["yellow", "green", "pink"],
     HL_COLORS: ["yellow", "green", "pink", "blue"].map(id => ({ id, label: () => id })),

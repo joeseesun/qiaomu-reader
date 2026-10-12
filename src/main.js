@@ -83,6 +83,7 @@ import { externalBookSearchUrls, gutenbergSearchUrl, gutenbergDetailUrl, parseGu
 import { isLookupTerm, cleanLookupTerm, rangeContext, sentenceAround, buildTranslateMessages, buildLookupMessages, parseLookupAnswer, parseGoogleLookup, googleDetectedLanguage, sameLanguage, fallbackTarget, looksLikeLanguage, lookupEngine, lookupSessionKey, lookupCacheKey, createLookupCache } from "./lookup.js";
 import { defaultVocabularyPath, vocabularyDeckTag, vocabularyHeader, vocabularyKey, parseVocabularyCards, addToVocabulary, ankiFieldsFromCard } from "./vocabulary.js";
 import { ANKI_DEFAULT_URL, ANKI_DEFAULT_DECK, ANKI_ADDON_CODE, ankiNote, addAnkiNotes, ensureAnkiSetup } from "./anki.js";
+import { attachTts, openTts, openTtsSettings, stopViewTts, ttsText } from "./tts-ui.js";
 
 // Interface language is local to this plugin; dictionaries are bundled offline.
 let qiaomuReaderLanguage = "zh";
@@ -912,7 +913,9 @@ function buildReaderTopBar(view, opts) {
   back.addEventListener("click", opts.onBack);
   view.titleEl = bar.createDiv("qiaomu-reader-top-title");
   setReaderTitle(view.titleEl, opts.title);
-  return bar.createDiv("qiaomu-reader-top-right");
+  const tray = bar.createDiv("qiaomu-reader-top-right");
+  attachTts(view, tray);
+  return tray;
 }
 
 // Timer pill with its inline reset affordance; identical on both hosts.
@@ -1400,6 +1403,8 @@ function readerSettLineHeightRow(host, view, onApplied) {
 function buildReaderSettPanelBody(view, host, opts) {
   host.empty();
   host.createDiv("qiaomu-reader-pan-title").setText(opts.title);
+  const speech = host.createEl("button", { text: ttsText(view.plugin, "settings"), attr: { type: "button" } });
+  speech.addEventListener("click", () => openTtsSettings(view.plugin));
   const section = (label) => host.createDiv("qiaomu-reader-pan-sec").setText(label);
   section(qiaomuReaderTranslate("theme"));
   readerSettThemeRow(host, view, opts.onThemeApplied);
@@ -5683,6 +5688,7 @@ function openSelectionMoreMenu(view, event, includePrimary = false) {
   else {
     const primary = selectionActions(view).filter(item => includePrimary || !item.visible);
     for (const action of primary) add(action.label, action.icon, action.run);
+    add(ttsText(view.plugin, "selected"), "volume-2", () => { close(); openTts(view, cur.text); });
     if (primary.length) menu.addSeparator();
     add(qiaomuReaderTranslate("copy-as-a-quote"), "text-quote", async () => {
       const md = quoteMarkdown(view.plugin, cur, file); close();
@@ -10591,6 +10597,7 @@ const ReaderView = class extends ItemView {
     if (!isAiChat) clearAiSource(this);
   }
   async openFile(file) { // swap in another book: reset view state, show the loading card, load and render
+    stopViewTts(this);
     const pendingPosition = persistCurrentReaderPosition(this);
     const loadToken = this._loadCoordinator.begin();
     this._openingBook = loadToken;
@@ -11464,6 +11471,7 @@ const ReaderView = class extends ItemView {
   }
   async onClose() {
     this._loadCoordinator.cancel();
+    this._ttsCleanup?.();
     this._closed = true;
     this._resizeObs?.disconnect();
     this._selectionCleanup?.();
@@ -13136,6 +13144,7 @@ const ReaderModal = class extends Modal {
   }
   async onClose() {
     this._closed = true;
+    this._ttsCleanup?.();
     this._selectionCleanup?.();
     window.clearTimeout(this._contextSettleTimer);
     clearAiSource(this);
