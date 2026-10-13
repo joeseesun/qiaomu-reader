@@ -1,0 +1,3 @@
+The header read-aloud button now matches neighboring icons while idle or paused. It gains a subtle emphasis only while this reader is actually speaking; loading, completion, errors and another view's speech leave it quiet. Icon size and desktop hit area match the existing reader toolbar, with larger touch targets retained.
+
+Validation: 463 Node tests, 4 Python local speech tests, i18n, zero-warning ESLint, standard/community builds and release verification. Six real Obsidian 1.14.4 checks cover idle color, opening the player, native Mac playback, active emphasis, pause and stop. The real-vault test uses an independent fixture book.

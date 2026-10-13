@@ -521,7 +521,7 @@ export function openTts(view, selectedText) {
 export function attachTts(view, tray) {
   const plugin = view.plugin, controller = ensureTts(plugin), tx = key => ttsText(plugin, key);
   view._ttsCleanup?.();
-  button(tray, 'volume-2', tx('read'), () => openTts(view));
+  const readAction = button(tray, 'volume-2', tx('read'), () => openTts(view)); readAction.addClass('qbr-tts-read-action');
   const bar = view._ttsBar = view.contentEl.createDiv('qbr-tts-player'); bar.hidden = true;
   const status = bar.createEl('div', { cls: 'qbr-tts-sr', attr: { role: 'status' } });
 
@@ -669,6 +669,8 @@ export function attachTts(view, tray) {
     const profile = ttsProfile(config(plugin)), rate = own ? controller.rate : config(plugin).rate || 1;
     status.setText(state === 'idle' ? tx(willResume ? 'saved' : 'play') : state === 'error' ? errorText(plugin, controller.error, profile.id) : tx(state));
     if (own && controller.waitingSection) status.setText(tx('browseEnd'));
+    readAction.toggleClass('is-playing', own && state === 'playing');
+    readAction.setAttribute('aria-pressed', String(own && state === 'playing'));
     const playing = ['playing', 'loading'].includes(state);
     play.replaceChildren(); setIcon(play, state === 'loading' ? 'loader-circle' : playing ? 'pause' : 'play');
     play.createSpan({ cls: 'qbr-tts-sr', text: tx(own && controller.waitingSection ? 'nextChapter' : playing ? 'pause' : state === 'paused' ? 'resume' : state === 'error' ? 'retry' : willResume ? 'saved' : 'play') });

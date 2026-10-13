@@ -1808,6 +1808,12 @@ body.qiaomu-reader-active-view .status-bar { display: none; }
 
 @container (max-width: 320px) { .qbr-tts-current-voice svg { display: none; } }
 
+/* Reading action is quiet when idle; emphasize only this view's active speech. */
+.qiaomu-reader-top button.qbr-tts-read-action { color: var(--qiaomu-reader-muted, var(--text-muted)); min-width: 32px; min-height: 32px; width: 32px; height: 32px; padding: 0; border-radius: 6px; }
+.qiaomu-reader-top button.qbr-tts-read-action.is-playing { color: var(--qiaomu-reader-text, var(--text-normal)); }
+.qiaomu-reader-top .qbr-tts-read-action svg { width: 18px; height: 18px; stroke-width: 2; }
+@media (pointer: coarse) { .qiaomu-reader-top button.qbr-tts-read-action { width: 44px; height: 44px; } }
+
 /* Bundled reading subset: SIL OFL 1.1
 Copyright (c) 2023, Zhejiang JadeFoci Techonology Co. LTD
 (https://www.jadefoci.com/)
