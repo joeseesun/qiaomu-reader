@@ -8,6 +8,7 @@ import { speechDocumentChunks, splitSpeechText } from './tts-text.js';
 import { macVoiceChoices } from './tts-mac-voices.js';
 import { createLocalTtsManager, LOCAL_MODELS, localVoiceChoices, normalizeLocalProfile } from './tts-local.js';
 import { LocalSpeechPanel } from './tts-local-ui.js';
+import { speechServiceLinks } from './tts-service-links.js';
 
 // The new feature has reviewed Chinese/English copy. Other plugin languages
 // explicitly fall back to English until their TTS translations are reviewed.
@@ -59,6 +60,8 @@ export const TTS_COPY = {
   read: ['朗读', 'Read aloud'], selected: ['朗读选中内容', 'Read selection'], settings: ['朗读设置', 'Speech settings'],
   service: ['语音服务', 'Voice service'], system: ['系统语音', 'System voice'], voice: ['音色', 'Voice'], model: ['模型', 'Model'],
   key: ['API 密钥', 'API key'], url: ['服务地址', 'Service URL'], region: ['区域', 'Region'], advanced: ['高级设置', 'Advanced settings'],
+  getKey: ['获取密钥', 'Get a key'], serviceDocs: ['服务文档', 'Service docs'],
+  customKeyHelp: ['向所用服务商获取密钥；本机服务无需密钥时可留空。', 'Get a key from your provider; leave it empty for local services that need no key.'],
   options: ['朗读选项', 'Playback options'], collapse: ['收起选项', 'Collapse options'], finish: ['结束朗读', 'End reading'],
   segment: ['第 {0} 段', 'Segment {0}'], speedNote: ['系统语音将在下一段应用新倍速。', 'System speech applies the new speed to the next segment.'],
   resourceId: ['语音资源 ID', 'Speech resource ID'], doubao: ['豆包语音', 'Doubao'], siliconflow: ['硅基流动', 'SiliconFlow'],
@@ -198,6 +201,15 @@ function hideSpeechProvider(id, selected) {
   return id !== selected && ((['edge', 'localModel'].includes(id) && !Platform.isDesktopApp) || (id === 'macos' && (!Platform.isDesktopApp || !Platform.isMacOS)));
 }
 function speechDescription(id) { return id === 'system' ? 'local' : id === 'localModel' ? 'localModelHelp' : id === 'macos' ? 'macosHelp' : id === 'edge' ? 'edge' : 'cloud'; }
+function renderServiceHelp(host, profile, tx) {
+  host.empty();
+  const links = speechServiceLinks(profile);
+  if (!links) { host.setText(tx('customKeyHelp')); return; }
+  links.forEach((href, i) => {
+    if (i) host.appendText(' · ');
+    host.createEl('a', { text: tx(i ? 'serviceDocs' : 'getKey'), href, attr: { target: '_blank', rel: 'noopener noreferrer' } });
+  });
+}
 export function openTtsSettings(plugin) { const modal = new TtsSettingsModal(plugin); modal.open(); return modal; }
 class SpeechChoices {
   constructor(host, plugin, onChange, options = {}) {
@@ -339,8 +351,10 @@ class TtsSettingsModal extends Modal {
     const id = settings.provider, profile = ttsProfile(settings);
     this.contentEl.createEl('p', { cls: 'qbr-tts-description', text: tx(speechDescription(id)) });
     if (id === 'doubao' || id === 'minimax') this.contentEl.createEl('p', { cls: 'qbr-tts-description', text: tx(`${id}Help`) });
+    let keyHelp;
     const update = (key, value) => {
       settings.profiles[id] = { ...settings.profiles[id], [key]: value.trim() }; changed();
+      if (keyHelp && key === 'baseUrl') renderServiceHelp(keyHelp, ttsProfile(settings), tx);
     };
     const field = (host, key, label = key) => new Setting(host).setName(tx(label)).addText(input => input.setValue(profile[key] || '').onChange(value => update(key, value)));
     if (!['system', 'macos', 'edge', 'localModel'].includes(id)) new Setting(this.contentEl).setName(tx('key')).addText(input => {
@@ -350,6 +364,10 @@ class TtsSettingsModal extends Modal {
         catch { new Notice(tx('error-save')); }
       });
     });
+    if (!['system', 'macos', 'edge', 'localModel'].includes(id)) {
+      keyHelp = this.contentEl.createEl('p', { cls: 'qbr-tts-service-help qbr-tts-description' });
+      renderServiceHelp(keyHelp, profile, tx);
+    }
     this.picker = new SpeechChoices(this.contentEl.createDiv('qbr-tts-choices'), p, changed);
     if (id === 'azure') field(this.contentEl, 'region');
     if (profile.baseUrl !== undefined) {
