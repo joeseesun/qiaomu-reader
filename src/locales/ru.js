@@ -1,6 +1,7 @@
 // Russian locale pack. Inherited Russian UI strings keep their original wording;
 // strings that were originally Chinese source keys are translated to Russian here.
 export default {
+  "ai-connect-account-or-key": "Подключите аккаунт или введите API-ключ и пройдите проверку, чтобы начать работу с ИИ.",
   "library-remove": "Убрать из библиотеки",
   "library-removed": "«{0}» убрано. Файл и записи чтения сохранены.",
   "library-change-failed": "Не удалось обновить библиотеку. Проверьте доступ и повторите попытку.",

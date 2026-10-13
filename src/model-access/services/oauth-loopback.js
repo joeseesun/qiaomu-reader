@@ -51,7 +51,8 @@ async function listenOAuth(state, signal, tokenDance = false) {
     res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "Content-Security-Policy": "default-src 'none'" });
     res.end(t("complete"));
     res.once("finish", close);
-    if (url.searchParams.has("error") || url.searchParams.getAll("code").length !== 1) reject(new Error(t("failed")));
+    if (url.searchParams.get("error") === "access_denied") reject(new Error(t("denied")));
+    else if (url.searchParams.has("error") || url.searchParams.getAll("code").length !== 1) reject(new Error(t("failed")));
     else resolve(url);
   });
   await new Promise((res, rej) => {

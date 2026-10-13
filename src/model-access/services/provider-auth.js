@@ -22,16 +22,16 @@ const randomOAuth = () => b64(crypto.getRandomValues(new Uint8Array(48)));
 async function pkceChallenge(verifier) {
   return b64(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier))));
 }
-async function json(url, init = {}) {
+async function json(url, init = {}, rejected = "expired") {
   const response = await apiFetch(url, { ...init, redirect: "error", signal: init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(3e4)]) : AbortSignal.timeout(3e4) });
   if (!response.ok) {
     await response.body?.cancel();
-    throw new Error(response.status === 400 || response.status === 401 ? t("expired") : t("failed"));
+    throw new Error(response.status === 400 || response.status === 401 ? t(rejected) : t("failed"));
   }
   return object(await response.json());
 }
-async function token(body, signal) {
-  return json(tokenUrl, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(body).toString(), signal });
+async function token(body, signal, rejected) {
+  return json(tokenUrl, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(body).toString(), signal }, rejected);
 }
 function readAccount(raw) {
   try {
@@ -90,7 +90,9 @@ function authorizationUrl(kind, redirect, state, challenge, nonce, hostId, exist
     state,
     nonce,
     code_challenge: challenge,
-    code_challenge_method: "S256"
+    code_challenge_method: "S256",
+    // A returning sign-in skips account selection for the same identity.
+    ...existing?.idToken ? { id_token_hint: existing.idToken } : {}
   })}`;
   const query = new URLSearchParams({ callback_url: redirect, code_challenge: challenge, code_challenge_method: "S256" });
   if (kind === "openrouter") {
@@ -135,7 +137,7 @@ async function signInAccount(kind, store, openBrowser, signal, existing) {
     }
     const clientId = back.searchParams.get("client_id") || existing?.clientId;
     if (!clientId || clientId === "dynamic_agent_client" || existing && clientId !== existing.clientId) throw new Error(t("invalid"));
-    const data = await token({ grant_type: "authorization_code", client_id: clientId, code, code_verifier: verifier, redirect_uri: listener.redirect, resource }, combined);
+    const data = await token({ grant_type: "authorization_code", client_id: clientId, code, code_verifier: verifier, redirect_uri: listener.redirect, resource }, combined, "failed");
     const identity = await validateIdentity(requiredString(data.id_token), clientId, nonce, combined);
     if (existing && identity.sub !== existing.subject) throw new Error(t("invalid"));
     const scopes = typeof data.scope === "string" ? data.scope.split(/\s+/) : [];

@@ -1,4 +1,5 @@
 export default {
+  "ai-connect-account-or-key": "アカウントを接続するか API キーを入力し、テストに合格すると使えます。",
   "library-remove": "本棚から取り除く",
   "library-removed": "「{0}」を取り除きました。ファイルと読書記録は保持されます。",
   "library-change-failed": "本棚を更新できません。保管庫へのアクセスを確認して再試行してください。",

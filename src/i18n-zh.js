@@ -1,6 +1,7 @@
 // Generated from the complete source UI dictionary and reviewed for core reading terms.
 // Keep placeholders, Markdown and HTML structure identical to the source strings.
 export const QIAOMU_READER_ZH_CN = {
+  "ai-connect-account-or-key": "先连接账号或填写 API Key，测试通过后即可使用。",
   "library-remove": "从书库移除",
   "library-removed": "已移除《{0}》；原文件和阅读记录保留。",
   "library-change-failed": "无法更新书库，请检查仓库权限后重试。",
