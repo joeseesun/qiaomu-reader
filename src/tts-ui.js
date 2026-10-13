@@ -219,6 +219,7 @@ class SpeechChoices {
   }
   destroy() { this.disposed = true; this.abort?.abort(); this.localPanel?.destroy(); window.speechSynthesis?.removeEventListener('voiceschanged', this.onVoices); }
   render() {
+    const searchQuery = this.host.querySelector('input[type="search"]')?.value || '';
     const p = this.plugin, tx = key => ttsText(p, key), settings = config(p), profile = ttsProfile(settings), id = profile.id;
     if (this.provider !== id) { this.abort?.abort(); this.catalog = {}; this.message = ''; this.nativeLoaded = false; this.localLoaded = false; this.provider = id; }
     this.localPanel?.destroy(); this.host.empty();
@@ -258,7 +259,7 @@ class SpeechChoices {
       const searchLabel = this.host.createEl('label', { cls: 'qbr-tts-search' });
       searchLabel.createSpan({ cls: 'qbr-tts-sr', text: tx('voiceSearch') });
       const search = searchLabel.createEl('input', { type: 'search', attr: { placeholder: tx('voiceSearch') } });
-      searchLabel.hidden = voices.length < 9;
+      search.value = searchQuery;
       const list = this.host.createDiv('qbr-tts-voice-list');
       const empty = this.host.createDiv({ cls: 'qbr-tts-choice-feedback', text: tx('noVoices') }); empty.hidden = true;
       for (const entry of voices) {
@@ -272,11 +273,12 @@ class SpeechChoices {
         const preview = button(row, 'volume-2', `${tx('preview')} ${entry.label}`, () => this.options.preview(entry.id));
         preview.addClass('qbr-tts-voice-preview');
       }
-      search.addEventListener('input', () => {
+      const filterVoices = () => {
         const query = search.value.trim().toLocaleLowerCase(); let matches = 0;
         for (const row of list.children) { row.hidden = !row.textContent.toLocaleLowerCase().includes(query); if (!row.hidden) matches++; }
         empty.hidden = matches > 0;
-      });
+      };
+      search.addEventListener('input', filterVoices); filterVoices();
       if (!['system', 'localModel', 'macos'].includes(id)) {
         const details = this.host.createEl('details', { cls: 'qbr-tts-custom-voice' });
         details.createEl('summary', { text: tx('customVoice') });

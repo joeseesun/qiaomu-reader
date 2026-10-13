@@ -204,3 +204,17 @@ test('automatic EPUB page-follow awaits relocation without disabling follow, whi
   current=ranges[0];f.view._ttsOnRelocate({reason:'anchor'});assert.equal(owner.follow,true);
   f.view._ttsOnRelocate({reason:'page'});assert.equal(owner.follow,false);f.cleanup();
 });
+
+test('voice search is available for short lists and survives choosing a filtered voice', () => {
+  const f = fixture({ provider: 'edge' });
+  f.q('.qbr-tts-current-voice').click();
+  let input = f.q('.qbr-tts-search input');
+  assert.ok(input); assert.equal(input.parentElement.hidden, false);
+  input.value = '云希'; input.dispatchEvent(new dom.window.Event('input'));
+  const row = [...f.q('.qbr-tts-voice-list').children].find(el => !el.hidden);
+  assert.ok(row); row.querySelector('button').click();
+  input = f.q('.qbr-tts-search input');
+  assert.equal(input.value, '云希');
+  assert.equal([...f.q('.qbr-tts-voice-list').children].filter(el => !el.hidden).length, 1);
+  assert.equal(f.scopes.size, 1); f.cleanup();
+});
