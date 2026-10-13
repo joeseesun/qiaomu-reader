@@ -4,6 +4,8 @@ import { openReaderLeaf } from "./open-reader.js";
 import { AiAccountModal } from './ai-account-modal.js';
 import { completeChatGPT, connectionToken } from './model-access/client.js';
 import { cancelAccountLogins, readAccount } from './model-access/services/provider-auth.js';
+import { accountText, setAccountLanguage } from './model-access/i18n/accounts.js';
+import { apiSourceState, renderAiSources } from './ai-sources.js';
 import { watchPaneDividers } from "./pane-dividers.js";
 import { selectionActionPreferences } from "./selection-preferences.js";
 import { watchQuietUi } from "./quiet-ui.js";
@@ -34,7 +36,7 @@ const BOOK_EXTENSIONS = new Set([...ENGINE_EXTENSIONS, "pdf"]);
 // required compatibility layer while exposing the same API.
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import { unpackPdfWorker } from "./pdf-worker.js";
-import { AI_PROVIDER_CATEGORIES, AI_PROVIDERS, aiProviderFor, buildAiRequestBody, buildAiRequestOptions, classifyAiHttpStatus, normalizeAiBase } from "./ai-providers.js";
+import { AI_PROVIDERS, aiProviderFor, buildAiRequestBody, buildAiRequestOptions, classifyAiHttpStatus, normalizeAiBase } from "./ai-providers.js";
 import { createOpenAiSseParser } from "./ai-stream.js";
 import { composeAiAnswerNote } from "./ai-note.js";
 import { suggestAiNoteTitle } from "./ai-note-title.js";
@@ -90,7 +92,7 @@ import { attachTts, openTts, openTtsSettings, stopViewTts, ttsText } from "./tts
 
 // Interface language is local to this plugin; dictionaries are bundled offline.
 let qiaomuReaderLanguage = "zh";
-function qiaomuReaderSetLanguage(v) { qiaomuReaderLanguage = normalizeUiLanguage(v); }
+function qiaomuReaderSetLanguage(v) { qiaomuReaderLanguage = normalizeUiLanguage(v); setAccountLanguage(qiaomuReaderLanguage); }
 
 function qiaomuReaderTranslate(s){
   const lang = qiaomuReaderLanguage || 'zh';
@@ -3571,7 +3573,7 @@ function aiSetupState(plugin) {
   });
 }
 function aiSetupMessage(state) {
-  if (state.reason === "key") return qiaomuReaderTranslate("select-or-create-an-api-key-then-complete-the-test-to-start-usin");
+  if (state.reason === "key") return qiaomuReaderTranslate("ai-connect-account-or-key");
   if (state.reason === "model") return qiaomuReaderTranslate("choose-a-model-then-complete-the-test-to-start-using-ai");
   if (state.reason === "base") return qiaomuReaderTranslate("enter-the-base-url-then-complete-the-test-to-start-using-ai");
   if (state.reason === "desktop") return qiaomuReaderTranslate("this-service-works-only-in-obsidian-desktop-change-the-service-o");
@@ -13407,7 +13409,7 @@ async function testAndEnableAi(plugin, onStage = () => {}) {
   }
   const stillCurrent = () => {
     const current = aiConfig(plugin);
-    if (current.id !== cfg.id || current.model !== cfg.model) {
+    if (current.id !== cfg.id || current.model !== cfg.model || current.base !== cfg.base || current.key !== cfg.key) {
       const error = new Error("AI configuration changed during verification");
       error.qiaomuReaderReason = "notconfigured";
       throw error;
@@ -13449,6 +13451,12 @@ function openPluginAiSettings(app, plugin, onReady) {
       if (state.ready && state.enabled) {
         finish();
         return true;
+      }
+      const cfg = aiConfig(plugin);
+      if (state.reason === "key" && cfg.transport !== "cli") {
+        // Nothing to test yet: go to the sign-in or key step instead of failing.
+        tab._openAiAccount(cfg.id, cfg.provider, () => { if (modal.bodyEl?.isConnected) modal.draw(); }, { onReady: (result) => { modal.close(); finish(result); } });
+        return false;
       }
       try {
         const result = await testAndEnableAi(plugin, setButtonText);
@@ -13733,29 +13741,21 @@ const SettingsTab = class extends PluginSettingTab {
     const cfg = aiConfig(plugin);
     c.addClass("qiaomu-reader-ai-setup");
     if (plugin.qiaomuAgentAvailable?.()) this._aiAssistantRow(c, s);
-    this._aiProviderRow(c, s, redraw);
+    if (cfg.provider) this._aiCurrentRow(c, s, cfg, redraw, options);
+    renderAiSources(c, plugin, {
+      translate: qiaomuReaderTranslate,
+      // Only a provider-scoped secret marks a service as connected.
+      secret: id => (s.aiSecrets?.[id] || id === s.aiProvider) ? aiSecretValue(plugin, id) : "",
+      openAccount: (id, activate) => this._openAiAccount(id, AI_PROVIDERS[id], redraw, { ...options, activate }),
+      use: id => void this._useAiSource(id, redraw, options),
+      redraw,
+    });
     if (!cfg.provider) {
       if (!options.enableOnSuccess) buildAiAppearanceSettings(c, plugin);
       return;
     }
     const p = cfg.provider;
-    if (p.transport !== "cli") new Setting(c).setName(qiaomuReaderTranslate("ai-service")).addButton(button => button.setButtonText(qiaomuReaderTranslate("accounts-and-models")).onClick(() => new AiAccountModal(plugin, cfg.id, p, redraw).open()));
-    this._aiModelPicker(c, s, p, redraw);
-    const needsSecret = p.transport !== "cli" && p.transport !== "chatgpt" && p.needsKey && !cfg.key;
-    if (needsSecret || cfg.id === "custom") this._aiSecretRow(c, s, p);
-    if (cfg.id === "custom") this._aiBaseRow(c, s, p);
     if (p.transport === "cli") this._aiCliSetupHelp(c, s, redraw, options);
-    const feedback = c.createDiv("qiaomu-reader-ai-setup-feedback");
-    feedback.setAttribute("role", "status");
-    const paintStatus = () => {
-      if (feedback.getAttribute("role") === "alert") return;
-      const state = aiSetupState(plugin);
-      feedback.empty();
-      setIcon(feedback.createSpan("qiaomu-reader-ai-setup-status-icon"), state.enabled ? "circle-check" : "circle");
-      feedback.createSpan({ text: state.enabled ? qiaomuReaderTranslate("ai-ready-to-use") : qiaomuReaderTranslate("ai-connect-on-start") });
-    };
-    paintStatus();
-    c.addEventListener("change", () => window.setTimeout(paintStatus, 0));
     const advanced = this._settingsDisclosure(c, "advanced");
     advanced.parentElement.setAttribute("data-ai-advanced", "");
     if (p.transport === "cli") this._aiEffortRow(advanced, s);
@@ -13764,13 +13764,79 @@ const SettingsTab = class extends PluginSettingTab {
     connection.parentElement.setAttribute("data-ai-connection", "");
     if (p.transport === "cli") this._aiCliRows(connection, s, p, redraw);
     if (p.transport !== "cli" && p.transport !== "chatgpt") {
-      if (p.needsKey && !needsSecret) this._aiSecretRow(connection, s, p);
-      if (cfg.id !== "custom") this._aiBaseRow(connection, s, p);
+      // Key entry lives in the connect dialog; this row only reuses a key
+      // already in Obsidian's shared secret storage.
+      if (p.needsKey || cfg.id === "custom") this._aiSecretRow(connection, s, p);
+      this._aiBaseRow(connection, s, p);
     }
     this._aiTestRow(connection, p, options);
     const behavior = this._settingsDisclosure(advanced, "ai-response-preferences");
     this._aiTailRows(behavior, s, p, cfg);
     if (!options.enableOnSuccess) buildAiAppearanceSettings(c, plugin);
+  }
+  /** The service and model in use, with one picker across every connected source. */
+  _aiCurrentRow(host, s, cfg, redraw, options) {
+    const plugin = this.plugin;
+    const section = host.createDiv("qiaomu-reader-src-section");
+    section.createDiv({ cls: "qiaomu-reader-src-title", text: accountText("inUseTitle") });
+    const picker = this._aiModelPicker(section, s, cfg.provider, redraw, options);
+    picker.setName(qiaomuReaderTranslate(cfg.provider.label));
+    const feedback = picker.descEl.createDiv("qiaomu-reader-ai-setup-feedback");
+    const state = aiSetupState(plugin);
+    const error = plugin._aiSetupError;
+    feedback.setAttribute("role", error ? "alert" : "status");
+    setIcon(feedback.createSpan("qiaomu-reader-ai-setup-status-icon"), plugin._aiTesting ? "loader" : state.enabled ? "circle-check" : error ? "circle-alert" : "circle");
+    feedback.createSpan({ text: plugin._aiTesting ? accountText("testing") : error || (state.enabled ? qiaomuReaderTranslate("ai-ready-to-use") : aiSetupMessage(state)) });
+    if (!state.enabled && !plugin._aiTesting && state.reason === "key" && cfg.transport !== "cli") {
+      const connect = feedback.createEl("button", { text: accountText("connect"), attr: { type: "button" } });
+      connect.addEventListener("click", () => this._openAiAccount(cfg.id, cfg.provider, redraw, { ...options, activate: true }));
+    }
+  }
+  /** Switch to a connected source and check it right away. */
+  async _useAiSource(id, redraw, options = {}) {
+    const s = this.plugin.settings;
+    s.aiProvider = id;
+    s.aiModel = s.aiModels?.[id] || "";
+    s.aiEnabled = false;
+    s.aiNeedsVerification = true;
+    await this._saveAll();
+    if (aiSetupState(this.plugin).reason === "key" && AI_PROVIDERS[id]?.transport !== "cli") {
+      redraw();
+      this._openAiAccount(id, AI_PROVIDERS[id], redraw, { ...options, activate: true });
+      return;
+    }
+    await this._autoTestAi(redraw, options, true);
+  }
+  async _autoTestAi(redraw, options = {}, finish = false) {
+    const plugin = this.plugin;
+    plugin._aiSetupError = "";
+    plugin._aiTesting = true;
+    redraw();
+    try {
+      const result = await testAndEnableAi(plugin);
+      new Notice(qiaomuReaderTranslate("ai-assistance-enabled-0-1-ms", result.model, result.latency));
+      plugin._aiTesting = false;
+      if (finish && typeof options.onReady === "function") options.onReady(result);
+      else redraw();
+    } catch (error) {
+      plugin._aiTesting = false;
+      plugin._aiSetupError = aiConnectionErrorMessage(error);
+      redraw();
+    }
+  }
+  _openAiAccount(id, p, redraw, options = {}) {
+    const plugin = this.plugin;
+    plugin._aiSetupError = "";
+    new AiAccountModal(plugin, id, { ...p, label: qiaomuReaderTranslate(p.label) }, (result) => {
+      if (result && typeof options.onReady === "function") options.onReady(result);
+      else redraw();
+    }, async (onStage) => {
+      try {
+        return await testAndEnableAi(plugin, onStage);
+      } catch (error) {
+        throw new Error(aiConnectionErrorMessage(error));
+      }
+    }, { activate: options.activate !== false }).open();
   }
   _aiCliSetupHelp(host, s, redraw, options) {
     if (!Platform.isDesktopApp) return;
@@ -13874,61 +13940,71 @@ const SettingsTab = class extends PluginSettingTab {
       });
     });
   }
-  _aiProviderRow(host, s, redraw) {
-    new Setting(host).setName(qiaomuReaderTranslate("ai-service")).addDropdown(dropdown => {
-      dropdown.selectEl.setAttribute("aria-label", qiaomuReaderTranslate("ai-service"));
-      dropdown.addOption("", qiaomuReaderTranslate("choose-a-service"));
-      for (const category of AI_PROVIDER_CATEGORIES) {
-        const group = dropdown.selectEl.createEl("optgroup", { attr: { label: qiaomuReaderTranslate(category.label) } });
-        for (const [id, p] of Object.entries(AI_PROVIDERS)) {
-          if (p.category !== category.id || (p.desktopOnly && !Platform.isDesktopApp)) continue;
-          group.createEl("option", { text: qiaomuReaderTranslate(p.label), attr: { value: id } });
-        }
-      }
-      dropdown.setValue(s.aiProvider || "").onChange(async choice => {
-        s.aiProvider = choice;
-        s.aiModel = s.aiModels && s.aiModels[choice] || "";
-        s.aiEnabled = false;
-        s.aiNeedsVerification = Boolean(choice);
-        await this._saveAll();
-        redraw();
-      });
-    });
-  }
-  _aiModelPicker(host, s, p, redraw) {
-    const models = [...new Set([...(s.aiCatalogs?.[s.aiProvider] || []).map(m => m.id), p.model, ...(p.models || [])].filter(Boolean))];
-    const custom = Boolean(s.aiModel && !models.includes(s.aiModel)) || (!p.model && p.transport !== "cli" && !s.aiModel);
-    const saveModel = async value => {
-      s.aiModel = value;
-      s.aiModels = { ...s.aiModels, [s.aiProvider]: value };
-      s.aiEnabled = false;
-      s.aiNeedsVerification = true;
-      await this._saveAll();
+  _aiModelPicker(host, s, p, redraw, options = {}) {
+    const plugin = this.plugin;
+    const sep = "\n";
+    const agents = plugin._aiCliAgents || {};
+    const secret = id => (s.aiSecrets?.[id] || id === s.aiProvider) ? aiSecretValue(plugin, id) : "";
+    // Every connected service and detected agent, current one first.
+    const sources = Object.keys(AI_PROVIDERS).filter(id => id === s.aiProvider
+      || (AI_PROVIDERS[id].transport === "cli" ? Boolean(agents[id]) : apiSourceState(plugin, id, secret(id))?.ok));
+    sources.sort((a, b) => (b === s.aiProvider) - (a === s.aiProvider));
+    const modelsFor = id => {
+      const q = AI_PROVIDERS[id];
+      const catalog = (s.aiCatalogs?.[id] || []).map(m => m.id);
+      const models = [...new Set([...(catalog.length ? catalog : [q.model, ...(q.models || [])]), s.aiModels?.[id] || ""].filter(Boolean))];
+      return q.transport === "cli" ? ["", ...models] : models;
     };
+    const current = s.aiModels?.[s.aiProvider] || s.aiModel || p.model || "";
+    const custom = Boolean(current && !modelsFor(s.aiProvider).includes(current));
     let inputRow;
-    new Setting(host).setName(qiaomuReaderTranslate("model-2")).addDropdown(dropdown => {
+    const picker = new Setting(host).setName(qiaomuReaderTranslate("model-2")).addDropdown(dropdown => {
       dropdown.selectEl.setAttribute("aria-label", qiaomuReaderTranslate("model-2"));
-      dropdown.addOption("", qiaomuReaderTranslate("default-model"));
-      for (const model of models) dropdown.addOption(model, model);
-      dropdown.addOption("__custom__", qiaomuReaderTranslate("ai-custom-model"));
-      dropdown.setValue(custom ? "__custom__" : s.aiModel || "");
+      for (const id of sources) {
+        const group = dropdown.selectEl.createEl("optgroup", { attr: { label: qiaomuReaderTranslate(AI_PROVIDERS[id].label) } });
+        for (const model of modelsFor(id)) group.createEl("option", { text: model || accountText(AI_PROVIDERS[id].transport === "cli" ? "agentDefault" : "defaultModel"), attr: { value: id + sep + model } });
+        if (id === s.aiProvider && custom) group.createEl("option", { text: current, attr: { value: id + sep + current } });
+      }
+      dropdown.addOption("__custom__", accountText("otherModel"));
+      dropdown.setValue(s.aiProvider + sep + current);
       dropdown.onChange(async value => {
         if (value === "__custom__") {
           inputRow.settingEl.removeClass("qiaomu-reader-hidden");
           inputRow.controlEl.querySelector("input")?.focus();
           return;
         }
-        await saveModel(value); redraw();
+        const [id, model] = value.split(sep);
+        s.aiProvider = id;
+        s.aiModel = model;
+        s.aiModels = { ...s.aiModels, [id]: model };
+        s.aiEnabled = false;
+        s.aiNeedsVerification = true;
+        await this._saveAll();
+        await this._autoTestAi(redraw, options);
       });
     });
     inputRow = new Setting(host).setName(qiaomuReaderTranslate("model-id"))
-      .addText(field => field.setValue(s.aiModel || "").setPlaceholder(p.model || "model-id").onChange(value => saveModel(value.trim())));
+      .addText(field => {
+        field.setValue(custom ? current : "").setPlaceholder(p.model || "model-id");
+        const commit = async () => {
+          const value = field.getValue().trim();
+          if (!value || value === s.aiModel) return;
+          s.aiModel = value;
+          s.aiModels = { ...s.aiModels, [s.aiProvider]: value };
+          s.aiEnabled = false;
+          s.aiNeedsVerification = true;
+          await this._saveAll();
+          await this._autoTestAi(redraw, options);
+        };
+        field.inputEl.addEventListener("change", () => void commit());
+      });
     inputRow.settingEl.toggleClass("qiaomu-reader-hidden", !custom);
     const efforts = s.aiCatalogs?.[s.aiProvider]?.find(m => m.id === s.aiModel)?.efforts || [];
     if (efforts.length) new Setting(host).setName(qiaomuReaderTranslate("reasoning-effort")).addDropdown(dropdown => {
       dropdown.addOption('', qiaomuReaderTranslate("default-model")); efforts.forEach(e => dropdown.addOption(e, e));
       dropdown.setValue(s.aiModelEfforts?.[s.aiProvider + ':' + s.aiModel] || '').onChange(async value => { s.aiModelEfforts = { ...s.aiModelEfforts, [s.aiProvider + ':' + s.aiModel]: value }; await this._saveAll(); });
     });
+    return picker;
   }
   _aiCliRows(host, s, p, redraw) {
     if (!Platform.isDesktopApp) {

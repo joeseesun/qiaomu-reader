@@ -1,4 +1,5 @@
 export default {
+  "ai-connect-account-or-key": "Connectez un compte ou saisissez une clé API, puis terminez le test pour utiliser l’IA.",
   "library-remove": "Retirer de la bibliothèque",
   "library-removed": "« {0} » retiré. Fichier et données de lecture conservés.",
   "library-change-failed": "Impossible de mettre à jour la bibliothèque. Vérifiez l’accès et réessayez.",

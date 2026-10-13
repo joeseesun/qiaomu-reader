@@ -948,8 +948,8 @@ test("settings use task tabs, concise intros, and Chinese-first copy", () => {
   assert.match(chinese, /只改变书页；顶部和底部工具栏始终跟随 Obsidian/);
   assert.match(chinese, /按自己的阅读习惯调整，所有设置都会自动保存/);
   assert.match(chinese, /"confirm": "确定"/);
-  assert.match(source, /if \(cfg\.id === "custom"\) this\._aiBaseRow\(c, s, p\)/);
-  assert.match(source, /if \(needsSecret \|\| cfg\.id === "custom"\) this\._aiSecretRow\(c, s, p\)/);
+  assert.match(source, /renderAiSources\(c, plugin, \{/);
+  assert.match(source, /if \(p\.needsKey \|\| cfg\.id === "custom"\) this\._aiSecretRow\(connection, s, p\)/);
   assert.match(source, /aiSecrets: \{\}, aiBases: \{\}/);
   assert.match(source, /settings\.aiSecrets\?\.\[providerId\]/);
   assert.match(source, /settings\.aiBases\?\.\[id\]/);

@@ -1,4 +1,5 @@
 export default {
+  "ai-connect-account-or-key": "Verbinde ein Konto oder gib einen API-Schlüssel ein und schließe den Test ab, um KI zu nutzen.",
   "library-remove": "Aus Bibliothek entfernen",
   "library-removed": "„{0}“ entfernt. Datei und Lesedaten bleiben erhalten.",
   "library-change-failed": "Bibliothek konnte nicht aktualisiert werden. Prüfen Sie den Zugriff und versuchen Sie es erneut.",
