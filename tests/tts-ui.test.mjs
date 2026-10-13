@@ -18,6 +18,7 @@ E.createEl = function(tag, opts = {}) {
   if (opts.text) el.textContent = opts.text;
   if (opts.type) el.type = opts.type;
   if (opts.value !== undefined) el.value = opts.value;
+  if (opts.href) el.href = opts.href;
   for (const [k, v] of Object.entries(opts.attr || {})) el.setAttribute(k, v);
   this.append(el); return el;
 };
@@ -25,6 +26,7 @@ E.createDiv = function(opts) { return this.createEl('div', opts); };
 E.createSpan = function(opts) { return this.createEl('span', opts); };
 E.empty = function() { this.replaceChildren(); };
 E.setText = function(text) { this.textContent = text; };
+E.appendText = function(text) { this.append(doc.createTextNode(text)); };
 E.addClass = function(c) { this.classList.add(c); };
 E.toggleClass = function(c, yes) { this.classList.toggle(c, yes); };
 dom.window.ResizeObserver = class { observe() {} disconnect() {} };
@@ -128,6 +130,46 @@ test('unconfigured cloud service has direct configuration recovery and retains i
   assert.match(f.q('.qbr-tts-setup').textContent, /配置并试听/);
   f.q('.qbr-tts-setup button').click();
   assert.equal(doc.activeElement.type, 'password'); lastModal.close(); f.cleanup();
+});
+test('cloud setup offers provider-specific public key and speech docs without exposing keys', () => {
+  const expected = {
+    openai: 'platform.openai.com/api-keys', qwen: 'bailian.console.aliyun.com/cn-beijing/model/settings/api-key',
+    doubao: 'console.volcengine.com/speech/service', minimax: 'platform.minimax.cn/console/access?tab=api-keys',
+    siliconflow: 'cloud.siliconflow.cn/account/ak', elevenlabs: 'elevenlabs.io/app/developers/api-keys',
+    azure: 'portal.azure.com/#create/Microsoft.CognitiveServicesSpeechServices',
+  };
+  const f = fixture({ provider: 'openai', introSeen: true });
+  f.p.app.secretStorage.getSecret = () => 'private-test-key';
+  ui.openTtsSettings(f.p);
+  const service = () => lastModal.contentEl.querySelector('select');
+  for (const [id, url] of Object.entries(expected)) {
+    service().value = id; service().dispatchEvent(new dom.window.Event('change'));
+    const links = [...lastModal.contentEl.querySelectorAll('.qbr-tts-service-help a')];
+    assert.equal(links.length, 2); assert.equal(links[0].href, `https://${url}`);
+    assert.equal(links[0].textContent, '获取密钥'); assert.equal(links[1].textContent, '服务文档');
+    for (const link of links) {
+      assert.equal(link.target, '_blank'); assert.equal(link.rel, 'noopener noreferrer');
+      assert.equal(link.hasAttribute('title'), false); assert.equal(link.hasAttribute('aria-label'), false);
+      assert.equal(link.href.includes('private-test-key'), false);
+    }
+  }
+  assert.equal(f.calls.length, 0); lastModal.close(); f.cleanup();
+});
+test('help follows MiniMax endpoint edits; custom and keyless services avoid unrelated signup links', () => {
+  const f = fixture({ provider: 'minimax', introSeen: true }); f.p.settings.language = 'en';
+  ui.openTtsSettings(f.p);
+  const root = lastModal.contentEl;
+  assert.equal(root.querySelector('.qbr-tts-service-help a').textContent, 'Get a key');
+  const endpoint = root.querySelector('details input');
+  endpoint.value = 'https://api.minimax.io/v1'; endpoint.dispatchEvent(new dom.window.Event('change'));
+  assert.equal(new URL(root.querySelector('.qbr-tts-service-help a').href).hostname, 'platform.minimax.io');
+  endpoint.value = 'https://api.minimax.cn/v1'; endpoint.dispatchEvent(new dom.window.Event('change'));
+  assert.equal(new URL(root.querySelector('.qbr-tts-service-help a').href).hostname, 'platform.minimax.cn');
+  const change = id => { const select = root.querySelector('select'); select.value = id; select.dispatchEvent(new dom.window.Event('change')); };
+  change('compatible'); assert.equal(root.querySelectorAll('.qbr-tts-service-help a').length, 0);
+  assert.match(root.querySelector('.qbr-tts-service-help').textContent, /your provider/);
+  for (const id of ['edge', 'system']) { change(id); assert.equal(root.querySelector('.qbr-tts-service-help'), null); }
+  assert.equal(f.calls.length, 0); lastModal.close(); f.cleanup();
 });
 test('failed preview restores book, shows rate-limit recovery, and keeps provider choice', async () => {
   const f = fixture({ provider: 'edge', introSeen: true });

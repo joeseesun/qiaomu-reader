@@ -114,7 +114,7 @@ PDF 保留原始版式，支持独立缩放。有可靠文字层时，可选择�
 
 阅读、划线和笔记无需配置 AI；首次打开书库即可体验内置公版书，也可以添加自己的图书。需要 AI 时，再进入插件设置选择服务并测试连接。
 
-**更新插件：**进入 **设置 → 第三方插件 → 检查更新（Check for updates）**，找到 Qiaomu Reader 后点击更新。社区插件不会自动更新。
+**更新插件：**进入 **设置 → 第三方插件 → 检查更新（Check for updates）**，找到 Qiaomu Reader 后点击更新。社区插件不会自动更新。若未发现新版，先确认 Obsidian 为 1.11.4 或更高版本，再检查能否访问 GitHub；也可从下方最新版本链接手动安装。
 
 <details>
 <summary>旧版 Qiaomu Book Reader 用户迁移</summary>
@@ -199,6 +199,8 @@ CLI 模式会自动检测可执行文件和登录状态，在独立临时目录�
 
 点击浮条上的音色名称，可在小弹层直接切换系统语音、Edge TTS（桌面）、OpenAI、OpenAI-compatible、通义千问、豆包语音、MiniMax、硅基流动、ElevenLabs 和 Azure Speech，以及对应模型和音色。选择后暂停并保留当前段落；每个音色可独立试听，试听不改变选择和进度。关闭按钮始终可见，关闭后保留朗读位置。系统语音与 Edge 无需密钥；其他服务需要密钥时，可直接点弹层里的「配置并试听」；底部「语音设置」入口始终保留。豆包使用语音控制台 API Key 和匹配的资源 ID；MiniMax 默认国内站，国际站可修改高级设置中的服务地址。硅基流动、MiniMax、ElevenLabs 和 Azure 可更新账号音色列表；豆包按模型版本显示预置音色。其他模型和复刻音色可选「自定义」输入 ID。服务、模型和音色的实际可用性以账号试听结果为准。
 
+云端服务的密钥输入旁提供「获取密钥」和「服务文档」，直达 OpenAI、通义千问、豆包语音、MiniMax、硅基流动、ElevenLabs 或 Azure 的官方入口。MiniMax 国际服务地址会切换到国际站帮助；自定义兼容服务向所用服务商获取密钥。帮助链接不包含保存的密钥，服务可用性仍需实际试听。
+
 桌面「本地模型」只提供 Kokoro 与 MeloTTS，可在播放器中下载、切换音色和试听；模型及运行环境放在本机应用数据目录，不进入插件或笔记库。Kokoro 提供精选中英文音色，MeloTTS 当前只有一个音色，英文限内置词典覆盖范围；不再提供 F5、Spark 或 IndexTTS2 克隆模型。旧本地模型选择迁移到 Kokoro，已下载文件不会自动删除。手机不提供本地模型安装。
 
 Mac 桌面另提供「Mac 本地语音」，枚举本机已安装声音和实际品质，播放器内可搜索、选择及试听。无需额外助手或密钥；增强声音是否可用以本机枚举和试听为准。Windows 不显示此入口；手机不显示 Mac 原生或 Edge 桌面直连，系统朗读接口缺失时可直接配置云端服务。完整平台边界与本地模型设计见 [本地语音方案](docs/tts-local-2026-10-12.md)。
@@ -277,7 +279,7 @@ Qiaomu Reader 由 [向阳乔木](https://qiaomu.ai) 维护：
 
 On desktop, **Add from Calibre** copies selected books from a local [Calibre](https://calibre-ebook.com/) library into the vault. Search uses `metadata.db` (Python 3) and falls back to `calibredb`. The whole Calibre library is not mounted into Obsidian. This entry is hidden on mobile.
 
-For updates, use **Settings → Community plugins → Check for updates**, then update Qiaomu Reader. Community plugins do not update automatically. If you used Qiaomu Book Reader before, back up your vault and disable it before enabling the new plugin; see the [migration instructions](#安装).
+For updates, use **Settings → Community plugins → Check for updates**, then update Qiaomu Reader. Community plugins do not update automatically. If an update is missing, check that Obsidian is 1.11.4 or newer and GitHub is reachable, or install the latest release manually. If you used Qiaomu Book Reader before, back up your vault and disable it before enabling the new plugin; see the [migration instructions](#安装).
 
 ### Read, highlight and keep notes
 
