@@ -2019,7 +2019,9 @@ def unpack_model(config, archive):
                 raise ValueError("archive")
             if member.isdir():
                 continue
-            name = str(Path(*parts[1:]))
+            # Tar members are POSIX-pathed; str(Path(...)) uses backslashes on
+            # Windows and never matches the manifest's "/" keys.
+            name = "/".join(parts[1:])
             item = expected.get(name)
             if not member.isfile() or member.issym() or member.islnk() or not item or name in seen or member.size != item["bytes"]:
                 raise ValueError("archive")
