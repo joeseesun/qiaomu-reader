@@ -45,6 +45,19 @@ class Downloads(unittest.TestCase):
             worker.unpack_model(config, archive)
             self.assertEqual(Path(root, "installed/model.onnx").read_bytes(), data)
 
+    def test_nested_archive_paths_match_posix_manifest(self):
+        data = b"nested weight"
+        item = {"path": "dict/voice.bin", "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+        with tempfile.TemporaryDirectory() as root:
+            archive = Path(root, "model.tar")
+            config = {"modelDir": str(Path(root, "installed")), "archiveRoot": "official", "files": [item]}
+            with tarfile.open(archive, "w") as tar:
+                member = tarfile.TarInfo("official/dict/voice.bin")
+                member.size = len(data)
+                tar.addfile(member, io.BytesIO(data))
+            worker.unpack_model(config, archive)
+            self.assertEqual(Path(root, "installed", "dict", "voice.bin").read_bytes(), data)
+
     def test_resume_and_verify(self):
         data = b"verified model fixture"
         with tempfile.TemporaryDirectory() as root:
