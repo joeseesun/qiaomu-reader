@@ -445,7 +445,7 @@ export function attachTts(view, tray) {
     if (own) { const fraction = state === 'ended' ? 1 : c.index / Math.max(1, c.items.length); play.style.setProperty('--qbr-tts-progress', String(fraction)); progress.setAttribute('aria-valuenow', String(Math.round(fraction * 100))); }
     previous.disabled = !own || c.index <= 0; next.disabled = !own || c.index >= c.items.length - 1;
     const rate = own ? c.rate : config(plugin).rate || 1; speed.replaceChildren(); speed.createSpan({ cls: 'qbr-tts-sr', text: tx('speed') }); speed.createSpan({ text: `${rate}×` });
-    menuSpeed.setAttribute('aria-label', `${tx('speed')} ${rate}×`);
+    menuSpeed.querySelector('span').setText(`${tx('speed')} ${rate}×`);
     for (const b of rateChoices.children) b.setAttribute('aria-pressed', String(Number(b.dataset.rate) === rate));
     saved.hidden = !savedSpeechProgress(config(plugin), view.file); returnSpeech.hidden = !own || c.owner.follow !== false;
     errorBox.hidden = state !== 'error'; if (!errorBox.hidden) errorMessage.setText(errorText(plugin, c.error, config(plugin).provider)); fit();
