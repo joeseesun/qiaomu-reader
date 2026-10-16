@@ -1963,3 +1963,8 @@ body.qiaomu-reader-active-view .status-bar { display: none; }
 .qm-sound-config > a { display: inline-block; margin-bottom: 12px; }
 
 .qiaomu-reader-top .qbr-tts-inline .qbr-tts-controls > button { margin: 0; }
+
+.qbr-tts-inline .qbr-tts-position:not([hidden]) { display: flex; flex-direction: column; gap: 2px; }
+.qbr-tts-inline .qbr-tts-position > button { justify-content: flex-start; font-size: 13px; }
+.qbr-tts-position-transport { display: flex; gap: 8px; }
+.qbr-tts-position-transport > button { flex: 1; font-size: 13px; }
