@@ -871,6 +871,7 @@ function setupImmersiveChrome(view, root) {
     const pointerInChrome = [root.querySelector(".qiaomu-reader-top"), root.querySelector(".qiaomu-reader-bot")]
       .some((el) => el && el.matches(":hover"));
     return activeInChrome
+      || !!root.querySelector(".qbr-tts-slot.is-open")
       || pointerInChrome
       || !!root.querySelector(".qiaomu-reader-panel-open,.qiaomu-reader-overlay-on,.qiaomu-reader-hl-popup-on");
   };

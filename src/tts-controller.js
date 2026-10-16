@@ -143,7 +143,13 @@ export class TtsController {
   skip(delta) {
     const index = Math.max(0, Math.min(this.items.length - 1, this.index + delta));
     if (index === this.index) return;
-    this.index = index; this.retry();
+    this.index = index;
+    if (this.paused || this.state === 'paused') {
+      ++this.generation; this.abort?.abort(); this.pending.clear(); this.releasePlayer();
+      this.abort = new AbortController(); this.error = null; this.preparingSegment = false;
+      this.paused = true; this.deferred = true; this.waitingSection = false; this.state = 'paused';
+      this.owner?.clearHighlight?.(); this.emit();
+    } else this.retry();
   }
   setRate(rate) {
     this.rate = Math.max(0.5, Math.min(2, Number(rate) || 1));
