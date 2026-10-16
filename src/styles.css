@@ -1889,3 +1889,82 @@ body.qiaomu-reader-active-view .status-bar { display: none; }
 .qiaomu-reader-src-section > .setting-item { padding: 10px 0 4px; border-top: 0; }
 .qiaomu-reader-src-section .setting-item-description .qiaomu-reader-ai-setup-feedback { padding: 2px 0 0; font-size: var(--font-ui-smaller); }
 .qiaomu-reader-src-section .setting-item-control select { max-width: 260px; }
+
+/* Inline speech: one stable trigger, two controls in a narrow reading pane. */
+.qbr-tts-slot { position: relative; flex: 0 0 auto; width: 32px; height: 32px; transition: width 320ms cubic-bezier(.22,1,.36,1); color: var(--qiaomu-reader-text, var(--text-normal)); }
+.qbr-tts-slot.is-open { width: 160px; }
+.qbr-tts-slot.is-closing { width: 32px; }
+.qbr-tts-slot.is-open > .qbr-tts-read-action, .qbr-tts-slot.is-closing > .qbr-tts-read-action { visibility: hidden; }
+.qiaomu-reader-top .qbr-tts-slot > .qbr-tts-idle-more { display: none; }
+.qbr-tts-slot .qbr-tts-inline { container-type: normal; position: absolute; inset: 0; width: 100%; height: 32px; margin: 0; padding: 0; border: 0; border-radius: 18px; background: transparent; box-shadow: none; }
+.qbr-tts-inline::before { content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: 18px; background: color-mix(in srgb, currentColor 5%, transparent); }
+.qbr-tts-inline .qbr-tts-controls { display: flex; flex-wrap: nowrap; gap: 0; height: 32px; border-radius: 18px; overflow: hidden; }
+.qiaomu-reader-top .qbr-tts-inline .qbr-tts-controls > button { position: relative; flex: 0 0 40px; width: 40px; min-width: 40px; min-height: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: inherit; box-shadow: none; }
+.qbr-tts-inline .qbr-tts-controls svg { width: 16px; height: 16px; }
+.qbr-tts-inline .qbr-tts-play::before { content: ''; position: absolute; width: 27px; height: 27px; border-radius: 50%; background: conic-gradient(currentColor calc(var(--qbr-tts-progress, 0) * 1turn), color-mix(in srgb, currentColor 12%, transparent) 0); mask: radial-gradient(closest-side, transparent calc(100% - 1.5px), black calc(100% - 1px)); pointer-events: none; }
+.qbr-tts-inline .qbr-tts-tucked { display: none; }
+.qbr-tts-inline :is(.qbr-tts-options,.qbr-tts-rates,.qbr-tts-intro,.qbr-tts-menu,.qbr-tts-navigation,.qbr-tts-position,.qbr-tts-error) { position: absolute; top: calc(100% + 8px); bottom: auto; left: auto; right: calc(-1 * var(--qbr-tts-panel-shift, 0px)); width: var(--qbr-tts-panel-width, 280px); max-width: calc(100vw - 32px); max-height: min(440px, var(--qbr-tts-panel-height, 60vh)); overflow: auto; overscroll-behavior: contain; box-sizing: border-box; padding: 12px; border-radius: 12px; background: var(--qiaomu-reader-ui, var(--background-primary)); box-shadow: 0 0 0 1px var(--qiaomu-reader-border, var(--background-modifier-border)), 0 6px 20px rgb(0 0 0 / 10%); }
+.qbr-tts-inline :is(.qbr-tts-menu,.qbr-tts-navigation,.qbr-tts-origins) { display: flex; flex-direction: column; align-items: stretch; gap: 2px; }
+.qbr-tts-inline :is(.qbr-tts-menu,.qbr-tts-navigation,.qbr-tts-origins) > button { justify-content: flex-start; font-size: 13px; }
+.qbr-tts-inline .qbr-tts-navigation .qbr-tts-sr { position: static; width: auto; height: auto; clip: auto; }
+.qbr-tts-inline [hidden], .qbr-tts-inline button[hidden] { display: none; }
+.qbr-tts-slot.is-open .qbr-tts-controls > :not(:first-child) { animation: qbr-tts-enter 220ms 60ms both; }
+.qbr-tts-slot.is-closing .qbr-tts-inline[hidden] { display: block; pointer-events: none; }
+.qbr-tts-slot.is-closing .qbr-tts-controls > :not(:first-child) { opacity: 0; transition: opacity 110ms; }
+.qbr-tts-slot.is-closing .qbr-tts-play::before { opacity: 0; }
+.qbr-tts-slot.is-closing .qbr-tts-inline::before { opacity: 0; transition: opacity 200ms; }
+.qbr-tts-slot.is-closing .qbr-tts-inline > :not(.qbr-tts-controls) { display: none; }
+.qbr-tts-slot.is-narrow, .qbr-tts-slot.is-narrow.is-open, .qbr-tts-slot.is-narrow.is-closing { width: 80px; height: 44px; }
+.qbr-tts-slot.is-narrow .qbr-tts-inline, .qbr-tts-slot.is-narrow .qbr-tts-controls { height: 44px; }
+.qiaomu-reader-top .qbr-tts-slot.is-narrow .qbr-tts-controls > button, .qiaomu-reader-top .qbr-tts-slot.is-narrow > button { width: 40px; min-width: 40px; height: 44px; min-height: 44px; padding: 0; }
+.qiaomu-reader-top .qbr-tts-slot.is-narrow > .qbr-tts-idle-more { display: inline-flex; }
+.qbr-tts-slot.is-narrow.is-open > button, .qbr-tts-slot.is-narrow.is-closing > button { visibility: hidden; }
+.qiaomu-reader-top .qbr-tts-slot.is-narrow :is(.qbr-tts-speed,.qbr-tts-close) { display: none; }
+.qbr-tts-slot.is-narrow .qbr-tts-inline::before { inset-block: 6px; }
+@keyframes qbr-tts-enter { from { opacity: 0; transform: translateX(-4px); } to { opacity: 1; transform: translateX(0); } }
+@media (prefers-reduced-motion: reduce) { .qbr-tts-slot, .qbr-tts-slot.is-open .qbr-tts-controls > button, .qbr-tts-slot.is-closing .qbr-tts-controls > button, .qbr-tts-slot .qbr-tts-play[aria-busy="true"] svg, .qbr-tts-slot ::before { transition: none; animation: none; } }
+/* Shared sound setup: stable footer, one scroll surface, neutral focus. */
+.qm-sound-modal { width: min(560px, calc(100vw - 32px)); max-height: min(760px, calc(100vh - 48px)); }
+.qm-sound-modal .modal-content.qm-sound { display: flex; flex-direction: column; overflow: hidden; min-height: 0; margin-bottom: 0; }
+.qm-sound { color: var(--text-normal); font-size: 14px; }
+.qm-sound-body { overflow-y: auto; overscroll-behavior: contain; min-height: 0; padding: 2px 4px 16px; display: flex; flex-direction: column; gap: 16px; }
+.qm-sound-body > * { flex-shrink: 0; }
+.qm-sound-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; min-width: 0; }
+.qm-sound-field > span { font-size: 13px; font-weight: 500; }
+.qm-sound :is(input,select) { width: 100%; min-width: 0; height: 38px; min-height: 38px; padding: 8px 10px; margin: 0; border: 1px solid var(--background-modifier-border); border-radius: 8px; background: var(--background-primary); color: var(--text-normal); box-shadow: none; font: inherit; }
+.qm-sound select { appearance: auto; background-image: none; }
+.qm-sound :is(input,select):focus { border-color: var(--text-muted); box-shadow: none; outline: none; }
+.qm-sound-input { display: flex; gap: 8px; align-items: center; }
+.qm-sound-input input { flex: 1; }
+.qm-sound :is(.qm-sound-help,.qm-sound-feedback,.qm-sound-current) { color: var(--text-muted); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.qm-sound-current { white-space: pre-line; }
+.qm-sound-search { display: block; flex-shrink: 0; }
+.qm-sound-list { display: flex; flex-direction: column; gap: 4px; }
+.qm-sound-voice { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.qm-sound button.qm-sound-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; border: 0; border-radius: 8px; padding: 8px 10px; color: inherit; background: transparent; box-shadow: none; font: inherit; cursor: pointer; white-space: normal; }
+.qm-sound button.qm-sound-button:hover:not(:disabled) { background: color-mix(in srgb, var(--text-normal) 5%, transparent); }
+.qm-sound .qm-sound-voice > button:first-child { flex: 1; min-width: 0; justify-content: flex-start; text-align: start; overflow-wrap: anywhere; }
+.qm-sound .qm-sound-voice > button[aria-pressed=true] { background: color-mix(in srgb, var(--text-normal) 5%, transparent); }
+.qm-sound .qm-sound-audition > span:last-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+.qm-sound-icon { display: inline-flex; flex: 0 0 18px; }
+.qm-sound-icon svg { width: 18px; height: 18px; }
+.qm-sound-footer { flex: 0 0 auto; border-top: 1px solid var(--background-modifier-border); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.qm-sound-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; padding-block: 2px; }
+.qm-sound button.qm-sound-primary { color: var(--background-primary); background: var(--text-normal); }
+.qm-sound button.qm-sound-primary:hover:not(:disabled) { color: var(--background-primary); background: var(--text-normal); opacity: .85; }
+.qm-sound button:disabled { opacity: .4; cursor: default; }
+.qm-sound :is(button,a,summary):focus-visible { outline: 1px solid var(--text-normal); outline-offset: 2px; }
+.qm-sound details > summary { cursor: pointer; color: var(--text-muted); padding-block: 6px; }
+.qm-sound details[open] > summary { margin-bottom: 8px; }
+.qm-sound a { color: var(--text-normal); font-size: 12px; }
+.qm-sound-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+.qm-sound [hidden] { display: none; }
+
+.qm-sound-config > a { display: inline-block; margin-bottom: 12px; }
+
+.qiaomu-reader-top .qbr-tts-inline .qbr-tts-controls > button { margin: 0; }
+
+.qbr-tts-inline .qbr-tts-position:not([hidden]) { display: flex; flex-direction: column; gap: 2px; }
+.qbr-tts-inline .qbr-tts-position > button { justify-content: flex-start; font-size: 13px; }
+.qbr-tts-position-transport { display: flex; gap: 8px; }
+.qbr-tts-position-transport > button { flex: 1; font-size: 13px; }
