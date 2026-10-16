@@ -11,3 +11,5 @@
 - Configure credentials and models, test, then apply a voice in one dialog. Browsing and auditioning preserve the active configuration and reading position; failed attempts retain the draft.
 - First-time Mac setup proposes installed device voices. Current-page, saved-location and return-to-speech actions remain available. Segment navigation preserves pause.
 - Verified on macOS Obsidian 1.14.4 with local speech and responsive layouts. Mobile hardware, Windows and paid-cloud requests were not retested.
+
+- 宽屏移除重复的「朗读选项」，窄屏直接提供倍速；「朗读位置」集中上一段、下一段、恢复及定位操作。

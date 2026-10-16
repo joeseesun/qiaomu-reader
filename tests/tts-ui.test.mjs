@@ -87,11 +87,11 @@ test('failed audition retains draft and provider; closing the book never restore
   assert.equal(f.c.state, 'paused'); assert.match(lastModal.feedback.textContent, /401/); assert.equal(f.p.settings.tts.provider, 'edge');
   lastModal.audition(); await tick(); f.view._closed = true; f.view._ttsCleanup(); assert.equal(f.c.owner, null); assert.equal(f.calls.length, 1); f.cleanup();
 });
-test('inline menu preserves paused navigation and exposes reading location without losing other actions', () => {
+test('inline menu preserves paused navigation and exposes speech location without losing other actions', () => {
   const f = fixture({ provider: 'edge', introSeen: true });
   f.c.start({ view: f.view }, [{ text: '一' }, { text: '二' }, { text: '三' }], { id: 'edge' }, { paused: true, index: 1 });
-  f.q('.qbr-tts-more').click(); const menu = f.q('.qbr-tts-menu'); assert.equal(menu.children.length, 4); menu.children[0].click();
-  const nav = f.q('.qbr-tts-navigation'); nav.children[1].click(); assert.equal(f.c.index, 2); assert.equal(f.c.state, 'paused'); assert.equal(f.calls.length, 0);
+  f.q('.qbr-tts-more').click(); const menu = f.q('.qbr-tts-menu'); assert.equal(menu.children.length, 4); assert.doesNotMatch(menu.textContent, /朗读选项|阅读位置/); menu.children[2].click();
+  const nav = f.q('.qbr-tts-position'); f.q('.qbr-tts-position-transport').children[1].click(); assert.equal(f.c.index, 2); assert.equal(f.c.state, 'paused'); assert.equal(f.calls.length, 0);
   nav.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); assert.equal(nav.hidden, true); assert.equal(doc.activeElement, f.q('.qbr-tts-more'));
   f.q('.qbr-tts-more').click(); menu.children[2].click(); assert.equal(f.q('.qbr-tts-position').hidden, false); assert.match(f.q('.qbr-tts-position').textContent, /从当前页朗读/);
   f.q('.qbr-tts-close').click(); assert.equal(f.view._ttsBar.hidden, true); assert.equal(f.c.owner, null); ui.openTts(f.view); assert.equal(f.view._ttsBar.inert, false); f.cleanup();
@@ -109,4 +109,16 @@ test('automatic EPUB page-follow awaits relocation without disabling follow, whi
   arrive();await tick();assert.equal(owner.follow,true);assert.equal(f.c.state,'playing');
   current=ranges[0];f.view._ttsOnRelocate({reason:'anchor'});assert.equal(owner.follow,true);
   f.view._ttsOnRelocate({reason:'page'});assert.equal(owner.follow,false);f.cleanup();
+});
+
+test('speed stays directly accessible at both widths without a redundant options submenu', () => {
+  const f = fixture({ provider: 'edge', introSeen: true });
+  const menu = f.q('.qbr-tts-menu');
+  assert.equal(menu.children[0].hidden, false); menu.children[0].click();
+  assert.equal(f.q('.qbr-tts-rates').hidden, false);
+  f.view.contentEl.getBoundingClientRect = () => ({ width: 900, bottom: 700, left: 0 });
+  f.view._ttsRefresh(); assert.equal(menu.children[0].hidden, true);
+  assert.equal([...menu.children].filter(b => !b.hidden).length, 3);
+  f.q('.qbr-tts-speed').click(); assert.equal(f.q('.qbr-tts-rates').hidden, false);
+  f.cleanup();
 });

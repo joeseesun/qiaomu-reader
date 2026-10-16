@@ -63,7 +63,7 @@ export const TTS_COPY = {
   key: ['API 密钥', 'API key'], url: ['服务地址', 'Service URL'], region: ['区域', 'Region'], advanced: ['高级设置', 'Advanced settings'],
   getKey: ['获取密钥', 'Get a key'], serviceDocs: ['服务文档', 'Service docs'],
   customKeyHelp: ['向所用服务商获取密钥；本机服务无需密钥时可留空。', 'Get a key from your provider; leave it empty for local services that need no key.'],
-  more: ['更多朗读操作', 'More speech actions'], position: ['阅读位置', 'Reading position'], progress: ['本节朗读进度', 'Section reading progress'],
+  more: ['更多朗读操作', 'More speech actions'], position: ['朗读位置', 'Speech position'], progress: ['本节朗读进度', 'Section reading progress'],
   options: ['朗读选项', 'Playback options'], collapse: ['收起选项', 'Collapse options'], finish: ['结束朗读', 'End reading'],
   segment: ['第 {0} 段', 'Segment {0}'], speedNote: ['系统语音将在下一段应用新倍速。', 'System speech applies the new speed to the next segment.'],
   resourceId: ['语音资源 ID', 'Speech resource ID'], doubao: ['豆包语音', 'Doubao'], siliconflow: ['硅基流动', 'SiliconFlow'],
@@ -394,12 +394,12 @@ export function attachTts(view, tray) {
   const speed = button(controls, 'gauge', tx('speed'), () => showPanel(rates), true); speed.classList.add('qbr-tts-speed');
   const more = button(controls, 'ellipsis', tx('more'), () => menu.hidden ? showPanel(menu) : closePanels()); more.classList.add('qbr-tts-more');
   const close = button(controls, 'x', tx('finish'), () => stopViewTts(view, true)); close.classList.add('qbr-tts-close');
-  const menu = bar.createDiv('qbr-tts-menu'), nav = bar.createDiv('qbr-tts-navigation'), position = bar.createDiv('qbr-tts-position'), rates = bar.createDiv('qbr-tts-rates');
-  const panels = [menu, nav, position, rates]; panels.forEach(p => { p.hidden = true; });
+  const menu = bar.createDiv('qbr-tts-menu'), position = bar.createDiv('qbr-tts-position'), rates = bar.createDiv('qbr-tts-rates');
+  const panels = [menu, position, rates]; panels.forEach(p => { p.hidden = true; });
   let scope, closingTimer, frame;
   const closePanels = () => { panels.forEach(p => { p.hidden = true; }); more.setAttribute('aria-expanded', 'false'); if (scope) { plugin.app.keymap.popScope(scope); scope = null; } };
   const fit = () => {
-    const root = view.contentEl.getBoundingClientRect(); slot.classList.toggle('is-narrow', root.width <= 650);
+    const root = view.contentEl.getBoundingClientRect(); slot.classList.toggle('is-narrow', root.width <= 650); menuSpeed.hidden = root.width > 650;
     if (bar.hidden) return;
     const anchor = slot.getBoundingClientRect(), width = Math.max(160, Math.min(360, root.width - 32));
     bar.style.setProperty('--qbr-tts-panel-height', `${Math.max(100, root.bottom - anchor.bottom - 16)}px`);
@@ -412,12 +412,12 @@ export function attachTts(view, tray) {
     panel.querySelector('button:not([hidden]):not(:disabled)')?.focus();
   };
   const sound = () => { closePanels(); openTtsSettings(plugin); };
-  button(menu, 'sliders-horizontal', tx('options'), () => showPanel(nav), true);
+  const menuSpeed = button(menu, 'gauge', tx('speed'), () => showPanel(rates), true);
   button(menu, 'audio-lines', tx('voiceSettings'), sound, true);
   button(menu, 'locate', tx('position'), () => showPanel(position), true);
   button(menu, 'square', tx('finish'), () => stopViewTts(view, true), true);
-  const previous = button(nav, 'skip-back', tx('previous'), () => c.skip(-1), true), next = button(nav, 'skip-forward', tx('next'), () => c.skip(1), true);
-  button(nav, 'gauge', tx('speed'), () => showPanel(rates), true);
+  const transport = position.createDiv('qbr-tts-position-transport');
+  const previous = button(transport, 'skip-back', tx('previous'), () => c.skip(-1), true), next = button(transport, 'skip-forward', tx('next'), () => c.skip(1), true);
   const saved = button(position, 'history', tx('saved'), () => { closePanels(); view._ttsSelectedText = null; void startReading(view, null, true); }, true);
   button(position, 'text-cursor-input', tx('fromPage'), () => { closePanels(); view._ttsSelectedText = null; void startReading(view, null, false); }, true);
   const returnSpeech = button(position, 'locate', tx('returnSpeech'), async () => {
@@ -445,6 +445,7 @@ export function attachTts(view, tray) {
     if (own) { const fraction = state === 'ended' ? 1 : c.index / Math.max(1, c.items.length); play.style.setProperty('--qbr-tts-progress', String(fraction)); progress.setAttribute('aria-valuenow', String(Math.round(fraction * 100))); }
     previous.disabled = !own || c.index <= 0; next.disabled = !own || c.index >= c.items.length - 1;
     const rate = own ? c.rate : config(plugin).rate || 1; speed.replaceChildren(); speed.createSpan({ cls: 'qbr-tts-sr', text: tx('speed') }); speed.createSpan({ text: `${rate}×` });
+    menuSpeed.setAttribute('aria-label', `${tx('speed')} ${rate}×`);
     for (const b of rateChoices.children) b.setAttribute('aria-pressed', String(Number(b.dataset.rate) === rate));
     saved.hidden = !savedSpeechProgress(config(plugin), view.file); returnSpeech.hidden = !own || c.owner.follow !== false;
     errorBox.hidden = state !== 'error'; if (!errorBox.hidden) errorMessage.setText(errorText(plugin, c.error, config(plugin).provider)); fit();
