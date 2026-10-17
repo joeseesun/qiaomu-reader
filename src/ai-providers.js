@@ -77,8 +77,8 @@ export const AI_PROVIDERS = {
     category: "china",
     needsKey: true,
     base: "https://api.deepseek.com",
-    model: "deepseek-v4-flash",
-    models: ["deepseek-v4-flash", "deepseek-v4-pro"],
+    model: "deepseek-flash",
+    models: ["deepseek-flash", "deepseek-v4-pro"],
     apiKeyUrl: "https://platform.deepseek.com/api_keys",
     description: "official-deepseek-api-recommended-for-chinese-reading",
     recommended: true,
@@ -207,6 +207,43 @@ export function normalizeAiBase(value) {
   return String(value || "").trim().replace(/\/+$/, "");
 }
 
+// Only the official endpoint guarantees these retired aliases map to Flash.
+// Relays may use the same IDs for their own routes, so keep those untouched.
+export function migrateDeepSeekFlashSettings(settings) {
+  const base = settings.aiBases?.deepseek
+    || (settings.aiProvider === "deepseek" ? settings.aiBase : "")
+    || AI_PROVIDERS.deepseek.base;
+  try {
+    if (new URL(base).origin !== "https://api.deepseek.com") return false;
+  } catch { return false; }
+  const legacy = new Set(["deepseek-v4-flash", "deepseek-v4-flash-vision-exp"]);
+  const model = "deepseek-flash";
+  let changed = false;
+  if (legacy.has(settings.aiModels?.deepseek)) {
+    settings.aiModels = { ...settings.aiModels, deepseek: model };
+    changed = true;
+  }
+  if (settings.aiProvider === "deepseek" && legacy.has(settings.aiModel)) {
+    settings.aiModel = model;
+    changed = true;
+  }
+  const catalog = settings.aiCatalogs?.deepseek;
+  if (Array.isArray(catalog) && catalog.some(entry => legacy.has(entry?.id))) {
+    const current = catalog.find(entry => entry?.id === model);
+    let added = false;
+    const migrated = [];
+    for (const entry of catalog) {
+      if (legacy.has(entry?.id) || entry?.id === model) {
+        if (!added) migrated.push(current || { ...entry, id: model, name: undefined });
+        added = true;
+      } else migrated.push(entry);
+    }
+    settings.aiCatalogs = { ...settings.aiCatalogs, deepseek: migrated };
+    changed = true;
+  }
+  return changed;
+}
+
 export function classifyAiHttpStatus(status) {
   if (status >= 200 && status < 300) return "";
   if (status === 401) return "auth";
@@ -228,6 +265,7 @@ export function buildAiRequestBody(providerId, model, messages, options = {}) {
   // max_tokens budget. Let its thinking-mode default apply so reasoning cannot
   // consume the entire 2400-token cap before a final answer starts.
   if (!deepSeekThinking) body.max_tokens = options.connectionTest ? 16 : 2400;
+  if (deepSeekThinking) body.reasoning_effort = options.effort || "high";
   if (providerId === "magpie" && options.effort) body.reasoning_effort = options.effort;
   if (options.stream) body.stream = true;
   // A connection check needs one short answer. In real reading conversations
