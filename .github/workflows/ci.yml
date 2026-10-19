@@ -9,6 +9,14 @@ permissions:
   contents: read
 
 jobs:
+  windows-local-tts:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -B tests/tts-local-runtime.test.py
   verify:
     runs-on: ubuntu-latest
     steps:

@@ -58,6 +58,39 @@ class Downloads(unittest.TestCase):
             worker.unpack_model(config, archive)
             self.assertEqual(Path(root, "installed", "dict", "voice.bin").read_bytes(), data)
 
+    def test_install_reuses_verified_archive_after_partial_extraction(self):
+        payloads = {"model.onnx": b"model", "dict/voice.bin": b"voice"}
+        files = [{"path": name, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+                 for name, data in payloads.items()]
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            cache, model, venv = root / "cache", root / "model", root / "venv"
+            for directory in (cache, model, venv):
+                directory.mkdir()
+            archive = cache / "model.tar"
+            with tarfile.open(archive, "w") as tar:
+                for name, data in payloads.items():
+                    member = tarfile.TarInfo("official/" + name)
+                    member.size = len(data)
+                    tar.addfile(member, io.BytesIO(data))
+            raw = archive.read_bytes()
+            config = {"python": sys.executable, "venvDir": str(venv), "packages": [],
+                      "modelDir": str(model), "cacheDir": str(cache), "archiveRoot": "official",
+                      "files": files, "archive": {"name": archive.name, "url": "https://example.invalid/model.tar",
+                      "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}}
+            (venv / ".qbr-packages").write_text("")
+            # Match the old Windows failure: a root file exists, nested files do not.
+            (model / "model.onnx").write_bytes(payloads["model.onnx"])
+            with patch.object(worker.urllib.request, "urlopen", side_effect=AssertionError("must reuse cache")), \
+                    patch.object(worker.subprocess, "run", side_effect=AssertionError("environment already installed")), \
+                    patch.object(worker, "emit") as emit:
+                worker.install(config)
+                worker.install(config)
+            for name, data in payloads.items():
+                self.assertEqual((model / name).read_bytes(), data)
+            self.assertEqual(archive.read_bytes(), raw)
+            self.assertEqual(sum(call.args[0].get("phase") == "installed" for call in emit.call_args_list), 2)
+
     def test_resume_and_verify(self):
         data = b"verified model fixture"
         with tempfile.TemporaryDirectory() as root:
