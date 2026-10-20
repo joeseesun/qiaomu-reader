@@ -1,5 +1,11 @@
 # 更新记录
 
+## 4.7.9
+
+- 修复 iOS 17.0 缺少 `Object.groupBy` / `Map.groupBy` 时 EPUB 无法打开的问题；兼容实现局限于阅读引擎，不修改全局 API。
+- 覆盖 EPUB 2/3 元数据、中文及空格文件名、百分号编码目录路径和章节锚点；兼容代码升级后使用新渲染器，避免插件重载复用旧实现。
+- iOS 27 WKWebView 模拟器已验证对应路径；iOS 17.0 真机上的 Obsidian 和原问题书籍仍待验收。
+
 ## 4.7.7
 
 - DeepSeek 默认模型改用 `deepseek-flash`，跟随官方当前 Flash 版本；思考模式显式默认使用 `high`。
