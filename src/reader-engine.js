@@ -1,3 +1,4 @@
+import { TEXT_EXTENSIONS, isTextBook, makeTextBook } from "./text-book.js";
 import { HIGHLIGHT_PAINTS } from "./highlight-colors.js";
 import { createBookCover, isGeneratedBookCover } from "./book-cover.js";
 import { waitForEngineViewport } from "./engine-viewport.js";
@@ -26,8 +27,9 @@ import { Overlayer } from "foliate-js/overlayer.js";
 import { searchMatcher } from "foliate-js/search.js";
 import { textWalker } from "foliate-js/text-walker.js";
 
-// Every extension this engine can open; the plugin registers all of them.
-export const ENGINE_EXTENSIONS = ["epub", "fb2", "fbz", "mobi", "azw", "azw3", "cbz"];
+// Every supported flowing-book extension. Markdown opens explicitly so the
+// host retains its native editor registration.
+export const ENGINE_EXTENSIONS = ["epub", "fb2", "fbz", "mobi", "azw", "azw3", "cbz", ...TEXT_EXTENSIONS];
 
 // Wire format the library paints with a neutral outline; anything carrying
 // this prefix in its CFI value is treated as a search hit, not a highlight.
@@ -116,13 +118,14 @@ export class EpubEngine {
         // Format is sniffed from the bytes by the library, not from the name.
         const file = new File([bytes], fileName);
         const view = document.createElement(VIEW_TAG);
+        let relocationReason;
         this.#view = view;
         this.#host.replaceChildren(view);
         view.addEventListener("relocate", (e) => {
             if (this.#view !== view) return;
             const detail = e.detail || {};
             this.#lastRange = detail.range || null;
-            this.#hooks.onRelocate?.(detail);
+            this.#hooks.onRelocate?.({ ...detail, reason: relocationReason });
         });
         // The view re-emits every section document after the library has
         // prepared it; attaching here (not on the raw renderer) is safe because
@@ -138,6 +141,18 @@ export class EpubEngine {
             });
             if (this.#extraCss) this.#injectCss(doc, this.#extraCss);
             this.#hooks.onDocLoaded?.({ doc, index });
+        });
+        // Foliate paints an annotation only on an overlay that already exists,
+        // and re-applies nothing when another section is loaded later. Repaint
+        // the stored highlights of each section as its overlay appears, so
+        // highlights survive page turns, chapter jumps and reopening the book.
+        view.addEventListener("create-overlay", (e) => {
+            if (this.#view !== view) return;
+            const index = e.detail?.index;
+            for (const annotation of this.#highlights.values()) {
+                if (annotation.index !== undefined && annotation.index !== index) continue;
+                void this.#paintHighlight(view, annotation);
+            }
         });
         view.addEventListener("draw-annotation", (e) => {
             const { draw, annotation } = e.detail;
@@ -156,17 +171,35 @@ export class EpubEngine {
             const hit = this.#highlights.get(this.#idByCfi.get(value));
             if (hit) this.#hooks.onHighlightClick?.({ ...hit, index, range });
         });
+        let textBook;
         try {
-            await view.open(file);
+            if (isTextBook(fileName)) {
+                textBook = await makeTextBook(bytes, fileName, opts.textOptions);
+                if (this.#view !== view) throw Object.assign(new Error("Reader closed"), { name: "AbortError" });
+                view.addEventListener("external-link", event => {
+                    if (event.detail?.href?.startsWith("reader-note:")) {
+                        event.preventDefault();
+                        opts.textOptions?.openLink?.(decodeURIComponent(event.detail.href.slice(12)));
+                    }
+                });
+            }
+            await view.open(textBook || file);
             if (this.#view !== view) throw Object.assign(new Error("Reader closed"), { name: "AbortError" });
             await waitForEngineViewport(this.#host, controller.signal);
             if (this.#view !== view) throw Object.assign(new Error("Reader closed"), { name: "AbortError" });
         } catch (error) {
+            textBook?.destroy();
             disposeEngineView(view);
             if (this.#view === view) this.#view = null;
             throw error;
         }
         this.#book = view.book;
+        // Foliate's view drops the renderer reason. Capture it before its
+        // listener re-emits the location, so delayed layout anchors retain
+        // their identity instead of looking like the user turning a page.
+        view.renderer?.addEventListener("relocate", e => {
+            relocationReason = e.detail?.reason;
+        }, { capture: true });
         this.setLayout(this.#layout);
         view.renderer?.setStyles?.(this.#extraCss);
         const Resize = this.#host.ownerDocument.defaultView?.ResizeObserver;
@@ -239,6 +272,14 @@ export class EpubEngine {
         return this.#view?.renderer?.getContents() ?? [];
     }
 
+    nextReadingSection(index) {
+        const sections = this.#book?.sections || [];
+        for (let next = index + 1; next < sections.length; next++) {
+            if (sections[next].linear !== "no") return next;
+        }
+        return null;
+    }
+
     // ── navigation ──────────────────────────────────────────────────────────
     #turnPage(direction, distance) {
         const view = this.#view;
@@ -291,6 +332,16 @@ export class EpubEngine {
         return this.#view ? this.#view.getCFI(index, range) : null;
     }
 
+    // Resolve the exact saved range after navigation; lastLocation.range is
+    // the visible page boundary and may start before the spoken sentence.
+    rangeFromCfi(cfi) {
+        const destination = this.#view?.resolveNavigation(cfi);
+        const content = this.contents().find(({ index }) => index === destination?.index);
+        if (!content?.doc || typeof destination?.anchor !== "function") return null;
+        const range = destination.anchor(content.doc);
+        return range?.startContainer ? range : null;
+    }
+
     // Text of the visible page, for AI context and the copy helpers. The
     // relocate event carries the range the renderer considers visible.
     visibleText() {
@@ -324,7 +375,17 @@ export class EpubEngine {
         const annotation = { id, value: cfiRange, colorId };
         this.#highlights.set(id, annotation);
         this.#idByCfi.set(cfiRange, id);
-        await this.#view.addAnnotation(annotation);
+        await this.#paintHighlight(this.#view, annotation);
+    }
+
+    async #paintHighlight(view, annotation) {
+        try {
+            const placed = await view.addAnnotation(annotation);
+            if (placed && typeof placed.index === "number") annotation.index = placed.index;
+        } catch (error) {
+            // An unresolvable CFI must not hide the other highlights of the book.
+            console.warn("Qiaomu Reader: could not paint a highlight", error);
+        }
     }
 
     async removeHighlight(id) {
@@ -403,6 +464,7 @@ export class EpubEngine {
 // Prefer embedded artwork; otherwise create an offline metadata cover. Existing
 // book bytes and reading locations stay untouched. Return a durable thumbnail Blob.
 export async function coverFromBytes(bytes, fileName, resolveStarterCover) {
+    if (isTextBook(fileName)) return new Blob([createBookCover({ title: fileName.replace(/\.[^.]+$/, "") })], { type: "image/svg+xml" });
     const book = await makeBook(new File([bytes], fileName));
     try {
         let blob;

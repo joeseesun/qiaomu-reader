@@ -1,4 +1,5 @@
 import { noteFolderPath, ensureNoteFolder, migrateNoteFolderDefaults } from '../src/note-folders.js';
+import { migrateDeepSeekFlashSettings } from '../src/ai-providers.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -172,12 +173,13 @@ test('migration preserves custom per-book paths, existing note overrides and roo
   }
 });
 test('normal plugin load persists migrated defaults after restoring backup state and only once',async()=>{
-  let saved={settings:{notesFolder:'Custom',bookNotesFolder:''},progressBackups:{book:['keep']}};let saves=0,restored=false;
+  let saved={settings:{notesFolder:'Custom',bookNotesFolder:'',aiProvider:'deepseek',aiModel:'deepseek-v4-flash',aiModels:{deepseek:'deepseek-v4-flash'}},progressBackups:{book:['keep']}};let saves=0,restored=false;
   const start=source.indexOf('  async loadAll() {'),end=source.indexOf('  _mergeDefaultSettings(',start);
-  const load=vm.runInNewContext(`({${source.slice(start,end)}}).loadAll`,{migrateNoteFolderDefaults,applyDeviceProfile(){}});
+  const load=vm.runInNewContext(`({${source.slice(start,end)}}).loadAll`,{migrateNoteFolderDefaults,migrateDeepSeekFlashSettings,applyDeviceProfile(){}});
   const plugin={loadData:async()=>saved,_mergeDefaultSettings(data){this.settings={...data.settings};},_applyLegacySettingMigrations:async()=>{},_applyLanguageDefaults(){},_migrateChineseDefaults:async()=>{},
     async _restoreReadingState(data){this.progressBackups=data.progressBackups;restored=true;},async _saveLocalData(){assert.equal(restored,true);saves++;saved=JSON.parse(JSON.stringify({settings:this.settings,progressBackups:this.progressBackups}));},_repairBookNoteState:async()=>{},_adoptLegacyProgress:async()=>{}};
   await load.call(plugin);assert.equal(saved.settings.bookNotesFolder,'Custom');assert.deepEqual(saved.progressBackups,{book:['keep']});assert.equal(saves,1);
+  assert.equal(saved.settings.aiModels.deepseek,'deepseek-flash');assert.equal(saved.settings.aiModel,'deepseek-flash');
   saved.settings.bookNotesFolder='';saved.settings.lastNoteFolder='';
   await load.call(plugin);assert.equal(plugin.settings.bookNotesFolder,'');assert.equal(saves,1);
 });

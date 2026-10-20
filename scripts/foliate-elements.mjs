@@ -9,6 +9,7 @@ function replaceRequired(code, before, after) {
 }
 
 const frameModule = fileURLToPath(new URL("../src/engine-frame.js", import.meta.url));
+const groupingModule = fileURLToPath(new URL("../src/epub-grouping.js", import.meta.url));
 
 export function patchFoliateFrames(code, name) {
   const imports = [];
@@ -94,12 +95,11 @@ export function patchFoliateZipLoader(code) {
 // esbuild's syntax target does not polyfill Object.groupBy / Map.groupBy.
 // EPUB metadata calls both on open; iOS 17.0 lacks these built-ins.
 export function patchFoliateEpubGrouping(code) {
-  const module = fileURLToPath(new URL("../src/epub-grouping.js", import.meta.url));
   code = replaceRequired(code, "Object.groupBy(", "groupByObject(");
   code = code.replaceAll("Object.groupBy(", "groupByObject(");
   code = replaceRequired(code, "Map.groupBy(", "groupByMap(");
   code = code.replaceAll("Map.groupBy(", "groupByMap(");
-  return `import { groupByObject, groupByMap } from ${JSON.stringify(module)}\n${code}`;
+  return `import { groupByObject, groupByMap } from ${JSON.stringify(groupingModule)}\n${code}`;
 }
 
 // Custom elements survive plugin unload. Scope them to this plugin and its
@@ -108,7 +108,8 @@ export function patchFoliateEpubGrouping(code) {
 export function foliateElements(root = process.cwd()) {
   const revision = createHash("sha256").update(fs.readFileSync(path.join(root, "package-lock.json")))
     .update(fs.readFileSync(fileURLToPath(import.meta.url)))
-    .update(fs.readFileSync(frameModule)).digest("hex").slice(0, 12);
+    .update(fs.readFileSync(frameModule))
+    .update(fs.readFileSync(groupingModule)).digest("hex").slice(0, 12);
   const prefix = `qbr-${revision}-foliate`;
   return {
     define: { __QBR_ENGINE_VIEW_TAG__: JSON.stringify(`${prefix}-view`) },

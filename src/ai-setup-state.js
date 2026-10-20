@@ -18,11 +18,11 @@ export function deriveAiSetupState({
   if (transport !== "cli" && !base) {
     return { kind: "incomplete", ready: false, enabled: false, reason: "base" };
   }
-  if (transport !== "cli" && !model) {
-    return { kind: "incomplete", ready: false, enabled: false, reason: "model" };
-  }
   if (transport !== "cli" && needsKey && !key) {
     return { kind: "incomplete", ready: false, enabled: false, reason: "key" };
+  }
+  if (transport !== "cli" && !model) {
+    return { kind: "incomplete", ready: false, enabled: false, reason: "model" };
   }
   if (needsVerification) {
     return { kind: "incomplete", ready: false, enabled: false, reason: "verify" };

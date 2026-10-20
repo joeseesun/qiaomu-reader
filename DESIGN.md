@@ -185,3 +185,32 @@ not be presented as available when the active provider accepts text only.
 - Header: term (17px/600) with phonetic in small muted monospace, and a ghost target-language chip. Body: in-context meaning first, then senses with a monospace part-of-speech column, a muted note and a tinted example block. Footer: engine name, one-click engine switch, **Add word**, copy, save.
 - Verify in light, dark and one tinted reading theme; no accent colour may appear.
 
+
+
+## 13. Read-aloud transport (Readwise direction, 2026-10-12)
+
+- Voice-first pill: current voice, previous segment, play/pause, next segment, speed, close. Close is always visible and stops audio while retaining the saved sentence. Reader-theme surface/text/border tokens apply; no page reflow or fake duration.
+- Voice opens an anchored popover with inline service/model choice, individual voice selection and independent audition. Selecting a voice and testing a voice are distinct actions; testing never saves that voice as the selection. Search appears for larger catalogs. Credentials and endpoints have a permanent Speech settings entry.
+- Desktop first use defaults to Edge with Xiaoxiao, without a key. Preserve explicit existing service choices. A dismissible first-use note explains online transfer to Microsoft and offers Speech settings directly. Acknowledging it, opening the voice picker or entering configuration dismisses it persistently. Mobile fresh installs retain system speech; Edge is desktop-only.
+- Voice and speed panels are mutually exclusive, bounded by the reader pane, dismiss on outside click/Escape, and return keyboard focus. Dismissing a panel never stops main reading. All primary touch targets are at least 44px and accessible names use hidden text rather than hover tips.
+- Unconfigured services expose a specific issue and Set up and test action. Configuration opens directly on the selected service and focuses its key. Settings and audition return to the paused sentence with the original speed; no automatic body synthesis or playback. Only an actual test result can say it passed.
+- Main playback errors expose retry, speech settings and explicit system fallback. Never silently switch providers. No permanent untested/success messages in the pill.
+- Playback and viewport have separate positions. Reopening resumes the saved sentence if visible; after navigation, start at the current page and offer saved-position recovery. Browsing suspends follow. At a chapter boundary while browsing, pause until explicit continuation. See `docs/tts-interaction-2026-10-12.md`.
+- References: Readwise Reader floating transport and per-voice audition; independently implemented, no third-party UI code copied.
+## 14. Text documents as books
+
+Markdown, plain text and static HTML use the existing book reader and library.
+Markdown is parsed as GFM HTML by a bundled private Marked instance and rendered
+inside the reader. Tables, task lists, strikethrough, autolinks and code fences
+retain their semantics. TXT uses escaped HTML paragraphs, preserving in-paragraph
+newlines and indentation, with blank lines separating paragraphs.
+Only explicitly imported/opened text documents enter the library; ordinary vault
+notes remain in Obsidian's native editor. Headings become the contents hierarchy,
+TXT chapter labels become section entries, and existing highlights, search,
+progress and reading-note actions keep the same interaction contract.
+
+HTML supplies semantic reading content, not application UI: source scripts,
+forms, frames and styles are removed. Reader typography and theme remain the
+single presentation source. Local images resolve relative to the vault source;
+individual imports do not silently gather files from the user's filesystem.
+See `docs/text-formats.md` for format boundaries and acceptance evidence.

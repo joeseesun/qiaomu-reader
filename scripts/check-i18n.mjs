@@ -167,8 +167,8 @@ if (!source.includes('button(row, "qiaomu-reader-hl-menu", "ellipsis"') || sourc
 if (!source.includes('createDiv({ cls: "qiaomu-reader-hl-comment-quote", text })') || !source.includes('event.key === "Enter" && (event.metaKey || event.ctrlKey) && !event.isComposing') || !source.includes('event.key === "Escape"')) {
   errors.push("Inline comments must show the selected passage and support Cmd/Ctrl+Enter to save plus Escape to dismiss");
 }
-if (!source.includes('if (cfg.id === "custom") this._aiBaseRow(c, s, p)') || !source.includes('this._settingsDisclosure(advanced, "ai-connection-settings")')) {
-  errors.push("AI connection details must remain behind progressive disclosure except required custom endpoints");
+if (!source.includes('renderAiSources(c, plugin, {') || !source.includes('this._settingsDisclosure(advanced, "ai-connection-settings")')) {
+  errors.push("AI connection details must stay behind progressive disclosure; keys and custom endpoints belong to the connect dialog");
 }
 if (!source.includes("const DEFAULT_AI_QUICK_PROMPTS")
   || source.includes("const AiPromptLibraryModal = class extends Modal")

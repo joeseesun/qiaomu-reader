@@ -1,0 +1,2937 @@
+{
+  "date": "2026-10-12",
+  "hardware": {
+    "cpu": "Apple M5 Pro",
+    "memoryBytes": 51539607552,
+    "os": "macOS 27.0.1"
+  },
+  "decision": {
+    "defaultCandidate": "Kokoro v1.1-zh fp32 / sherpa-onnx 4 CPU threads",
+    "speedCandidate": "MeloTTS zh_en fp32 / sherpa-onnx 4 CPU threads; one voice; English lexicon limited",
+    "installedInPlugin": false
+  },
+  "scope": "Already installed environments; ordinary active workstation; no subjective voice-quality ranking or platform-wide claim.",
+  "downloads": [
+    {
+      "name": "vits-melo-tts-zh_en.tar.bz2",
+      "bytes": 167006755,
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-melo-tts-zh_en.tar.bz2",
+      "sha256": "e58351ed7149f290a54534538badd4077cdbe6fddc964b24d0bee870415d1514",
+      "publisherDigest": null
+    },
+    {
+      "name": "vits-piper-zh_CN-huayan-medium.tar.bz2",
+      "bytes": 67255926,
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-zh_CN-huayan-medium.tar.bz2",
+      "sha256": "dbdfec42b91d9cee31cce9ff4b3e9c305eb6fbf60546d071f7e46273554cce6b",
+      "publisherDigest": null
+    },
+    {
+      "name": "kokoro-int8-multi-lang-v1_1.tar.bz2",
+      "bytes": 147031220,
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-int8-multi-lang-v1_1.tar.bz2",
+      "sha256": "a1e94694776049035c4f2c6529f003aaece993c76aae9a78995831c3c4dcafc6",
+      "publisherDigest": "sha256:a1e94694776049035c4f2c6529f003aaece993c76aae9a78995831c3c4dcafc6"
+    },
+    {
+      "name": "kokoro-multi-lang-v1_1.tar.bz2",
+      "bytes": 364816464,
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_1.tar.bz2",
+      "sha256": "a3f4c73d043860e3fd2e5b06f36795eb81de0fc8e8de6df703245edddd87dbad",
+      "publisherDigest": "sha256:a3f4c73d043860e3fd2e5b06f36795eb81de0fc8e8de6df703245edddd87dbad"
+    }
+  ],
+  "runs": [
+    {
+      "engine": "melo",
+      "threads": 4,
+      "provider": "cpu",
+      "sid": 0,
+      "loadSeconds": 1.1113690420024795,
+      "importSeconds": 0.11634987499564886,
+      "rows": [
+        {
+          "label": "cold-short",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 0.9831422909992398,
+          "audioSeconds": 3.924172335600907,
+          "rtf": 0.2505349426374496,
+          "firstChunkSeconds": 0.5401694579995819,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.5401694579995819,
+              "samples": 97792,
+              "progress": 0.5
+            },
+            {
+              "seconds": 0.9831311659945641,
+              "samples": 75264,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 44100,
+          "file": "results/melo-4t-cold-short.wav"
+        },
+        {
+          "label": "warm-short-1",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 1.0278194170023198,
+          "audioSeconds": 3.924172335600907,
+          "rtf": 0.26192005067609503,
+          "firstChunkSeconds": 0.578140000005078,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.578140000005078,
+              "samples": 97792,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.0278059170013876,
+              "samples": 75264,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 44100,
+          "file": "results/melo-4t-warm-short-1.wav"
+        },
+        {
+          "label": "warm-short-2",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 1.0708160830035922,
+          "audioSeconds": 3.755283446712018,
+          "rtf": 0.2851492033021256,
+          "firstChunkSeconds": 0.6290395830001216,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.6290395830001216,
+              "samples": 97792,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.0707971250012633,
+              "samples": 67816,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 44100,
+          "file": "results/melo-4t-warm-short-2.wav"
+        },
+        {
+          "label": "warm-short-3",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 1.0288867499984917,
+          "audioSeconds": 3.924172335600907,
+          "rtf": 0.2621920400040073,
+          "firstChunkSeconds": 0.5843254999999772,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.5843254999999772,
+              "samples": 97792,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.028873791998194,
+              "samples": 75264,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 44100,
+          "file": "results/melo-4t-warm-short-3.wav"
+        },
+        {
+          "label": "paragraph",
+          "text": "清晨，阳光透过窗帘洒在书桌上。我打开昨天读到的那一页，继续听作者讲述他的经历。阅读不只是获得知识，也让我们学会耐心，理解不同的人生。当声音停下来时，我们可以做一条笔记，再从刚才的位置继续。",
+          "generateSeconds": 4.346189666997816,
+          "audioSeconds": 16.5184126984127,
+          "rtf": 0.26311182232512287,
+          "firstChunkSeconds": 0.17629687499720603,
+          "callbackChunks": 10,
+          "chunks": [
+            {
+              "seconds": 0.17629687499720603,
+              "samples": 28672,
+              "progress": 0.10000000149011612
+            },
+            {
+              "seconds": 0.785119833999488,
+              "samples": 101888,
+              "progress": 0.20000000298023224
+            },
+            {
+              "seconds": 1.297449334000703,
+              "samples": 87040,
+              "progress": 0.30000001192092896
+            },
+            {
+              "seconds": 1.8578669170019566,
+              "samples": 96768,
+              "progress": 0.4000000059604645
+            },
+            {
+              "seconds": 2.3318408749983064,
+              "samples": 79360,
+              "progress": 0.5
+            },
+            {
+              "seconds": 2.710348749998957,
+              "samples": 65536,
+              "progress": 0.6000000238418579
+            },
+            {
+              "seconds": 3.1014609589983593,
+              "samples": 58254,
+              "progress": 0.699999988079071
+            },
+            {
+              "seconds": 3.471941042000253,
+              "samples": 63488,
+              "progress": 0.800000011920929
+            },
+            {
+              "seconds": 3.8793102920026286,
+              "samples": 68608,
+              "progress": 0.8999999761581421
+            },
+            {
+              "seconds": 4.346173500001896,
+              "samples": 78848,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 44100,
+          "file": "results/melo-4t-paragraph.wav"
+        },
+        {
+          "label": "numbers",
+          "text": "今天是2026年10月12日，下午3点半。全书共有113段，现在读到第3段，进度约为百分之二点六。",
+          "generateSeconds": 2.428611750001437,
+          "audioSeconds": 8.57469387755102,
+          "rtf": 0.28323014030386146,
+          "firstChunkSeconds": 0.6239595000006375,
+          "callbackChunks": 5,
+          "chunks": [
+            {
+              "seconds": 0.6239595000006375,
+              "samples": 95910,
+              "progress": 0.20000000298023224
+            },
+            {
+              "seconds": 0.9930564170063008,
+              "samples": 50044,
+              "progress": 0.4000000059604645
+            },
+            {
+              "seconds": 1.4968140420023701,
+              "samples": 86528,
+              "progress": 0.6000000238418579
+            },
+            {
+              "seconds": 1.9153726670047035,
+              "samples": 68096,
+              "progress": 0.800000011920929
+            },
+            {
+              "seconds": 2.428595708006469,
+              "samples": 77566,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 44100,
+          "file": "results/melo-4t-numbers.wav"
+        },
+        {
+          "label": "mixed",
+          "text": "我正在学习 machine learning。阅读速度是正常速度，This is a good book. 请从当前段落继续朗读。",
+          "generateSeconds": 1.9391586250058026,
+          "audioSeconds": 6.719274376417234,
+          "rtf": 0.28859643413457037,
+          "firstChunkSeconds": 0.4796921250017476,
+          "callbackChunks": 4,
+          "chunks": [
+            {
+              "seconds": 0.4796921250017476,
+              "samples": 80896,
+              "progress": 0.25
+            },
+            {
+              "seconds": 0.9569409169998835,
+              "samples": 76288,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.3339049170026556,
+              "samples": 50344,
+              "progress": 0.75
+            },
+            {
+              "seconds": 1.939135584005271,
+              "samples": 88792,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 44100,
+          "file": "results/melo-4t-mixed.wav"
+        },
+        {
+          "label": "consecutive-1",
+          "text": "清晨，阳光透过窗帘洒在书桌上",
+          "generateSeconds": 0.7839999579955474,
+          "audioSeconds": 2.809614512471655,
+          "rtf": 0.27904182389272053,
+          "firstChunkSeconds": 0.18712916599906748,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.18712916599906748,
+              "samples": 28672,
+              "progress": 0.5
+            },
+            {
+              "seconds": 0.7839855829952285,
+              "samples": 95232,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 44100,
+          "file": "results/melo-4t-consecutive-1.wav"
+        },
+        {
+          "label": "consecutive-2",
+          "text": "我打开昨天读到的那一页，继续听作者讲述他的经历",
+          "generateSeconds": 1.1658176249984535,
+          "audioSeconds": 4.1099319727891155,
+          "rtf": 0.2836586183705851,
+          "firstChunkSeconds": 0.5674326250009472,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.5674326250009472,
+              "samples": 87040,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.1658053339997423,
+              "samples": 94208,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 44100,
+          "file": "results/melo-4t-consecutive-2.wav"
+        },
+        {
+          "label": "consecutive-3",
+          "text": "阅读不只是获得知识，也让我们学会耐心，理解不同的人生",
+          "generateSeconds": 1.2789869580010418,
+          "audioSeconds": 4.516281179138322,
+          "rtf": 0.28319471425051185,
+          "firstChunkSeconds": 0.5157352919995901,
+          "callbackChunks": 3,
+          "chunks": [
+            {
+              "seconds": 0.5157352919995901,
+              "samples": 79360,
+              "progress": 0.3333333432674408
+            },
+            {
+              "seconds": 0.9290790419981931,
+              "samples": 65536,
+              "progress": 0.6666666865348816
+            },
+            {
+              "seconds": 1.2789746249982272,
+              "samples": 54272,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 44100,
+          "file": "results/melo-4t-consecutive-3.wav"
+        },
+        {
+          "label": "consecutive-4",
+          "text": "当声音停下来时，我们可以做一条笔记，再从刚才的位置继续",
+          "generateSeconds": 1.3429720000058296,
+          "audioSeconds": 4.702040816326531,
+          "rtf": 0.2856147048623509,
+          "firstChunkSeconds": 0.4028215420039487,
+          "callbackChunks": 3,
+          "chunks": [
+            {
+              "seconds": 0.4028215420039487,
+              "samples": 63488,
+              "progress": 0.3333333432674408
+            },
+            {
+              "seconds": 0.8519838749998598,
+              "samples": 68608,
+              "progress": 0.6666666865348816
+            },
+            {
+              "seconds": 1.3429580840020208,
+              "samples": 75264,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 44100,
+          "file": "results/melo-4t-consecutive-4.wav"
+        }
+      ],
+      "warmMedianSeconds": 1.0288867499984917,
+      "warmMedianRTF": 0.2621920400040073,
+      "firstReadySeconds": 2.210861207997368,
+      "processPeakRssBytes": 578863104,
+      "environment": {
+        "platform": "macOS-27.0.1-arm64-arm-64bit",
+        "machine": "arm64",
+        "python": "3.11.11",
+        "packages": {
+          "sherpa-onnx": "1.13.8",
+          "sherpa-onnx-core": "1.13.8",
+          "numpy": "2.4.6",
+          "soundfile": "0.13.1"
+        }
+      },
+      "run": "results"
+    },
+    {
+      "engine": "piper",
+      "threads": 4,
+      "provider": "cpu",
+      "sid": 0,
+      "loadSeconds": 0.6747366249983315,
+      "importSeconds": 0.1617072500012,
+      "rows": [
+        {
+          "label": "cold-short",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 0.17013141599454684,
+          "audioSeconds": 4.20281179138322,
+          "rtf": 0.0404803794315409,
+          "firstChunkSeconds": 0.17012137499841629,
+          "callbackChunks": 1,
+          "chunks": [
+            {
+              "seconds": 0.17012137499841629,
+              "samples": 92672,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 22050,
+          "file": "results/piper-4t-cold-short.wav"
+        },
+        {
+          "label": "warm-short-1",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 0.1323665419986355,
+          "audioSeconds": 4.051882086167801,
+          "rtf": 0.03266791559668151,
+          "firstChunkSeconds": 0.1323500829967088,
+          "callbackChunks": 1,
+          "chunks": [
+            {
+              "seconds": 0.1323500829967088,
+              "samples": 89344,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 22050,
+          "file": "results/piper-4t-warm-short-1.wav"
+        },
+        {
+          "label": "warm-short-2",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 0.1465524169980199,
+          "audioSeconds": 3.8747845804988663,
+          "rtf": 0.037822081190163025,
+          "firstChunkSeconds": 0.14653491700300947,
+          "callbackChunks": 1,
+          "chunks": [
+            {
+              "seconds": 0.14653491700300947,
+              "samples": 85439,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 22050,
+          "file": "results/piper-4t-warm-short-2.wav"
+        },
+        {
+          "label": "warm-short-3",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 0.15008541700080968,
+          "audioSeconds": 4.063492063492063,
+          "rtf": 0.03693508309004301,
+          "firstChunkSeconds": 0.15007054200395942,
+          "callbackChunks": 1,
+          "chunks": [
+            {
+              "seconds": 0.15007054200395942,
+              "samples": 89600,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 22050,
+          "file": "results/piper-4t-warm-short-3.wav"
+        },
+        {
+          "label": "paragraph",
+          "text": "清晨，阳光透过窗帘洒在书桌上。我打开昨天读到的那一页，继续听作者讲述他的经历。阅读不只是获得知识，也让我们学会耐心，理解不同的人生。当声音停下来时，我们可以做一条笔记，再从刚才的位置继续。",
+          "generateSeconds": 0.6765928330059978,
+          "audioSeconds": 16.082902494331066,
+          "rtf": 0.04206907510907839,
+          "firstChunkSeconds": 0.10399166700517526,
+          "callbackChunks": 4,
+          "chunks": [
+            {
+              "seconds": 0.10399166700517526,
+              "samples": 64768,
+              "progress": 0.25
+            },
+            {
+              "seconds": 0.28264812500128755,
+              "samples": 95404,
+              "progress": 0.5
+            },
+            {
+              "seconds": 0.46822254200378666,
+              "samples": 97928,
+              "progress": 0.75
+            },
+            {
+              "seconds": 0.6765779170018504,
+              "samples": 96528,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 22050,
+          "file": "results/piper-4t-paragraph.wav"
+        },
+        {
+          "label": "numbers",
+          "text": "今天是2026年10月12日，下午3点半。全书共有113段，现在读到第3段，进度约为百分之二点六。",
+          "generateSeconds": 0.3670150830002967,
+          "audioSeconds": 9.009342403628118,
+          "rtf": 0.04073716666074291,
+          "firstChunkSeconds": 0.1624652500031516,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.1624652500031516,
+              "samples": 89088,
+              "progress": 0.5
+            },
+            {
+              "seconds": 0.366999833000591,
+              "samples": 109568,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 22050,
+          "file": "results/piper-4t-numbers.wav"
+        },
+        {
+          "label": "mixed",
+          "text": "我正在学习 machine learning。阅读速度是正常速度，This is a good book. 请从当前段落继续朗读。",
+          "generateSeconds": 0.24057387500215555,
+          "audioSeconds": 6.199727891156463,
+          "rtf": 0.038803940951234274,
+          "firstChunkSeconds": 0.0642950000037672,
+          "callbackChunks": 3,
+          "chunks": [
+            {
+              "seconds": 0.0642950000037672,
+              "samples": 35072,
+              "progress": 0.3333333432674408
+            },
+            {
+              "seconds": 0.16117354200105183,
+              "samples": 54528,
+              "progress": 0.6666666865348816
+            },
+            {
+              "seconds": 0.24055987499741605,
+              "samples": 47104,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 22050,
+          "file": "results/piper-4t-mixed.wav"
+        },
+        {
+          "label": "consecutive-1",
+          "text": "清晨，阳光透过窗帘洒在书桌上",
+          "generateSeconds": 0.11507425000309013,
+          "audioSeconds": 2.97578231292517,
+          "rtf": 0.03867025134979483,
+          "firstChunkSeconds": 0.11506129200279247,
+          "callbackChunks": 1,
+          "chunks": [
+            {
+              "seconds": 0.11506129200279247,
+              "samples": 65616,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 22050,
+          "file": "results/piper-4t-consecutive-1.wav"
+        },
+        {
+          "label": "consecutive-2",
+          "text": "我打开昨天读到的那一页，继续听作者讲述他的经历",
+          "generateSeconds": 0.16892333299620077,
+          "audioSeconds": 4.4117913832199545,
+          "rtf": 0.03828905728378112,
+          "firstChunkSeconds": 0.1689107919955859,
+          "callbackChunks": 1,
+          "chunks": [
+            {
+              "seconds": 0.1689107919955859,
+              "samples": 97280,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 22050,
+          "file": "results/piper-4t-consecutive-2.wav"
+        },
+        {
+          "label": "consecutive-3",
+          "text": "阅读不只是获得知识，也让我们学会耐心，理解不同的人生",
+          "generateSeconds": 0.17457087500224588,
+          "audioSeconds": 4.446621315192743,
+          "rtf": 0.0392592178708339,
+          "firstChunkSeconds": 0.1745552080028574,
+          "callbackChunks": 1,
+          "chunks": [
+            {
+              "seconds": 0.1745552080028574,
+              "samples": 98048,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 22050,
+          "file": "results/piper-4t-consecutive-3.wav"
+        },
+        {
+          "label": "consecutive-4",
+          "text": "当声音停下来时，我们可以做一条笔记，再从刚才的位置继续",
+          "generateSeconds": 0.19761858400306664,
+          "audioSeconds": 4.702040816326531,
+          "rtf": 0.042028257882596634,
+          "firstChunkSeconds": 0.19760587500059046,
+          "callbackChunks": 1,
+          "chunks": [
+            {
+              "seconds": 0.19760587500059046,
+              "samples": 103680,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 22050,
+          "file": "results/piper-4t-consecutive-4.wav"
+        }
+      ],
+      "warmMedianSeconds": 0.1465524169980199,
+      "warmMedianRTF": 0.03693508309004301,
+      "firstReadySeconds": 1.0065752909940784,
+      "processPeakRssBytes": 379650048,
+      "environment": {
+        "platform": "macOS-27.0.1-arm64-arm-64bit",
+        "machine": "arm64",
+        "python": "3.11.11",
+        "packages": {
+          "sherpa-onnx": "1.13.8",
+          "sherpa-onnx-core": "1.13.8",
+          "numpy": "2.4.6",
+          "soundfile": "0.13.1"
+        }
+      },
+      "run": "results"
+    },
+    {
+      "engine": "piper",
+      "precision": "fp32",
+      "threads": 1,
+      "provider": "cpu",
+      "sid": 0,
+      "loadSeconds": 0.5773535839980468,
+      "importSeconds": 0.18891650000296067,
+      "rows": [
+        {
+          "label": "cold-short",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 0.3882336669994402,
+          "audioSeconds": 3.918548752834467,
+          "rtf": 0.09907588025250748,
+          "firstChunkSeconds": 0.3882224999979371,
+          "callbackChunks": 1,
+          "chunks": [
+            {
+              "seconds": 0.3882224999979371,
+              "samples": 86404,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 22050,
+          "file": "results/piper-1t-cold-short.wav"
+        },
+        {
+          "label": "warm-short-1",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 0.3356754170017666,
+          "audioSeconds": 3.982222222222222,
+          "rtf": 0.08429349199263113,
+          "firstChunkSeconds": 0.3356618329999037,
+          "callbackChunks": 1,
+          "chunks": [
+            {
+              "seconds": 0.3356618329999037,
+              "samples": 87808,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 22050,
+          "file": "results/piper-1t-warm-short-1.wav"
+        },
+        {
+          "label": "warm-short-2",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 0.3726148340065265,
+          "audioSeconds": 4.114467120181406,
+          "rtf": 0.09056211244922964,
+          "firstChunkSeconds": 0.3725940840013209,
+          "callbackChunks": 1,
+          "chunks": [
+            {
+              "seconds": 0.3725940840013209,
+              "samples": 90724,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 22050,
+          "file": "results/piper-1t-warm-short-2.wav"
+        },
+        {
+          "label": "warm-short-3",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 0.34914679099892965,
+          "audioSeconds": 4.179591836734694,
+          "rtf": 0.08353609745579858,
+          "firstChunkSeconds": 0.34913316600432154,
+          "callbackChunks": 1,
+          "chunks": [
+            {
+              "seconds": 0.34913316600432154,
+              "samples": 92160,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 22050,
+          "file": "results/piper-1t-warm-short-3.wav"
+        },
+        {
+          "label": "paragraph",
+          "text": "清晨，阳光透过窗帘洒在书桌上。我打开昨天读到的那一页，继续听作者讲述他的经历。阅读不只是获得知识，也让我们学会耐心，理解不同的人生。当声音停下来时，我们可以做一条笔记，再从刚才的位置继续。",
+          "generateSeconds": 1.5983221659989795,
+          "audioSeconds": 16.71904761904762,
+          "rtf": 0.09559887634855758,
+          "firstChunkSeconds": 0.2543908749939874,
+          "callbackChunks": 4,
+          "chunks": [
+            {
+              "seconds": 0.2543908749939874,
+              "samples": 69888,
+              "progress": 0.25
+            },
+            {
+              "seconds": 0.6091262499976438,
+              "samples": 93440,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.058351624997158,
+              "samples": 99584,
+              "progress": 0.75
+            },
+            {
+              "seconds": 1.5983069159992738,
+              "samples": 105743,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 22050,
+          "file": "results/piper-1t-paragraph.wav"
+        },
+        {
+          "label": "numbers",
+          "text": "今天是2026年10月12日，下午3点半。全书共有113段，现在读到第3段，进度约为百分之二点六。",
+          "generateSeconds": 0.9059235409949906,
+          "audioSeconds": 8.846802721088435,
+          "rtf": 0.10240123687120418,
+          "firstChunkSeconds": 0.3724043330003042,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.3724043330003042,
+              "samples": 85760,
+              "progress": 0.5
+            },
+            {
+              "seconds": 0.9059100000013132,
+              "samples": 109312,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 22050,
+          "file": "results/piper-1t-numbers.wav"
+        },
+        {
+          "label": "mixed",
+          "text": "我正在学习 machine learning。阅读速度是正常速度，This is a good book. 请从当前段落继续朗读。",
+          "generateSeconds": 0.5802705410023918,
+          "audioSeconds": 6.357551020408163,
+          "rtf": 0.09127265186542502,
+          "firstChunkSeconds": 0.1540205409983173,
+          "callbackChunks": 3,
+          "chunks": [
+            {
+              "seconds": 0.1540205409983173,
+              "samples": 34304,
+              "progress": 0.3333333432674408
+            },
+            {
+              "seconds": 0.3828477080023731,
+              "samples": 56204,
+              "progress": 0.6666666865348816
+            },
+            {
+              "seconds": 0.580257708003046,
+              "samples": 49676,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 22050,
+          "file": "results/piper-1t-mixed.wav"
+        },
+        {
+          "label": "consecutive-1",
+          "text": "清晨，阳光透过窗帘洒在书桌上",
+          "generateSeconds": 0.23729341700527584,
+          "audioSeconds": 2.8908843537414968,
+          "rtf": 0.08208333090120375,
+          "firstChunkSeconds": 0.23728091700468212,
+          "callbackChunks": 1,
+          "chunks": [
+            {
+              "seconds": 0.23728091700468212,
+              "samples": 63744,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 22050,
+          "file": "results/piper-1t-consecutive-1.wav"
+        },
+        {
+          "label": "consecutive-2",
+          "text": "我打开昨天读到的那一页，继续听作者讲述他的经历",
+          "generateSeconds": 0.37083445800089976,
+          "audioSeconds": 4.388571428571429,
+          "rtf": 0.08450003925801752,
+          "firstChunkSeconds": 0.3708217079984024,
+          "callbackChunks": 1,
+          "chunks": [
+            {
+              "seconds": 0.3708217079984024,
+              "samples": 96768,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 22050,
+          "file": "results/piper-1t-consecutive-2.wav"
+        },
+        {
+          "label": "consecutive-3",
+          "text": "阅读不只是获得知识，也让我们学会耐心，理解不同的人生",
+          "generateSeconds": 0.4478905840005609,
+          "audioSeconds": 4.551111111111111,
+          "rtf": 0.09841345839856075,
+          "firstChunkSeconds": 0.4478573750020587,
+          "callbackChunks": 1,
+          "chunks": [
+            {
+              "seconds": 0.4478573750020587,
+              "samples": 100352,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 22050,
+          "file": "results/piper-1t-consecutive-3.wav"
+        },
+        {
+          "label": "consecutive-4",
+          "text": "当声音停下来时，我们可以做一条笔记，再从刚才的位置继续",
+          "generateSeconds": 0.5103255830035778,
+          "audioSeconds": 5.027120181405896,
+          "rtf": 0.10151449827898465,
+          "firstChunkSeconds": 0.5103087079987745,
+          "callbackChunks": 1,
+          "chunks": [
+            {
+              "seconds": 0.5103087079987745,
+              "samples": 110848,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 22050,
+          "file": "results/piper-1t-consecutive-4.wav"
+        }
+      ],
+      "warmMedianSeconds": 0.34914679099892965,
+      "warmMedianRTF": 0.08429349199263113,
+      "firstReadySeconds": 1.1545037510004477,
+      "processPeakRssBytes": 367017984,
+      "environment": {
+        "platform": "macOS-27.0.1-arm64-arm-64bit",
+        "machine": "arm64",
+        "python": "3.11.11",
+        "packages": {
+          "sherpa-onnx": "1.13.8",
+          "sherpa-onnx-core": "1.13.8",
+          "numpy": "2.4.6",
+          "soundfile": "0.13.1"
+        }
+      },
+      "run": "results"
+    },
+    {
+      "engine": "kokoro",
+      "precision": "fp32",
+      "threads": 1,
+      "provider": "cpu",
+      "sid": 3,
+      "loadSeconds": 0.7588282090000575,
+      "importSeconds": 0.13715058399975533,
+      "rows": [
+        {
+          "label": "cold-short",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 4.6492582079954445,
+          "audioSeconds": 4.628541666666667,
+          "rtf": 1.0044758247458312,
+          "firstChunkSeconds": 2.7449754169938387,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 2.7449754169938387,
+              "samples": 66927,
+              "progress": 0.5
+            },
+            {
+              "seconds": 4.649241874998552,
+              "samples": 44158,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-1t-cold-short.wav"
+        },
+        {
+          "label": "warm-short-1",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 4.445949000000837,
+          "audioSeconds": 4.624916666666667,
+          "rtf": 0.9613035910558757,
+          "firstChunkSeconds": 2.5916915830021026,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 2.5916915830021026,
+              "samples": 66893,
+              "progress": 0.5
+            },
+            {
+              "seconds": 4.445922165999946,
+              "samples": 44105,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-1t-warm-short-1.wav"
+        },
+        {
+          "label": "warm-short-2",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 4.549918667005841,
+          "audioSeconds": 4.6258333333333335,
+          "rtf": 0.9835889750327884,
+          "firstChunkSeconds": 2.6380415000021458,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 2.6380415000021458,
+              "samples": 66926,
+              "progress": 0.5
+            },
+            {
+              "seconds": 4.5499037920017145,
+              "samples": 44094,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-1t-warm-short-2.wav"
+        },
+        {
+          "label": "warm-short-3",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 4.445799290995637,
+          "audioSeconds": 4.6258333333333335,
+          "rtf": 0.9610807330561637,
+          "firstChunkSeconds": 2.597292499995092,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 2.597292499995092,
+              "samples": 66923,
+              "progress": 0.5
+            },
+            {
+              "seconds": 4.445786290998512,
+              "samples": 44097,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-1t-warm-short-3.wav"
+        },
+        {
+          "label": "paragraph",
+          "text": "清晨，阳光透过窗帘洒在书桌上。我打开昨天读到的那一页，继续听作者讲述他的经历。阅读不只是获得知识，也让我们学会耐心，理解不同的人生。当声音停下来时，我们可以做一条笔记，再从刚才的位置继续。",
+          "generateSeconds": 20.17883616600011,
+          "audioSeconds": 20.06675,
+          "rtf": 1.0055856661392657,
+          "firstChunkSeconds": 0.8165678329969523,
+          "callbackChunks": 10,
+          "chunks": [
+            {
+              "seconds": 0.8165678329969523,
+              "samples": 16598,
+              "progress": 0.10000000149011612
+            },
+            {
+              "seconds": 3.365174915998068,
+              "samples": 64737,
+              "progress": 0.20000000298023224
+            },
+            {
+              "seconds": 5.699111165995419,
+              "samples": 58432,
+              "progress": 0.30000001192092896
+            },
+            {
+              "seconds": 8.341638915997464,
+              "samples": 61460,
+              "progress": 0.4000000059604645
+            },
+            {
+              "seconds": 10.51080862499657,
+              "samples": 52076,
+              "progress": 0.5
+            },
+            {
+              "seconds": 12.441734207997797,
+              "samples": 43957,
+              "progress": 0.6000000238418579
+            },
+            {
+              "seconds": 14.245527374994708,
+              "samples": 41191,
+              "progress": 0.699999988079071
+            },
+            {
+              "seconds": 16.106503415998304,
+              "samples": 43867,
+              "progress": 0.800000011920929
+            },
+            {
+              "seconds": 18.028716499997245,
+              "samples": 46280,
+              "progress": 0.8999999761581421
+            },
+            {
+              "seconds": 20.178822333000426,
+              "samples": 53004,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-1t-paragraph.wav"
+        }
+      ],
+      "warmMedianSeconds": 4.445949000000837,
+      "warmMedianRTF": 0.9613035910558757,
+      "firstReadySeconds": 5.545237000995257,
+      "processPeakRssBytes": 844759040,
+      "environment": {
+        "platform": "macOS-27.0.1-arm64-arm-64bit",
+        "machine": "arm64",
+        "python": "3.11.11",
+        "packages": {
+          "sherpa-onnx": "1.13.8",
+          "sherpa-onnx-core": "1.13.8",
+          "numpy": "2.4.6",
+          "soundfile": "0.13.1"
+        }
+      },
+      "run": "results"
+    },
+    {
+      "engine": "kokoro",
+      "precision": "fp32",
+      "threads": 2,
+      "provider": "cpu",
+      "sid": 3,
+      "loadSeconds": 0.7314508749986999,
+      "importSeconds": 0.13313245800236473,
+      "rows": [
+        {
+          "label": "cold-short",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 2.5121521660039434,
+          "audioSeconds": 4.625666666666667,
+          "rtf": 0.5430897526851503,
+          "firstChunkSeconds": 1.4185603330042795,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 1.4185603330042795,
+              "samples": 66921,
+              "progress": 0.5
+            },
+            {
+              "seconds": 2.512140333004936,
+              "samples": 44095,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-2t-cold-short.wav"
+        },
+        {
+          "label": "warm-short-1",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 2.589289124996867,
+          "audioSeconds": 4.625708333333334,
+          "rtf": 0.5597605682005892,
+          "firstChunkSeconds": 1.537708666997787,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 1.537708666997787,
+              "samples": 66922,
+              "progress": 0.5
+            },
+            {
+              "seconds": 2.5892714590008836,
+              "samples": 44095,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-2t-warm-short-1.wav"
+        },
+        {
+          "label": "warm-short-2",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 2.6653029169974616,
+          "audioSeconds": 4.625708333333334,
+          "rtf": 0.5761934659371004,
+          "firstChunkSeconds": 1.5882223750013509,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 1.5882223750013509,
+              "samples": 66923,
+              "progress": 0.5
+            },
+            {
+              "seconds": 2.6652911249984754,
+              "samples": 44094,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-2t-warm-short-2.wav"
+        },
+        {
+          "label": "warm-short-3",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 2.463425791996997,
+          "audioSeconds": 4.62575,
+          "rtf": 0.5325462448245143,
+          "firstChunkSeconds": 1.4499137500024517,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 1.4499137500024517,
+              "samples": 66922,
+              "progress": 0.5
+            },
+            {
+              "seconds": 2.463410666998243,
+              "samples": 44096,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-2t-warm-short-3.wav"
+        },
+        {
+          "label": "paragraph",
+          "text": "清晨，阳光透过窗帘洒在书桌上。我打开昨天读到的那一页，继续听作者讲述他的经历。阅读不只是获得知识，也让我们学会耐心，理解不同的人生。当声音停下来时，我们可以做一条笔记，再从刚才的位置继续。",
+          "generateSeconds": 11.47941837500548,
+          "audioSeconds": 20.064625,
+          "rtf": 0.5721222487340522,
+          "firstChunkSeconds": 0.46547654200549005,
+          "callbackChunks": 10,
+          "chunks": [
+            {
+              "seconds": 0.46547654200549005,
+              "samples": 16600,
+              "progress": 0.10000000149011612
+            },
+            {
+              "seconds": 1.9095888750016456,
+              "samples": 64750,
+              "progress": 0.20000000298023224
+            },
+            {
+              "seconds": 3.213777958000719,
+              "samples": 58430,
+              "progress": 0.30000001192092896
+            },
+            {
+              "seconds": 4.885230250001769,
+              "samples": 61459,
+              "progress": 0.4000000059604645
+            },
+            {
+              "seconds": 6.11140908300149,
+              "samples": 52070,
+              "progress": 0.5
+            },
+            {
+              "seconds": 7.142168583006423,
+              "samples": 43956,
+              "progress": 0.6000000238418579
+            },
+            {
+              "seconds": 8.129373375006253,
+              "samples": 41136,
+              "progress": 0.699999988079071
+            },
+            {
+              "seconds": 9.206576708005741,
+              "samples": 43865,
+              "progress": 0.800000011920929
+            },
+            {
+              "seconds": 10.274580875004176,
+              "samples": 46280,
+              "progress": 0.8999999761581421
+            },
+            {
+              "seconds": 11.479404417004844,
+              "samples": 53005,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-2t-paragraph.wav"
+        }
+      ],
+      "warmMedianSeconds": 2.589289124996867,
+      "warmMedianRTF": 0.5597605682005892,
+      "firstReadySeconds": 3.376735499005008,
+      "processPeakRssBytes": 862994432,
+      "environment": {
+        "platform": "macOS-27.0.1-arm64-arm-64bit",
+        "machine": "arm64",
+        "python": "3.11.11",
+        "packages": {
+          "sherpa-onnx": "1.13.8",
+          "sherpa-onnx-core": "1.13.8",
+          "numpy": "2.4.6",
+          "soundfile": "0.13.1"
+        }
+      },
+      "run": "results"
+    },
+    {
+      "engine": "kokoro",
+      "precision": "fp32",
+      "threads": 4,
+      "provider": "cpu",
+      "sid": 3,
+      "loadSeconds": 0.7500519169989275,
+      "importSeconds": 0.1474748330001603,
+      "rows": [
+        {
+          "label": "cold-short",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 1.6365339580006548,
+          "audioSeconds": 4.6245,
+          "rtf": 0.35388343777719855,
+          "firstChunkSeconds": 0.9014433330012253,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.9014433330012253,
+              "samples": 66895,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.6364256250017206,
+              "samples": 44093,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-4t-cold-short.wav"
+        },
+        {
+          "label": "warm-short-1",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 2.0153480829976615,
+          "audioSeconds": 4.625708333333334,
+          "rtf": 0.43568421045374917,
+          "firstChunkSeconds": 1.1686722500016913,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 1.1686722500016913,
+              "samples": 66923,
+              "progress": 0.5
+            },
+            {
+              "seconds": 2.0153309160014032,
+              "samples": 44094,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-4t-warm-short-1.wav"
+        },
+        {
+          "label": "warm-short-2",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 1.721259292004106,
+          "audioSeconds": 4.624666666666666,
+          "rtf": 0.37219099582040643,
+          "firstChunkSeconds": 1.0211949170043226,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 1.0211949170043226,
+              "samples": 66894,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.7212457090063253,
+              "samples": 44098,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-4t-warm-short-2.wav"
+        },
+        {
+          "label": "warm-short-3",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 1.689859375001106,
+          "audioSeconds": 4.626291666666667,
+          "rtf": 0.36527298682373877,
+          "firstChunkSeconds": 0.9914043750031851,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.9914043750031851,
+              "samples": 66922,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.689844416003325,
+              "samples": 44109,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-4t-warm-short-3.wav"
+        },
+        {
+          "label": "paragraph",
+          "text": "清晨，阳光透过窗帘洒在书桌上。我打开昨天读到的那一页，继续听作者讲述他的经历。阅读不只是获得知识，也让我们学会耐心，理解不同的人生。当声音停下来时，我们可以做一条笔记，再从刚才的位置继续。",
+          "generateSeconds": 7.418399624999438,
+          "audioSeconds": 20.07,
+          "rtf": 0.3696262892376401,
+          "firstChunkSeconds": 0.32490025000151945,
+          "callbackChunks": 10,
+          "chunks": [
+            {
+              "seconds": 0.32490025000151945,
+              "samples": 16604,
+              "progress": 0.10000000149011612
+            },
+            {
+              "seconds": 1.2490978749992792,
+              "samples": 64751,
+              "progress": 0.20000000298023224
+            },
+            {
+              "seconds": 2.1398190839972813,
+              "samples": 58430,
+              "progress": 0.30000001192092896
+            },
+            {
+              "seconds": 3.111790666996967,
+              "samples": 61597,
+              "progress": 0.4000000059604645
+            },
+            {
+              "seconds": 3.910504833998857,
+              "samples": 52057,
+              "progress": 0.5
+            },
+            {
+              "seconds": 4.599643749999814,
+              "samples": 43958,
+              "progress": 0.6000000238418579
+            },
+            {
+              "seconds": 5.285915667001973,
+              "samples": 41135,
+              "progress": 0.699999988079071
+            },
+            {
+              "seconds": 5.954075208996073,
+              "samples": 43866,
+              "progress": 0.800000011920929
+            },
+            {
+              "seconds": 6.648696416996245,
+              "samples": 46278,
+              "progress": 0.8999999761581421
+            },
+            {
+              "seconds": 7.418381750001572,
+              "samples": 53004,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-4t-paragraph.wav"
+        },
+        {
+          "label": "numbers",
+          "text": "今天是2026年10月12日，下午3点半。全书共有113段，现在读到第3段，进度约为百分之二点六。",
+          "generateSeconds": 3.984594665998884,
+          "audioSeconds": 10.766,
+          "rtf": 0.37010910886112613,
+          "firstChunkSeconds": 1.0107194579977659,
+          "callbackChunks": 5,
+          "chunks": [
+            {
+              "seconds": 1.0107194579977659,
+              "samples": 68916,
+              "progress": 0.20000000298023224
+            },
+            {
+              "seconds": 1.6351644579990534,
+              "samples": 34610,
+              "progress": 0.4000000059604645
+            },
+            {
+              "seconds": 2.483841166002094,
+              "samples": 55455,
+              "progress": 0.6000000238418579
+            },
+            {
+              "seconds": 3.152832332998514,
+              "samples": 44373,
+              "progress": 0.800000011920929
+            },
+            {
+              "seconds": 3.984575707996555,
+              "samples": 55030,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-4t-numbers.wav"
+        },
+        {
+          "label": "mixed",
+          "text": "我正在学习 machine learning。阅读速度是正常速度，This is a good book. 请从当前段落继续朗读。",
+          "generateSeconds": 3.4693872919960995,
+          "audioSeconds": 8.658125,
+          "rtf": 0.40070884770040854,
+          "firstChunkSeconds": 0.5777194589973078,
+          "callbackChunks": 5,
+          "chunks": [
+            {
+              "seconds": 0.5777194589973078,
+              "samples": 34687,
+              "progress": 0.20000000298023224
+            },
+            {
+              "seconds": 1.0717932499974268,
+              "samples": 26666,
+              "progress": 0.4000000059604645
+            },
+            {
+              "seconds": 1.867875333999109,
+              "samples": 52281,
+              "progress": 0.6000000238418579
+            },
+            {
+              "seconds": 2.509579459001543,
+              "samples": 32814,
+              "progress": 0.800000011920929
+            },
+            {
+              "seconds": 3.4693732500018086,
+              "samples": 61347,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-4t-mixed.wav"
+        },
+        {
+          "label": "consecutive-1",
+          "text": "清晨，阳光透过窗帘洒在书桌上",
+          "generateSeconds": 1.307655791999423,
+          "audioSeconds": 3.3030416666666667,
+          "rtf": 0.395894428216242,
+          "firstChunkSeconds": 0.3464473749991157,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.3464473749991157,
+              "samples": 16600,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.3076379580015782,
+              "samples": 62673,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-4t-consecutive-1.wav"
+        },
+        {
+          "label": "consecutive-2",
+          "text": "我打开昨天读到的那一页，继续听作者讲述他的经历",
+          "generateSeconds": 1.8464769170022919,
+          "audioSeconds": 5.003208333333333,
+          "rtf": 0.36905857081751714,
+          "firstChunkSeconds": 0.9225616670009913,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.9225616670009913,
+              "samples": 58432,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.8464622920000693,
+              "samples": 61645,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-4t-consecutive-2.wav"
+        },
+        {
+          "label": "consecutive-3",
+          "text": "阅读不只是获得知识，也让我们学会耐心，理解不同的人生",
+          "generateSeconds": 2.1175233329995535,
+          "audioSeconds": 5.654,
+          "rtf": 0.3745177454898397,
+          "firstChunkSeconds": 0.772222250001505,
+          "callbackChunks": 3,
+          "chunks": [
+            {
+              "seconds": 0.772222250001505,
+              "samples": 52076,
+              "progress": 0.3333333432674408
+            },
+            {
+              "seconds": 1.4436473329988075,
+              "samples": 43959,
+              "progress": 0.6666666865348816
+            },
+            {
+              "seconds": 2.11750933300209,
+              "samples": 39661,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-4t-consecutive-3.wav"
+        },
+        {
+          "label": "consecutive-4",
+          "text": "当声音停下来时，我们可以做一条笔记，再从刚才的位置继续",
+          "generateSeconds": 2.132146083000407,
+          "audioSeconds": 5.939583333333333,
+          "rtf": 0.35897233245885496,
+          "firstChunkSeconds": 0.6703619999971124,
+          "callbackChunks": 3,
+          "chunks": [
+            {
+              "seconds": 0.6703619999971124,
+              "samples": 43866,
+              "progress": 0.3333333432674408
+            },
+            {
+              "seconds": 1.3755156670013093,
+              "samples": 46278,
+              "progress": 0.6666666865348816
+            },
+            {
+              "seconds": 2.132134416999179,
+              "samples": 52406,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-4t-consecutive-4.wav"
+        }
+      ],
+      "warmMedianSeconds": 1.721259292004106,
+      "warmMedianRTF": 0.37219099582040643,
+      "firstReadySeconds": 2.5340607079997426,
+      "processPeakRssBytes": 878854144,
+      "environment": {
+        "platform": "macOS-27.0.1-arm64-arm-64bit",
+        "machine": "arm64",
+        "python": "3.11.11",
+        "packages": {
+          "sherpa-onnx": "1.13.8",
+          "sherpa-onnx-core": "1.13.8",
+          "numpy": "2.4.6",
+          "soundfile": "0.13.1"
+        }
+      },
+      "run": "results"
+    },
+    {
+      "engine": "kokoro",
+      "precision": "fp32",
+      "threads": 8,
+      "provider": "cpu",
+      "sid": 3,
+      "loadSeconds": 0.7699091660033446,
+      "importSeconds": 0.13493408299837029,
+      "rows": [
+        {
+          "label": "cold-short",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 1.3447262909976416,
+          "audioSeconds": 4.6245416666666666,
+          "rtf": 0.29078044656626695,
+          "firstChunkSeconds": 0.6898903330002213,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.6898903330002213,
+              "samples": 66894,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.3447119159973226,
+              "samples": 44095,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-8t-cold-short.wav"
+        },
+        {
+          "label": "warm-short-1",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 1.5897035420057364,
+          "audioSeconds": 4.625791666666666,
+          "rtf": 0.34366085992611783,
+          "firstChunkSeconds": 0.8970145000057528,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.8970145000057528,
+              "samples": 66924,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.5896693340037018,
+              "samples": 44095,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-8t-warm-short-1.wav"
+        },
+        {
+          "label": "warm-short-2",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 1.8256932500007679,
+          "audioSeconds": 4.6269583333333335,
+          "rtf": 0.3945774131675635,
+          "firstChunkSeconds": 0.9374067500029923,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.9374067500029923,
+              "samples": 66923,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.8256784580007661,
+              "samples": 44124,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-8t-warm-short-2.wav"
+        },
+        {
+          "label": "warm-short-3",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 1.7359590000050957,
+          "audioSeconds": 4.62575,
+          "rtf": 0.37528163000704656,
+          "firstChunkSeconds": 1.0887897499997052,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 1.0887897499997052,
+              "samples": 66924,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.735943292005686,
+              "samples": 44094,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-8t-warm-short-3.wav"
+        },
+        {
+          "label": "paragraph",
+          "text": "清晨，阳光透过窗帘洒在书桌上。我打开昨天读到的那一页，继续听作者讲述他的经历。阅读不只是获得知识，也让我们学会耐心，理解不同的人生。当声音停下来时，我们可以做一条笔记，再从刚才的位置继续。",
+          "generateSeconds": 6.043347582999559,
+          "audioSeconds": 20.063875,
+          "rtf": 0.30120540438970833,
+          "firstChunkSeconds": 0.2640005830035079,
+          "callbackChunks": 10,
+          "chunks": [
+            {
+              "seconds": 0.2640005830035079,
+              "samples": 16597,
+              "progress": 0.10000000149011612
+            },
+            {
+              "seconds": 1.0708886249994976,
+              "samples": 64765,
+              "progress": 0.20000000298023224
+            },
+            {
+              "seconds": 1.7634569170040777,
+              "samples": 58435,
+              "progress": 0.30000001192092896
+            },
+            {
+              "seconds": 2.524281792000693,
+              "samples": 61364,
+              "progress": 0.4000000059604645
+            },
+            {
+              "seconds": 3.133007791999262,
+              "samples": 52078,
+              "progress": 0.5
+            },
+            {
+              "seconds": 3.662674375002098,
+              "samples": 43956,
+              "progress": 0.6000000238418579
+            },
+            {
+              "seconds": 4.236103374998493,
+              "samples": 41188,
+              "progress": 0.699999988079071
+            },
+            {
+              "seconds": 4.791691541999171,
+              "samples": 43865,
+              "progress": 0.800000011920929
+            },
+            {
+              "seconds": 5.388014458003454,
+              "samples": 46279,
+              "progress": 0.8999999761581421
+            },
+            {
+              "seconds": 6.043333708003047,
+              "samples": 53006,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s3-8t-paragraph.wav"
+        }
+      ],
+      "warmMedianSeconds": 1.7359590000050957,
+      "warmMedianRTF": 0.37528163000704656,
+      "firstReadySeconds": 2.2495695399993565,
+      "processPeakRssBytes": 854245376,
+      "environment": {
+        "platform": "macOS-27.0.1-arm64-arm-64bit",
+        "machine": "arm64",
+        "python": "3.11.11",
+        "packages": {
+          "sherpa-onnx": "1.13.8",
+          "sherpa-onnx-core": "1.13.8",
+          "numpy": "2.4.6",
+          "soundfile": "0.13.1"
+        }
+      },
+      "run": "results"
+    },
+    {
+      "engine": "kokoro",
+      "precision": "fp32",
+      "threads": 4,
+      "provider": "cpu",
+      "sid": 58,
+      "loadSeconds": 0.8036691249944852,
+      "importSeconds": 0.13310979200468864,
+      "rows": [
+        {
+          "label": "cold-short",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 1.707831041996542,
+          "audioSeconds": 4.679833333333334,
+          "rtf": 0.3649341590505093,
+          "firstChunkSeconds": 0.9931149170006393,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.9931149170006393,
+              "samples": 69036,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.7078184169949964,
+              "samples": 43280,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s58-4t-cold-short.wav"
+        },
+        {
+          "label": "warm-short-1",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 2.201445958002296,
+          "audioSeconds": 4.683166666666667,
+          "rtf": 0.4700763638568552,
+          "firstChunkSeconds": 1.4811942910018843,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 1.4811942910018843,
+              "samples": 69026,
+              "progress": 0.5
+            },
+            {
+              "seconds": 2.2014320410016808,
+              "samples": 43370,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s58-4t-warm-short-1.wav"
+        },
+        {
+          "label": "warm-short-2",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 1.7192819580013747,
+          "audioSeconds": 4.68025,
+          "rtf": 0.36734831643638155,
+          "firstChunkSeconds": 1.006226167002751,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 1.006226167002751,
+              "samples": 69028,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.7192682919994695,
+              "samples": 43298,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s58-4t-warm-short-2.wav"
+        },
+        {
+          "label": "warm-short-3",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 1.6659854160025134,
+          "audioSeconds": 4.68125,
+          "rtf": 0.35588473506061696,
+          "firstChunkSeconds": 0.9969165410002461,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.9969165410002461,
+              "samples": 69070,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.6659684160040342,
+              "samples": 43280,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s58-4t-warm-short-3.wav"
+        },
+        {
+          "label": "paragraph",
+          "text": "清晨，阳光透过窗帘洒在书桌上。我打开昨天读到的那一页，继续听作者讲述他的经历。阅读不只是获得知识，也让我们学会耐心，理解不同的人生。当声音停下来时，我们可以做一条笔记，再从刚才的位置继续。",
+          "generateSeconds": 7.915163584002585,
+          "audioSeconds": 20.515916666666666,
+          "rtf": 0.38580599212818917,
+          "firstChunkSeconds": 0.3398995419993298,
+          "callbackChunks": 10,
+          "chunks": [
+            {
+              "seconds": 0.3398995419993298,
+              "samples": 16693,
+              "progress": 0.10000000149011612
+            },
+            {
+              "seconds": 1.3866448340049828,
+              "samples": 65083,
+              "progress": 0.20000000298023224
+            },
+            {
+              "seconds": 2.3043040839984315,
+              "samples": 59177,
+              "progress": 0.30000001192092896
+            },
+            {
+              "seconds": 3.263693624998268,
+              "samples": 62395,
+              "progress": 0.4000000059604645
+            },
+            {
+              "seconds": 4.070905250002397,
+              "samples": 53327,
+              "progress": 0.5
+            },
+            {
+              "seconds": 4.847031709003204,
+              "samples": 46696,
+              "progress": 0.6000000238418579
+            },
+            {
+              "seconds": 5.478933292004513,
+              "samples": 40254,
+              "progress": 0.699999988079071
+            },
+            {
+              "seconds": 6.229954209004063,
+              "samples": 46848,
+              "progress": 0.800000011920929
+            },
+            {
+              "seconds": 6.986482874999638,
+              "samples": 48152,
+              "progress": 0.8999999761581421
+            },
+            {
+              "seconds": 7.915149459004169,
+              "samples": 53757,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s58-4t-paragraph.wav"
+        },
+        {
+          "label": "numbers",
+          "text": "今天是2026年10月12日，下午3点半。全书共有113段，现在读到第3段，进度约为百分之二点六。",
+          "generateSeconds": 4.96729349999805,
+          "audioSeconds": 10.894166666666667,
+          "rtf": 0.4559590147630735,
+          "firstChunkSeconds": 1.2801395839996985,
+          "callbackChunks": 5,
+          "chunks": [
+            {
+              "seconds": 1.2801395839996985,
+              "samples": 72199,
+              "progress": 0.20000000298023224
+            },
+            {
+              "seconds": 1.9585247919967514,
+              "samples": 33823,
+              "progress": 0.4000000059604645
+            },
+            {
+              "seconds": 3.0704176250001183,
+              "samples": 54782,
+              "progress": 0.6000000238418579
+            },
+            {
+              "seconds": 3.9993600839952705,
+              "samples": 45673,
+              "progress": 0.800000011920929
+            },
+            {
+              "seconds": 4.967254083996522,
+              "samples": 54983,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s58-4t-numbers.wav"
+        },
+        {
+          "label": "mixed",
+          "text": "我正在学习 machine learning。阅读速度是正常速度，This is a good book. 请从当前段落继续朗读。",
+          "generateSeconds": 3.847445790997881,
+          "audioSeconds": 8.813,
+          "rtf": 0.4365648236693386,
+          "firstChunkSeconds": 0.7184496659974684,
+          "callbackChunks": 5,
+          "chunks": [
+            {
+              "seconds": 0.7184496659974684,
+              "samples": 36760,
+              "progress": 0.20000000298023224
+            },
+            {
+              "seconds": 1.3500843750007334,
+              "samples": 26075,
+              "progress": 0.4000000059604645
+            },
+            {
+              "seconds": 2.2477286659996025,
+              "samples": 52432,
+              "progress": 0.6000000238418579
+            },
+            {
+              "seconds": 2.857094416001928,
+              "samples": 33257,
+              "progress": 0.800000011920929
+            },
+            {
+              "seconds": 3.8474319160013692,
+              "samples": 62988,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s58-4t-mixed.wav"
+        },
+        {
+          "label": "consecutive-1",
+          "text": "清晨，阳光透过窗帘洒在书桌上",
+          "generateSeconds": 1.43251645899727,
+          "audioSeconds": 3.2300833333333334,
+          "rtf": 0.44349210567238306,
+          "firstChunkSeconds": 0.40531499999633525,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.40531499999633525,
+              "samples": 16510,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.4324716670016642,
+              "samples": 61012,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s58-4t-consecutive-1.wav"
+        },
+        {
+          "label": "consecutive-2",
+          "text": "我打开昨天读到的那一页，继续听作者讲述他的经历",
+          "generateSeconds": 2.811310000004596,
+          "audioSeconds": 5.0027083333333335,
+          "rtf": 0.561957606297508,
+          "firstChunkSeconds": 0.9468641670027864,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.9468641670027864,
+              "samples": 59180,
+              "progress": 0.5
+            },
+            {
+              "seconds": 2.8112961250008084,
+              "samples": 60885,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s58-4t-consecutive-2.wav"
+        },
+        {
+          "label": "consecutive-3",
+          "text": "阅读不只是获得知识，也让我们学会耐心，理解不同的人生",
+          "generateSeconds": 9.651718707995315,
+          "audioSeconds": 5.820083333333334,
+          "rtf": 1.658347167078704,
+          "firstChunkSeconds": 2.096730416000355,
+          "callbackChunks": 3,
+          "chunks": [
+            {
+              "seconds": 2.096730416000355,
+              "samples": 53330,
+              "progress": 0.3333333432674408
+            },
+            {
+              "seconds": 6.027718833000108,
+              "samples": 46697,
+              "progress": 0.6666666865348816
+            },
+            {
+              "seconds": 9.651701874994615,
+              "samples": 39655,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s58-4t-consecutive-3.wav"
+        },
+        {
+          "label": "consecutive-4",
+          "text": "当声音停下来时，我们可以做一条笔记，再从刚才的位置继续",
+          "generateSeconds": 7.531322000002547,
+          "audioSeconds": 6.150041666666667,
+          "rtf": 1.2245969065254376,
+          "firstChunkSeconds": 4.250960750003287,
+          "callbackChunks": 3,
+          "chunks": [
+            {
+              "seconds": 4.250960750003287,
+              "samples": 46847,
+              "progress": 0.3333333432674408
+            },
+            {
+              "seconds": 6.666411458005314,
+              "samples": 48154,
+              "progress": 0.6666666865348816
+            },
+            {
+              "seconds": 7.531308707999415,
+              "samples": 52600,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "results/kokoro-fp32-s58-4t-consecutive-4.wav"
+        }
+      ],
+      "warmMedianSeconds": 1.7192819580013747,
+      "warmMedianRTF": 0.36734831643638155,
+      "firstReadySeconds": 2.6446099589957157,
+      "processPeakRssBytes": 872759296,
+      "environment": {
+        "platform": "macOS-27.0.1-arm64-arm-64bit",
+        "machine": "arm64",
+        "python": "3.11.11",
+        "packages": {
+          "sherpa-onnx": "1.13.8",
+          "sherpa-onnx-core": "1.13.8",
+          "numpy": "2.4.6",
+          "soundfile": "0.13.1"
+        }
+      },
+      "run": "results"
+    },
+    {
+      "engine": "melo",
+      "precision": "fp32",
+      "threads": 4,
+      "provider": "cpu",
+      "sid": 0,
+      "loadSeconds": 1.3487402079990716,
+      "importSeconds": 0.1333832079981221,
+      "rows": [
+        {
+          "label": "cold-short",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 1.0257872920046793,
+          "audioSeconds": 3.924172335600907,
+          "rtf": 0.2614022026246207,
+          "firstChunkSeconds": 0.5595492920037941,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.5595492920037941,
+              "samples": 97792,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.0257529170048656,
+              "samples": 75264,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 44100,
+          "file": "repeat/melo-4t-cold-short.wav"
+        },
+        {
+          "label": "warm-short-1",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 1.113713208003901,
+          "audioSeconds": 3.763061224489796,
+          "rtf": 0.29595936434834397,
+          "firstChunkSeconds": 0.61977662499703,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.61977662499703,
+              "samples": 97792,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.1136997080029687,
+              "samples": 68159,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 44100,
+          "file": "repeat/melo-4t-warm-short-1.wav"
+        },
+        {
+          "label": "warm-short-2",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 1.1547612079957617,
+          "audioSeconds": 3.924172335600907,
+          "rtf": 0.29426872961707823,
+          "firstChunkSeconds": 0.6434292920021107,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.6434292920021107,
+              "samples": 97792,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.15474733299925,
+              "samples": 75264,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 44100,
+          "file": "repeat/melo-4t-warm-short-2.wav"
+        },
+        {
+          "label": "warm-short-3",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 1.1354312080002273,
+          "audioSeconds": 3.924172335600907,
+          "rtf": 0.2893428501341186,
+          "firstChunkSeconds": 0.6652886250012671,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.6652886250012671,
+              "samples": 97792,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.1354183329967782,
+              "samples": 75264,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 44100,
+          "file": "repeat/melo-4t-warm-short-3.wav"
+        },
+        {
+          "label": "paragraph",
+          "text": "清晨，阳光透过窗帘洒在书桌上。我打开昨天读到的那一页，继续听作者讲述他的经历。阅读不只是获得知识，也让我们学会耐心，理解不同的人生。当声音停下来时，我们可以做一条笔记，再从刚才的位置继续。",
+          "generateSeconds": 4.599240124996868,
+          "audioSeconds": 16.511768707482993,
+          "rtf": 0.27854315346075137,
+          "firstChunkSeconds": 0.18293766599526862,
+          "callbackChunks": 10,
+          "chunks": [
+            {
+              "seconds": 0.18293766599526862,
+              "samples": 28672,
+              "progress": 0.10000000149011612
+            },
+            {
+              "seconds": 0.8083815829959349,
+              "samples": 101888,
+              "progress": 0.20000000298023224
+            },
+            {
+              "seconds": 1.3357217909942847,
+              "samples": 87040,
+              "progress": 0.30000001192092896
+            },
+            {
+              "seconds": 1.9321317499998258,
+              "samples": 96768,
+              "progress": 0.4000000059604645
+            },
+            {
+              "seconds": 2.4741132909985026,
+              "samples": 79360,
+              "progress": 0.5
+            },
+            {
+              "seconds": 2.891208374996495,
+              "samples": 65536,
+              "progress": 0.6000000238418579
+            },
+            {
+              "seconds": 3.3038801250004326,
+              "samples": 57961,
+              "progress": 0.699999988079071
+            },
+            {
+              "seconds": 3.690772415997344,
+              "samples": 63488,
+              "progress": 0.800000011920929
+            },
+            {
+              "seconds": 4.125635624994175,
+              "samples": 68608,
+              "progress": 0.8999999761581421
+            },
+            {
+              "seconds": 4.599224957994011,
+              "samples": 78848,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 44100,
+          "file": "repeat/melo-4t-paragraph.wav"
+        },
+        {
+          "label": "numbers",
+          "text": "今天是2026年10月12日，下午3点半。全书共有113段，现在读到第3段，进度约为百分之二点六。",
+          "generateSeconds": 2.5739484160003485,
+          "audioSeconds": 8.602834467120182,
+          "rtf": 0.2991977151063309,
+          "firstChunkSeconds": 0.6717020409996621,
+          "callbackChunks": 5,
+          "chunks": [
+            {
+              "seconds": 0.6717020409996621,
+              "samples": 104448,
+              "progress": 0.20000000298023224
+            },
+            {
+              "seconds": 1.027534958004253,
+              "samples": 42771,
+              "progress": 0.4000000059604645
+            },
+            {
+              "seconds": 1.588479833000747,
+              "samples": 86528,
+              "progress": 0.6000000238418579
+            },
+            {
+              "seconds": 2.025271040998632,
+              "samples": 68096,
+              "progress": 0.800000011920929
+            },
+            {
+              "seconds": 2.573934250001912,
+              "samples": 77542,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 44100,
+          "file": "repeat/melo-4t-numbers.wav"
+        },
+        {
+          "label": "mixed",
+          "text": "我正在学习 machine learning。阅读速度是正常速度，This is a good book. 请从当前段落继续朗读。",
+          "generateSeconds": 2.0990416669956176,
+          "audioSeconds": 6.924988662131519,
+          "rtf": 0.303111206300449,
+          "firstChunkSeconds": 0.5107533749978757,
+          "callbackChunks": 4,
+          "chunks": [
+            {
+              "seconds": 0.5107533749978757,
+              "samples": 80896,
+              "progress": 0.25
+            },
+            {
+              "seconds": 1.0355398329993477,
+              "samples": 76288,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.420708707999438,
+              "samples": 50416,
+              "progress": 0.75
+            },
+            {
+              "seconds": 2.099022957998386,
+              "samples": 97792,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 44100,
+          "file": "repeat/melo-4t-mixed.wav"
+        },
+        {
+          "label": "consecutive-1",
+          "text": "清晨，阳光透过窗帘洒在书桌上",
+          "generateSeconds": 0.8155470420024358,
+          "audioSeconds": 2.809614512471655,
+          "rtf": 0.29027008451952657,
+          "firstChunkSeconds": 0.2055582500033779,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.2055582500033779,
+              "samples": 28672,
+              "progress": 0.5
+            },
+            {
+              "seconds": 0.815530084000784,
+              "samples": 95232,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 44100,
+          "file": "repeat/melo-4t-consecutive-1.wav"
+        },
+        {
+          "label": "consecutive-2",
+          "text": "我打开昨天读到的那一页，继续听作者讲述他的经历",
+          "generateSeconds": 1.1728017089990317,
+          "audioSeconds": 4.1099319727891155,
+          "rtf": 0.2853579370081728,
+          "firstChunkSeconds": 0.552790041998378,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.552790041998378,
+              "samples": 87040,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.1727848749942495,
+              "samples": 94208,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 44100,
+          "file": "repeat/melo-4t-consecutive-2.wav"
+        },
+        {
+          "label": "consecutive-3",
+          "text": "阅读不只是获得知识，也让我们学会耐心，理解不同的人生",
+          "generateSeconds": 1.275396124998224,
+          "audioSeconds": 4.516281179138322,
+          "rtf": 0.2823996280146493,
+          "firstChunkSeconds": 0.49823783399915555,
+          "callbackChunks": 3,
+          "chunks": [
+            {
+              "seconds": 0.49823783399915555,
+              "samples": 79360,
+              "progress": 0.3333333432674408
+            },
+            {
+              "seconds": 0.9159132499989937,
+              "samples": 65536,
+              "progress": 0.6666666865348816
+            },
+            {
+              "seconds": 1.275384041997313,
+              "samples": 54272,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 44100,
+          "file": "repeat/melo-4t-consecutive-3.wav"
+        },
+        {
+          "label": "consecutive-4",
+          "text": "当声音停下来时，我们可以做一条笔记，再从刚才的位置继续",
+          "generateSeconds": 1.2835063330057892,
+          "audioSeconds": 4.702040816326531,
+          "rtf": 0.27296792672432146,
+          "firstChunkSeconds": 0.39467637500638375,
+          "callbackChunks": 3,
+          "chunks": [
+            {
+              "seconds": 0.39467637500638375,
+              "samples": 63488,
+              "progress": 0.3333333432674408
+            },
+            {
+              "seconds": 0.8228766250031185,
+              "samples": 68608,
+              "progress": 0.6666666865348816
+            },
+            {
+              "seconds": 1.2833838750011637,
+              "samples": 75264,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 44100,
+          "file": "repeat/melo-4t-consecutive-4.wav"
+        }
+      ],
+      "warmMedianSeconds": 1.1354312080002273,
+      "warmMedianRTF": 0.29426872961707823,
+      "firstReadySeconds": 2.507910708001873,
+      "processPeakRssBytes": 573784064,
+      "environment": {
+        "platform": "macOS-27.0.1-arm64-arm-64bit",
+        "machine": "arm64",
+        "python": "3.11.11",
+        "packages": {
+          "sherpa-onnx": "1.13.8",
+          "sherpa-onnx-core": "1.13.8",
+          "numpy": "2.4.6",
+          "soundfile": "0.13.1"
+        }
+      },
+      "run": "repeat"
+    },
+    {
+      "engine": "kokoro",
+      "precision": "fp32",
+      "threads": 4,
+      "provider": "cpu",
+      "sid": 3,
+      "loadSeconds": 0.8462812500001746,
+      "importSeconds": 0.17183674999978393,
+      "rows": [
+        {
+          "label": "cold-short",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 1.5081659169954946,
+          "audioSeconds": 4.625625,
+          "rtf": 0.32604586774662764,
+          "firstChunkSeconds": 0.8703899999964051,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.8703899999964051,
+              "samples": 66921,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.508154666997143,
+              "samples": 44094,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "repeat/kokoro-fp32-s3-4t-cold-short.wav"
+        },
+        {
+          "label": "warm-short-1",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 1.6116288330013049,
+          "audioSeconds": 4.625791666666666,
+          "rtf": 0.34840065206884696,
+          "firstChunkSeconds": 0.9452556250034831,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.9452556250034831,
+              "samples": 66924,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.6116162079997594,
+              "samples": 44095,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "repeat/kokoro-fp32-s3-4t-warm-short-1.wav"
+        },
+        {
+          "label": "warm-short-2",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 1.6667017500003567,
+          "audioSeconds": 4.6258333333333335,
+          "rtf": 0.36030302648179213,
+          "firstChunkSeconds": 0.9442622080023284,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.9442622080023284,
+              "samples": 66924,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.6666882919962518,
+              "samples": 44096,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "repeat/kokoro-fp32-s3-4t-warm-short-2.wav"
+        },
+        {
+          "label": "warm-short-3",
+          "text": "阅读让我们看见更大的世界，也理解不同的人生。",
+          "generateSeconds": 1.8278532920012367,
+          "audioSeconds": 4.628416666666666,
+          "rtf": 0.39491978005464146,
+          "firstChunkSeconds": 1.0988506249996135,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 1.0988506249996135,
+              "samples": 66924,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.8278376670059515,
+              "samples": 44158,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "repeat/kokoro-fp32-s3-4t-warm-short-3.wav"
+        },
+        {
+          "label": "paragraph",
+          "text": "清晨，阳光透过窗帘洒在书桌上。我打开昨天读到的那一页，继续听作者讲述他的经历。阅读不只是获得知识，也让我们学会耐心，理解不同的人生。当声音停下来时，我们可以做一条笔记，再从刚才的位置继续。",
+          "generateSeconds": 7.566790040997148,
+          "audioSeconds": 20.059791666666666,
+          "rtf": 0.37721179595154397,
+          "firstChunkSeconds": 0.34583295800257474,
+          "callbackChunks": 10,
+          "chunks": [
+            {
+              "seconds": 0.34583295800257474,
+              "samples": 16597,
+              "progress": 0.10000000149011612
+            },
+            {
+              "seconds": 1.3477480000001378,
+              "samples": 64748,
+              "progress": 0.20000000298023224
+            },
+            {
+              "seconds": 2.2990753749982105,
+              "samples": 58431,
+              "progress": 0.30000001192092896
+            },
+            {
+              "seconds": 3.281396250000398,
+              "samples": 61362,
+              "progress": 0.4000000059604645
+            },
+            {
+              "seconds": 4.096365165998577,
+              "samples": 52055,
+              "progress": 0.5
+            },
+            {
+              "seconds": 4.810378082998795,
+              "samples": 43957,
+              "progress": 0.6000000238418579
+            },
+            {
+              "seconds": 5.440886083000805,
+              "samples": 41135,
+              "progress": 0.699999988079071
+            },
+            {
+              "seconds": 6.0980064579998725,
+              "samples": 43866,
+              "progress": 0.800000011920929
+            },
+            {
+              "seconds": 6.7743420409969985,
+              "samples": 46276,
+              "progress": 0.8999999761581421
+            },
+            {
+              "seconds": 7.566775416002201,
+              "samples": 53008,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "repeat/kokoro-fp32-s3-4t-paragraph.wav"
+        },
+        {
+          "label": "numbers",
+          "text": "今天是2026年10月12日，下午3点半。全书共有113段，现在读到第3段，进度约为百分之二点六。",
+          "generateSeconds": 3.714139665993571,
+          "audioSeconds": 10.76175,
+          "rtf": 0.34512413557214866,
+          "firstChunkSeconds": 0.9219777499965858,
+          "callbackChunks": 5,
+          "chunks": [
+            {
+              "seconds": 0.9219777499965858,
+              "samples": 68916,
+              "progress": 0.20000000298023224
+            },
+            {
+              "seconds": 1.4675188749970403,
+              "samples": 34504,
+              "progress": 0.4000000059604645
+            },
+            {
+              "seconds": 2.2370982079955866,
+              "samples": 55456,
+              "progress": 0.6000000238418579
+            },
+            {
+              "seconds": 2.9298782080004457,
+              "samples": 44376,
+              "progress": 0.800000011920929
+            },
+            {
+              "seconds": 3.714126540995494,
+              "samples": 55030,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "repeat/kokoro-fp32-s3-4t-numbers.wav"
+        },
+        {
+          "label": "mixed",
+          "text": "我正在学习 machine learning。阅读速度是正常速度，This is a good book. 请从当前段落继续朗读。",
+          "generateSeconds": 3.3326595000035013,
+          "audioSeconds": 8.660333333333334,
+          "rtf": 0.3848188483896118,
+          "firstChunkSeconds": 0.620085000002291,
+          "callbackChunks": 5,
+          "chunks": [
+            {
+              "seconds": 0.620085000002291,
+              "samples": 34684,
+              "progress": 0.20000000298023224
+            },
+            {
+              "seconds": 1.1172320830009994,
+              "samples": 26665,
+              "progress": 0.4000000059604645
+            },
+            {
+              "seconds": 1.8840027080004802,
+              "samples": 52281,
+              "progress": 0.6000000238418579
+            },
+            {
+              "seconds": 2.4688423330007936,
+              "samples": 32810,
+              "progress": 0.800000011920929
+            },
+            {
+              "seconds": 3.332641667002463,
+              "samples": 61408,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "repeat/kokoro-fp32-s3-4t-mixed.wav"
+        },
+        {
+          "label": "consecutive-1",
+          "text": "清晨，阳光透过窗帘洒在书桌上",
+          "generateSeconds": 1.1607224580002367,
+          "audioSeconds": 3.302791666666667,
+          "rtf": 0.3514367768681252,
+          "firstChunkSeconds": 0.3056887920029112,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.3056887920029112,
+              "samples": 16593,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.1607096250008908,
+              "samples": 62674,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "repeat/kokoro-fp32-s3-4t-consecutive-1.wav"
+        },
+        {
+          "label": "consecutive-2",
+          "text": "我打开昨天读到的那一页，继续听作者讲述他的经历",
+          "generateSeconds": 1.8015887919973466,
+          "audioSeconds": 5.005041666666667,
+          "rtf": 0.3599548039721307,
+          "firstChunkSeconds": 0.8687141249974957,
+          "callbackChunks": 2,
+          "chunks": [
+            {
+              "seconds": 0.8687141249974957,
+              "samples": 58432,
+              "progress": 0.5
+            },
+            {
+              "seconds": 1.8015769999983604,
+              "samples": 61689,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "repeat/kokoro-fp32-s3-4t-consecutive-2.wav"
+        },
+        {
+          "label": "consecutive-3",
+          "text": "阅读不只是获得知识，也让我们学会耐心，理解不同的人生",
+          "generateSeconds": 2.078882166999392,
+          "audioSeconds": 5.6535416666666665,
+          "rtf": 0.3677132476543864,
+          "firstChunkSeconds": 0.7479232089972356,
+          "callbackChunks": 3,
+          "chunks": [
+            {
+              "seconds": 0.7479232089972356,
+              "samples": 52072,
+              "progress": 0.3333333432674408
+            },
+            {
+              "seconds": 1.401927250000881,
+              "samples": 43953,
+              "progress": 0.6666666865348816
+            },
+            {
+              "seconds": 2.0788699589975295,
+              "samples": 39660,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "repeat/kokoro-fp32-s3-4t-consecutive-3.wav"
+        },
+        {
+          "label": "consecutive-4",
+          "text": "当声音停下来时，我们可以做一条笔记，再从刚才的位置继续",
+          "generateSeconds": 2.1428506250013015,
+          "audioSeconds": 5.939666666666667,
+          "rtf": 0.36076950867073937,
+          "firstChunkSeconds": 0.6948022080032388,
+          "callbackChunks": 3,
+          "chunks": [
+            {
+              "seconds": 0.6948022080032388,
+              "samples": 43865,
+              "progress": 0.3333333432674408
+            },
+            {
+              "seconds": 1.3955920830048854,
+              "samples": 46281,
+              "progress": 0.6666666865348816
+            },
+            {
+              "seconds": 2.1428372920054244,
+              "samples": 52406,
+              "progress": 1.0
+            }
+          ],
+          "sampleRate": 24000,
+          "file": "repeat/kokoro-fp32-s3-4t-consecutive-4.wav"
+        }
+      ],
+      "warmMedianSeconds": 1.6667017500003567,
+      "warmMedianRTF": 0.36030302648179213,
+      "firstReadySeconds": 2.526283916995453,
+      "processPeakRssBytes": 883458048,
+      "environment": {
+        "platform": "macOS-27.0.1-arm64-arm-64bit",
+        "machine": "arm64",
+        "python": "3.11.11",
+        "packages": {
+          "sherpa-onnx": "1.13.8",
+          "sherpa-onnx-core": "1.13.8",
+          "numpy": "2.4.6",
+          "soundfile": "0.13.1"
+        }
+      },
+      "run": "repeat"
+    }
+  ],
+  "f5Comparison": [
+    {
+      "voice": "aishell3-original-2",
+      "ms": 11554,
+      "bytes": 209452,
+      "file": "f5-aishell3-original-2.wav"
+    },
+    {
+      "voice": "aishell3-original-1",
+      "ms": 13472,
+      "bytes": 231980,
+      "file": "f5-aishell3-original-1.wav"
+    }
+  ],
+  "excluded": [
+    "Initial Melo 1-thread run overlapped Kokoro int8 and is not used in comparison.",
+    "Initial callback returned 0 and stopped audio after the first chunk; all reported runs use official continue value 1."
+  ],
+  "int8Failure": {
+    "engine": "Kokoro v1.1-zh int8",
+    "threads": 4,
+    "label": "paragraph",
+    "error": "non-empty/finite/non-silent waveform assertion failed",
+    "log": "/Users/runner/work/sherpa-onnx/sherpa-onnx/sherpa-onnx/csrc/lexicon.cc:ConvertTokensToIds:93 Unknown token: ❓\n{\"engine\": \"kokoro\", \"threads\": 4, \"label\": \"cold-short\", \"generateSeconds\": 3.1547590830014087, \"audioSeconds\": 4.603416666666667, \"rtf\": 0.6853081768254902, \"firstChunkSeconds\": 1.8530500830020173, \"callbackChunks\": 2, \"sampleRate\": 24000}\n{\"engine\": \"kokoro\", \"threads\": 4, \"label\": \"warm-short-1\", \"generateSeconds\": 3.1655164589974447, \"audioSeconds\": 4.6085416666666665, \"rtf\": 0.6868802948866568, \"firstChunkSeconds\": 1.868040083994856, \"callbackChunks\": 2, \"sampleRate\": 24000}\n{\"engine\": \"kokoro\", \"threads\": 4, \"label\": \"warm-short-2\", \"generateSeconds\": 3.5884315420044004, \"audioSeconds\": 4.60425, \"rtf\": 0.7793737399151653, \"firstChunkSeconds\": 2.0040288330055773, \"callbackChunks\": 2, \"sampleRate\": 24000}\n{\"engine\": \"kokoro\", \"threads\": 4, \"label\": \"warm-short-3\", \"generateSeconds\": 3.5197980420052772, \"audioSeconds\": 4.60075, \"rtf\": 0.7650487511830196, \"firstChunkSeconds\": 2.1368790000051376, \"callbackChunks\": 2, \"sampleRate\": 24000}\nTraceback (most recent call last):\n  File \"/Users/joe/Documents/ChatGPT/qiaomu-reader/scripts/bench-local-tts.py\", line 110, in <module>\n    main()\n  File \"/Users/joe/Documents/ChatGPT/qiaomu-reader/scripts/bench-local-tts.py\", line 103, in main\n    result = run(args.root, args.output, args.engine, args.threads)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/joe/Documents/ChatGPT/qiaomu-reader/scripts/bench-local-tts.py\", line 78, in run\n    assert len(samples) and np.isfinite(samples).all() and np.max(np.abs(samples)) > .001\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+  },
+  "meloEnglishLexiconCheck": {
+    "hello": true,
+    "machine": true,
+    "learning": true,
+    "Obsidian": true,
+    "OpenAI": false,
+    "IndexTTS2": false,
+    "Sherpa": false,
+    "ONNX": false,
+    "Kokoro": false
+  },
+  "integration": {
+    "models": [
+      "kokoro",
+      "melo"
+    ],
+    "oneClickInstallationVerifiedOn": "macOS 27.0.1 Apple M5 Pro",
+    "kokoroExposedVoicesVerified": 11,
+    "actualPlayerVerified": true,
+    "fastColdPlaybackFinalRecheck": "blocked: Obsidian CLI disabled",
+    "previousBenchmarksRemainHistorical": true
+  }
+}

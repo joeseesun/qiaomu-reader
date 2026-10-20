@@ -1,3 +1,11 @@
+import { isTextBook, isListedBook } from "./text-book.js";
+import { setBookMembership } from "./library-membership.js";
+import { openReaderLeaf } from "./open-reader.js";
+import { AiAccountModal } from './ai-account-modal.js';
+import { completeChatGPT, connectionToken } from './model-access/client.js';
+import { cancelAccountLogins, readAccount } from './model-access/services/provider-auth.js';
+import { accountText, setAccountLanguage } from './model-access/i18n/accounts.js';
+import { apiSourceState, renderAiSources } from './ai-sources.js';
 import { watchPaneDividers } from "./pane-dividers.js";
 import { selectionActionPreferences } from "./selection-preferences.js";
 import { watchQuietUi } from "./quiet-ui.js";
@@ -15,7 +23,7 @@ import { HL_COLOR_SWATCHES } from "./highlight-colors.js";
  * party libraries (pdf.js, epub.js, JSZip) come from npm and are bundled by
  * esbuild at build time — see esbuild.config.mjs for what gets stubbed out.
  */
-import { AbstractInputSuggest, Component, FuzzySuggestModal, ItemView, MarkdownView, MarkdownRenderer, Menu, Modal, Notice, Platform, Plugin, PluginSettingTab, Scope, SecretComponent, Setting, TFile, TFolder, normalizePath, requestUrl, setIcon } from "obsidian";
+import { AbstractInputSuggest, Component, FuzzySuggestModal, ItemView, MarkdownView, MarkdownRenderer, Menu, Modal, Notice, Platform, Plugin, PluginSettingTab, Scope, SecretComponent, Setting, TFile, TFolder, normalizePath, parseYaml, requestUrl, setIcon } from "obsidian";
 import { EpubEngine, ENGINE_EXTENSIONS, coverFromBytes } from "./reader-engine.js";
 import { bindReaderPageKeys } from "./reader-keyboard.js";
 import { coverPalette, migrateCoverCache } from "./book-cover.js";
@@ -28,7 +36,7 @@ const BOOK_EXTENSIONS = new Set([...ENGINE_EXTENSIONS, "pdf"]);
 // required compatibility layer while exposing the same API.
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import { unpackPdfWorker } from "./pdf-worker.js";
-import { AI_PROVIDER_CATEGORIES, AI_PROVIDERS, aiProviderFor, buildAiRequestBody, buildAiRequestOptions, classifyAiHttpStatus, normalizeAiBase } from "./ai-providers.js";
+import { AI_PROVIDERS, aiProviderFor, buildAiRequestBody, buildAiRequestOptions, classifyAiHttpStatus, migrateDeepSeekFlashSettings, normalizeAiBase } from "./ai-providers.js";
 import { createOpenAiSseParser } from "./ai-stream.js";
 import { composeAiAnswerNote } from "./ai-note.js";
 import { suggestAiNoteTitle } from "./ai-note-title.js";
@@ -80,10 +88,11 @@ import { externalBookSearchUrls, gutenbergSearchUrl, gutenbergDetailUrl, parseGu
 import { isLookupTerm, cleanLookupTerm, rangeContext, sentenceAround, buildTranslateMessages, buildLookupMessages, parseLookupAnswer, parseGoogleLookup, googleDetectedLanguage, sameLanguage, fallbackTarget, looksLikeLanguage, lookupEngine, lookupSessionKey, lookupCacheKey, createLookupCache } from "./lookup.js";
 import { defaultVocabularyPath, vocabularyDeckTag, vocabularyHeader, vocabularyKey, parseVocabularyCards, addToVocabulary, ankiFieldsFromCard } from "./vocabulary.js";
 import { ANKI_DEFAULT_URL, ANKI_DEFAULT_DECK, ANKI_ADDON_CODE, ankiNote, addAnkiNotes, ensureAnkiSetup } from "./anki.js";
+import { attachTts, openTts, openTtsSettings, stopViewTts, ttsText } from "./tts-ui.js";
 
 // Interface language is local to this plugin; dictionaries are bundled offline.
 let qiaomuReaderLanguage = "zh";
-function qiaomuReaderSetLanguage(v) { qiaomuReaderLanguage = normalizeUiLanguage(v); }
+function qiaomuReaderSetLanguage(v) { qiaomuReaderLanguage = normalizeUiLanguage(v); setAccountLanguage(qiaomuReaderLanguage); }
 
 function qiaomuReaderTranslate(s){
   const lang = qiaomuReaderLanguage || 'zh';
@@ -128,6 +137,7 @@ const DEFAULT_TRANSLATION = {
 };
 const DEFAULT_LIBRARY_UI = {
   bookNoteLinks: {}, locationMarks: [], bookNotePrompted: {}, coverFits: {},
+  textBookPaths: [], removedBookPaths: [],
   syncMode: "auto", libCategory: "all",
 };
 const DEFAULT_READER_SESSION = {
@@ -909,7 +919,9 @@ function buildReaderTopBar(view, opts) {
   back.addEventListener("click", opts.onBack);
   view.titleEl = bar.createDiv("qiaomu-reader-top-title");
   setReaderTitle(view.titleEl, opts.title);
-  return bar.createDiv("qiaomu-reader-top-right");
+  const tray = bar.createDiv("qiaomu-reader-top-right");
+  attachTts(view, tray);
+  return tray;
 }
 
 // Timer pill with its inline reset affordance; identical on both hosts.
@@ -1397,6 +1409,8 @@ function readerSettLineHeightRow(host, view, onApplied) {
 function buildReaderSettPanelBody(view, host, opts) {
   host.empty();
   host.createDiv("qiaomu-reader-pan-title").setText(opts.title);
+  const speech = host.createEl("button", { text: ttsText(view.plugin, "settings"), attr: { type: "button" } });
+  speech.addEventListener("click", () => openTtsSettings(view.plugin));
   const section = (label) => host.createDiv("qiaomu-reader-pan-sec").setText(label);
   section(qiaomuReaderTranslate("theme"));
   readerSettThemeRow(host, view, opts.onThemeApplied);
@@ -1547,7 +1561,7 @@ const QiaomuBookReader = class extends Plugin {
     configureEngineFrames(Platform.isAndroidApp);
     await this.loadAll(); await this._attachAiDraftStore();
     this._unloading = false;
-    this.register(protectBooksFromNoteDeletion(this.app, BOOK_EXTENSIONS));
+    this.register(protectBooksFromNoteDeletion(this.app, new Set([...BOOK_EXTENSIONS].filter(ext => ext !== "md" && ext !== "markdown"))));
     this._watchCompanionAndNotes();
     this._registerReaderViews();
     // Shares the open book with Qiaomu Agent (Qiaomu Context Protocol, see qiaomu-context.js).
@@ -1676,7 +1690,7 @@ const QiaomuBookReader = class extends Plugin {
     // a conflict with another plugin over one extension never takes the rest
     // of the reader down.
     for (const ext of ENGINE_EXTENSIONS) {
-      if (ext === "epub") continue;
+      if (ext === "epub" || ext === "md" || ext === "markdown") continue;
       try { this.registerExtensions([ext], VIEW_TYPE); }
       catch (e) { console.warn(`Qiaomu Reader: could not register .${ext}`, e); }
     }
@@ -1705,6 +1719,15 @@ const QiaomuBookReader = class extends Plugin {
           const active = this.app.workspace.getActiveFile();
           if (!active || active.extension !== "pdf") return false;
           if (!probe) this.openFile(active);
+          return true;
+        },
+      },
+      {
+        id: "open-text-reader", name: qiaomuReaderTranslate("open-text-reader"),
+        checkCallback: (probe) => {
+          const active = this.app.workspace.getActiveFile();
+          if (!active || !isTextBook(active.name)) return false;
+          if (!probe) void this.openFile(active);
           return true;
         },
       },
@@ -1802,7 +1825,7 @@ const QiaomuBookReader = class extends Plugin {
   }
   _registerPdfFileMenu() {
     const onFileMenu = (menu, file) => {
-      if (!(file instanceof TFile) || file.extension !== "pdf") return;
+      if (!(file instanceof TFile) || !BOOK_EXTENSIONS.has(file.extension.toLowerCase())) return;
       menu.addItem((item) => item.setTitle(qiaomuReaderTranslate("open-in-book-reader")).setIcon("book-open").onClick(() => this.openFile(file)));
     };
     this.registerEvent(this.app.workspace.on("file-menu", onFileMenu));
@@ -1810,6 +1833,27 @@ const QiaomuBookReader = class extends Plugin {
   _watchBookFiles() {
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
       let changed = false;
+      const selected = this.settings.textBookPaths || [];
+      const moved = new Set();
+      const rename = path => {
+        if (path !== oldPath && !path.startsWith(`${oldPath}/`)) return path;
+        changed = true;
+        const next = file.path + path.slice(oldPath.length);
+        if (moved.has(path)) return next;
+        moved.add(path);
+        for (const store of [this.progress, this.progressBackups, this.settings.bookNoteLinks, this.settings.bookNotePrompted, this.settings.coverFits, this.settings.bookTags]) {
+          if (store && Object.hasOwn(store, path)) { store[next] = store[path]; delete store[path]; }
+        }
+        void this._persistHighlights(next, disk => {
+          if (disk[path]) { disk[next] = disk[path]; delete disk[path]; }
+        }).then(saved => { if (!saved) this._reportHighlightSaveError(); });
+        if (this._lastBookPath === path) this._lastBookPath = next;
+        if (this.settings.lastBookPath === path) this.settings.lastBookPath = next;
+        return next;
+      };
+      this.settings.textBookPaths = selected.map(rename);
+      this.settings.removedBookPaths = (this.settings.removedBookPaths || []).map(rename);
+      if (changed) { void this.saveAll(); this.registerBookCommands(); }
       for (const [book, target] of Object.entries(this.settings.bookNoteLinks || {})) {
         if (typeof target === "string" && (target === oldPath || target.startsWith(`${oldPath}/`))) {
           this.settings.bookNoteLinks[book] = file.path + target.slice(oldPath.length);
@@ -1819,6 +1863,15 @@ const QiaomuBookReader = class extends Plugin {
       if (this.settings.vocabularyFile && this.settings.vocabularyFile === oldPath) {
         this.settings.vocabularyFile = file.path;
         changed = true;
+      }
+      if (changed) void this._saveLocalData();
+    }));
+    this.registerEvent(this.app.vault.on("delete", file => {
+      let changed = false;
+      for (const key of ["textBookPaths", "removedBookPaths"]) {
+        const paths = this.settings[key] || [];
+        const remaining = paths.filter(path => path !== file.path && !path.startsWith(`${file.path}/`));
+        if (remaining.length !== paths.length) { this.settings[key] = remaining; changed = true; }
       }
       if (changed) void this._saveLocalData();
     }));
@@ -1868,6 +1921,7 @@ const QiaomuBookReader = class extends Plugin {
     this.app.workspace.onLayoutReady(onReady);
   }
   onunload() {
+    cancelAccountLogins(); for (const modal of this.modelAccessModals || []) modal.close();
     this._unloading = true;
     for (const modal of this._announcementModals || []) modal.close();
     this._announcementModals?.clear();
@@ -1886,16 +1940,20 @@ const QiaomuBookReader = class extends Plugin {
     ].filter(Boolean);
     void Promise.allSettled(pending);
   }
+  async rememberTextBook(file) {
+    return setBookMembership(this, file, true, isTextBook(file.name));
+  }
+  async removeBookFromLibrary(file) {
+    return setBookMembership(this, file, false, isTextBook(file.name));
+  }
   async openFile(file) {
+    await this.rememberTextBook(file);
     if (this.app.isMobile) {
       const modal = new ReaderModal(this.app, this, file);
       modal.open();
       return modal;
     }
-    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE);
-    const leaf = leaves.find((item) => item.view.file?.path === file.path) || leaves[0] || this.app.workspace.getLeaf("tab");
-    await leaf.setViewState({ type: VIEW_TYPE, state: { path: file.path }, active: true });
-    await this.app.workspace.revealLeaf(leaf);
+    const leaf = await openReaderLeaf(this.app.workspace, file, VIEW_TYPE);
     void this._showCompanionForBook(leaf.view);
     return leaf.view;
   }
@@ -2030,7 +2088,8 @@ const QiaomuBookReader = class extends Plugin {
     await this._migrateChineseDefaults();
     await this._restoreReadingState(saved);
     // Persist only after backup state is restored, so migration cannot drop it.
-    if (migrateNoteFolderDefaults(this.settings)) await this._saveLocalData();
+    const deepSeekMigrated = migrateDeepSeekFlashSettings(this.settings);
+    if (migrateNoteFolderDefaults(this.settings) || deepSeekMigrated) await this._saveLocalData();
     await this._repairBookNoteState();
     await this._adoptLegacyProgress(saved);
   }
@@ -2311,21 +2370,21 @@ const QiaomuBookReader = class extends Plugin {
   }
   bookFiles() {
     const folder = qiaomuReaderPath(this.settings.booksFolder || "");
-    const prefix = folder ? folder + "/" : "";
     return this.app.vault.getFiles().filter(
-      (f) => BOOK_EXTENSIONS.has(f.extension)
-        && (prefix === "" || f.path.startsWith(prefix))
+      (f) => BOOK_EXTENSIONS.has(f.extension.toLowerCase())
+        && isListedBook(f, folder, this.settings.textBookPaths, this.settings.removedBookPaths)
     );
   }
   lastReadBookFile() {
     const prog = this.progress || {};
     let bestPath = "", bestAt = -1;
     for (const p of Object.keys(prog)) {
+      if (this.settings.removedBookPaths?.includes(p) || !this.app.vault.getAbstractFileByPath(p)) continue;
       const at = (prog[p] && (prog[p].lastRead || prog[p].updated)) || 0;
       const ts = typeof at === "number" ? at : Date.parse(at) || 0;
       if (ts > bestAt) { bestAt = ts; bestPath = p; }
     }
-    if (!bestPath) bestPath = this.settings.lastBookPath || "";
+    if (!bestPath && !this.settings.removedBookPaths?.includes(this.settings.lastBookPath)) bestPath = this.settings.lastBookPath || "";
     if (!bestPath) return null;
     const f = this.app.vault.getAbstractFileByPath(bestPath);
     return f && f.extension ? f : null;
@@ -2381,7 +2440,7 @@ const QiaomuBookReader = class extends Plugin {
     if (set) return set;
     const counts = new Map();
     for (const f of this.app.vault.getFiles()) {
-      if (!BOOK_EXTENSIONS.has(f.extension)) continue;
+      if (!BOOK_EXTENSIONS.has(f.extension) || isTextBook(f.name)) continue;
       const dir = f.parent && f.parent.path && f.parent.path !== "/" ? f.parent.path : "";
       counts.set(dir, (counts.get(dir) || 0) + 1);
     }
@@ -3490,10 +3549,11 @@ function aiConfig(plugin) {
       || (id === settings.aiProvider ? settings.aiBase : "")
       || p.base),
     model: String(settings.aiModels && settings.aiModels[id] || settings.aiModel || p.model || "").trim(),
+    reasoningEffort: settings.aiCatalogs?.[id]?.find(m => m.id === (settings.aiModels?.[id] || settings.aiModel))?.efforts?.includes(settings.aiModelEfforts?.[id + ":" + (settings.aiModels?.[id] || settings.aiModel)]) ? settings.aiModelEfforts[id + ":" + (settings.aiModels?.[id] || settings.aiModel)] : undefined,
     thinking: !p.supportsThinking || !settings.aiThinking
       || settings.aiThinking[id] !== false,
     effort: effectiveCliEffort(id, settings.aiCliEfforts && settings.aiCliEfforts[id]),
-    key: aiSecretValue(plugin, id),
+    key: id === "chatgpt" ? (readAccount(aiSecretValue(plugin, id))?.access || "") : aiSecretValue(plugin, id),
     needsKey: p.needsKey,
     cliPath: String(settings.aiCliPaths && settings.aiCliPaths[id] || "").trim(),
     acpPath: String(settings.aiAcpPaths && settings.aiAcpPaths[id] || "").trim(),
@@ -3514,7 +3574,7 @@ function aiSetupState(plugin) {
   });
 }
 function aiSetupMessage(state) {
-  if (state.reason === "key") return qiaomuReaderTranslate("select-or-create-an-api-key-then-complete-the-test-to-start-usin");
+  if (state.reason === "key") return qiaomuReaderTranslate("ai-connect-account-or-key");
   if (state.reason === "model") return qiaomuReaderTranslate("choose-a-model-then-complete-the-test-to-start-using-ai");
   if (state.reason === "base") return qiaomuReaderTranslate("enter-the-base-url-then-complete-the-test-to-start-using-ai");
   if (state.reason === "desktop") return qiaomuReaderTranslate("this-service-works-only-in-obsidian-desktop-change-the-service-o");
@@ -4396,6 +4456,7 @@ async function aiExplainStream(cfg, messages, options) {
     ...options,
     stream: true,
     thinkingEnabled: cfg.thinking,
+    effort: cfg.reasoningEffort,
   });
   const req = buildAiRequestOptions(cfg.base, cfg.key, body);
   const controller = new AbortController();
@@ -4476,6 +4537,9 @@ async function aiExplain(text, plugin, turns, book, options = {}) {
 // translation and word lookup share transport, streaming and error reasons.
 async function aiComplete(plugin, messages, options = {}) {
   const cfg = aiConfig(plugin);
+  if (cfg.id === 'chatgpt') return completeChatGPT({ provider: cfg.id, baseUrl: cfg.base, model: cfg.model, secretId: plugin.settings.aiSecrets?.[cfg.id] || '', protocol: 'openai-responses' }, plugin.app.secretStorage, messages,
+    { signal: options.signal, effort: plugin.settings.aiCatalogs?.[cfg.id]?.find(m => m.id === cfg.model)?.efforts?.includes(plugin.settings.aiModelEfforts?.[cfg.id + ":" + cfg.model]) ? plugin.settings.aiModelEfforts[cfg.id + ":" + cfg.model] : undefined, onDelta: (content, answer) => options.onDelta?.({ content, answer, reasoning: '', reasoningText: '' }) });
+  if (cfg.id === 'magpie') cfg.key = await connectionToken({ provider: cfg.id, baseUrl: cfg.base, model: cfg.model, secretId: '' }, cfg.key, plugin.app.secretStorage);
   if (!cfg.provider || (cfg.transport !== "cli" && (!cfg.base || !cfg.model))) {
     const err = new Error("AI is not configured");
     err.qiaomuReaderReason = "notconfigured";
@@ -4522,6 +4586,7 @@ async function aiComplete(plugin, messages, options = {}) {
   const body = buildAiRequestBody(cfg.id, cfg.model, messages, {
     ...options,
     thinkingEnabled: cfg.thinking,
+    effort: cfg.reasoningEffort,
   });
   const res = await aiRequestWithTimeout(
     requestUrl(buildAiRequestOptions(cfg.base, cfg.key, body)),
@@ -5673,6 +5738,7 @@ function openSelectionMoreMenu(view, event, includePrimary = false) {
   else {
     const primary = selectionActions(view).filter(item => includePrimary || !item.visible);
     for (const action of primary) add(action.label, action.icon, action.run);
+    add(ttsText(view.plugin, "selected"), "volume-2", () => { close(); openTts(view, cur.text); });
     if (primary.length) menu.addSeparator();
     add(qiaomuReaderTranslate("copy-as-a-quote"), "text-quote", async () => {
       const md = quoteMarkdown(view.plugin, cur, file); close();
@@ -9418,7 +9484,15 @@ function addBookFileMenu(app, menu, file) {
 // Path-keyed stores have to forget the removed book, otherwise stale progress,
 // backups, highlights and cover fits resurface if the path is ever reused.
 async function dropBookState(plugin, bookPath) {
-  const stores = [plugin.progress, plugin.progressBackups, plugin.highlights, plugin.settings && plugin.settings.coverFits];
+  const purge = (plugin._hlChain || Promise.resolve()).then(async () => {
+    const disk = await plugin._readHighlightStore(plugin._highlightsFilePath());
+    delete disk[bookPath];
+    plugin.highlights = disk;
+    await plugin._saveHighlightsToVault();
+  });
+  plugin._hlChain = purge.catch(() => {});
+  await purge;
+  const stores = [plugin.progress, plugin.progressBackups, plugin.highlightsBackups, plugin.settings?.coverFits, plugin.settings?.tts?.progress];
   for (const store of stores) if (store) delete store[bookPath];
   if (plugin.settings) forgetCalibreImportByPath(plugin.settings, bookPath);
   return plugin.saveAll();
@@ -9440,9 +9514,10 @@ function deleteBookFromVault(app, plugin, file, onDone) {
     }
   };
   const confirmDelete = new ConfirmModal(app, {
-    title: qiaomuReaderTranslate("delete-the-book"),
-    body: qiaomuReaderTranslate("0-will-be-deleted-from-the-vault-together-with-its-reading-progr", file.basename),
-    okText: qiaomuReaderTranslate("delete"),
+    title: qiaomuReaderTranslate("delete-source-title"),
+    body: qiaomuReaderTranslate("delete-source-description", file.path),
+    okText: qiaomuReaderTranslate("delete-source-file"),
+    focusCancel: true,
     cancelText: qiaomuReaderTranslate("cancel"),
     onYes: wipe
   });
@@ -9559,7 +9634,7 @@ const ConfirmModal = class extends Modal {
       this.close();
       this.opts.onYes && this.opts.onYes();
     });
-    window.setTimeout(() => yes.focus(), 0);
+    window.setTimeout(() => (this.opts.focusCancel ? no : yes).focus(), 0);
   }
   onClose() {
     this.contentEl.empty();
@@ -10453,10 +10528,21 @@ async function persistCurrentReaderPosition(reader) {
     console.warn("Qiaomu Reader: could not save the final reading position", error);
   }
 }
+function textReaderOptions(app, file) {
+  return {
+    parseYaml,
+    resolveResource(link) {
+      const resource = app.metadataCache.getFirstLinkpathDest(link.split("#")[0], file.path);
+      return resource ? app.vault.getResourcePath(resource) : null;
+    },
+    openLink: link => void app.workspace.openLinkText(link, file.path, true),
+  };
+}
 async function loadReaderDocument(file, app, settings, onProgress, options = {}) {
   throwIfReaderLoadAborted(options.signal);
-  if (ENGINE_EXTENSIONS.includes(file.extension)) {
-    // Format is sniffed from the bytes by the library itself.
+  if (ENGINE_EXTENSIONS.includes(file.extension.toLowerCase())) {
+    // Reject oversized text before allocating its decoded string and DOM.
+    if (isTextBook(file.name) && file.stat.size > 20 * 1024 * 1024) throw new Error("text-book-too-large");
     const bytes = await app.vault.readBinary(file);
     throwIfReaderLoadAborted(options.signal);
     return { engine: true, bytes, name: file.name, html: "", lazy: null, outline: null };
@@ -10472,7 +10558,7 @@ function renderReaderLoadError(reader, error, retry) {
   const icon = state.createDiv("qiaomu-reader-load-state-icon");
   setIcon(icon, "book-x");
   state.createEl("h3", { text: qiaomuReaderTranslate("could-not-open-this-book") });
-  state.createEl("p", { text: qiaomuReaderTranslate("the-file-may-be-damaged-password-protected-or-not-fully-download") });
+  state.createEl("p", { text: qiaomuReaderTranslate(["text-book-empty", "text-book-too-large", "text-book-encoding"].includes(error?.message) ? error.message : "the-file-may-be-damaged-password-protected-or-not-fully-download") });
   const message = String((error == null ? void 0 : error.message) || error || "Unknown error").trim();
   if (message) {
     const details = state.createEl("details", { cls: "qiaomu-reader-load-state-details" });
@@ -10581,6 +10667,7 @@ const ReaderView = class extends ItemView {
     if (!isAiChat) clearAiSource(this);
   }
   async openFile(file) { // swap in another book: reset view state, show the loading card, load and render
+    stopViewTts(this);
     const pendingPosition = persistCurrentReaderPosition(this);
     const loadToken = this._loadCoordinator.begin();
     this._openingBook = loadToken;
@@ -10700,6 +10787,11 @@ const ReaderView = class extends ItemView {
     this._pdfOutline = result.outline;
   }
   _finishBookOpen(file) {
+    // Restoring an open tab is not a request to re-add a removed library item.
+    // Explicit card/command/file-menu opens restore membership in plugin.openFile.
+    if (!this.plugin.settings.removedBookPaths?.includes(file.path)) {
+      void this.plugin.rememberTextBook(file).catch(() => new Notice(qiaomuReaderTranslate("library-change-failed")));
+    }
     syncReaderAiCapability(this);
     this.buildSettPanel(); this._maybePromptBookNote(file);
     this._sessionSec = 0; this._running = false;
@@ -10740,10 +10832,11 @@ const ReaderView = class extends ItemView {
       onRelocate: (detail) => {
         if (this.file?.path !== file.path || this.engine !== engine || loadToken.signal.aborted) return;
         updateEngineLocation(this, detail);
+        this._ttsOnRelocate?.(detail);
       },
     });
     try {
-      await engine.open(result.bytes, result.name, { initialCfi: saved?.cfi || undefined, initialFraction: saved?.pct });
+      await engine.open(result.bytes, result.name, { initialCfi: saved?.cfi || undefined, initialFraction: saved?.pct, textOptions: textReaderOptions(this.app, file) });
     } catch (e) {
       engine.destroy();
       if (this.engine === engine) this.engine = null;
@@ -11136,6 +11229,7 @@ const ReaderView = class extends ItemView {
     this.pctEl.setText(`${pct}%`);
     syncReaderAiCapability(this);
     syncPdfZoomControls(this);
+    this._ttsOnRelocate?.();
     renderVisibleFigures(this);
   }
   buildSettPanel() {
@@ -11454,6 +11548,7 @@ const ReaderView = class extends ItemView {
   }
   async onClose() {
     this._loadCoordinator.cancel();
+    this._ttsCleanup?.();
     this._closed = true;
     this._resizeObs?.disconnect();
     this._selectionCleanup?.();
@@ -11766,8 +11861,7 @@ const LibraryModal = class extends Modal {
     return { input };
   }
   _libVaultBooks(folder) {
-    const prefix = folder ? `${folder}/` : "";
-    return this.app.vault.getFiles().filter((f) => BOOK_EXTENSIONS.has(f.extension) && (prefix === "" || f.path.startsWith(prefix)));
+    return this.app.vault.getFiles().filter((f) => BOOK_EXTENSIONS.has(f.extension.toLowerCase()) && isListedBook(f, folder, this.plugin.settings.textBookPaths, this.plugin.settings.removedBookPaths));
   }
   _sortLibBooks(bookFiles) {
     const lastRead = (p) => this.plugin.getProgress(p)?.lastRead ?? 0;
@@ -11872,7 +11966,7 @@ const LibraryModal = class extends Modal {
     const exts = [...BOOK_EXTENSIONS];
     const counts = new Map();
     for (const f of this.app.vault.getFiles()) {
-      if (!exts.includes(f.extension)) continue;
+      if (!exts.includes(f.extension) || isTextBook(f.name)) continue;
       const dir = f.parent && f.parent.path && f.parent.path !== "/" ? f.parent.path : "";
       counts.set(dir, (counts.get(dir) || 0) + 1);
     }
@@ -11940,7 +12034,8 @@ const LibraryModal = class extends Modal {
     for (const item of picked) {
       try {
         const data = await item.arrayBuffer();
-        await this.app.vault.createBinary(this._freeBookPath(target, item.name), data);
+        const added = await this.app.vault.createBinary(this._freeBookPath(target, item.name), data);
+        await this.plugin.rememberTextBook(added);
         ok += 1;
       } catch (error) {
         errors.push(item.name);
@@ -11981,9 +12076,25 @@ const LibraryModal = class extends Modal {
     if (view.panelOpen !== "highlights") (view.togglePanel || view._togglePanel).call(view, "highlights");
   }
   _libCardMenu(file) {
-    const removeItem = (menu) => menu.addItem((it) => it.setTitle(qiaomuReaderTranslate("delete-book")).setIcon("trash").onClick(() => {
-      const afterGone = () => this._refresh();
-      deleteBookFromVault(this.app, this.plugin, file, afterGone);
+    const removeItem = menu => menu.addItem(it => it.setTitle(qiaomuReaderTranslate("library-remove")).setIcon("book-minus").onClick(async () => {
+      try {
+        if (!await this.plugin.removeBookFromLibrary(file)) return;
+        this._refresh();
+        const message = docOf(this.contentEl).createElement("div");
+        message.className = "qiaomu-reader-library-notice";
+        message.createSpan({ text: qiaomuReaderTranslate("library-removed", file.basename) });
+        const undo = message.createEl("button", { text: qiaomuReaderTranslate("undo") });
+        const notice = new Notice(message, 10000);
+        undo.addEventListener("click", async () => {
+          if (undo.disabled) return;
+          undo.disabled = true;
+          try {
+            if (this.app.vault.getAbstractFileByPath(file.path) !== file) throw new Error("book-no-longer-exists");
+            await this.plugin.rememberTextBook(file);
+            notice.hide(); this._refresh();
+          } catch { undo.disabled = false; new Notice(qiaomuReaderTranslate("library-change-failed")); }
+        });
+      } catch { new Notice(qiaomuReaderTranslate("library-change-failed")); }
     }));
     return (ev) => {
       ev.preventDefault(); ev.stopPropagation();
@@ -11996,6 +12107,10 @@ const LibraryModal = class extends Modal {
         }));
       }
       menu.addSeparator(); removeItem(menu);
+      menu.addSeparator();
+      menu.addItem(it => it.setTitle(qiaomuReaderTranslate("delete-source-file") + "…").setIcon("trash").onClick(() => {
+        deleteBookFromVault(this.app, this.plugin, file, () => this._refresh());
+      }));
       menu.showAtMouseEvent(ev);
     };
   }
@@ -12059,7 +12174,7 @@ const LibraryModal = class extends Modal {
     notesButton.addEventListener("click", ev => { ev.stopPropagation(); this.close(); void openOrCreateBookNoteBeside(this.plugin, file); });
     const openBook = () => {
       this.close();
-      void this.plugin.openFile(file);
+      void this.plugin.openFile(file).catch(() => new Notice(qiaomuReaderTranslate("could-not-open-the-book")));
     };
     const bookMenu = this._libCardMenu(file); card.addEventListener("contextmenu", bookMenu);
     const menuBtn = cover.createEl("button", { cls: "qiaomu-reader-lib-morebtn", attr: { type: "button" } });
@@ -12164,7 +12279,7 @@ const LibraryModal = class extends Modal {
     return this._renderPdfCover(bytes);
   }
   async _renderPdfCover(bytes) {
-    const loadingTask = pdfjsLib.getDocument({ data: bytes, isEvalSupported: false });
+    const loadingTask = pdfjsLib.getDocument({ data: bytes, ...PDF_CMAP_OPTIONS, isEvalSupported: false });
     try {
       const doc = await loadingTask.promise;
       const firstPage = await doc.getPage(1);
@@ -12788,10 +12903,11 @@ const ReaderModal = class extends Modal {
       onRelocate: (detail) => {
         if (this.file?.path !== file.path || this.engine !== engine || loadToken.signal.aborted) return;
         updateEngineLocation(this, detail);
+        this._ttsOnRelocate?.(detail);
       },
     });
     try {
-      await engine.open(result.bytes, result.name, { initialCfi: saved?.cfi || undefined, initialFraction: saved?.pct });
+      await engine.open(result.bytes, result.name, { initialCfi: saved?.cfi || undefined, initialFraction: saved?.pct, textOptions: textReaderOptions(this.app, file) });
     } catch (e) {
       engine.destroy();
       if (this.engine === engine) this.engine = null;
@@ -12871,6 +12987,7 @@ const ReaderModal = class extends Modal {
     this.pctEl.setText(`${pct}%`);
     syncReaderAiCapability(this);
     syncPdfZoomControls(this);
+    this._ttsOnRelocate?.();
     renderVisibleFigures(this);
   }
   _buildSettPanel() {
@@ -13126,6 +13243,7 @@ const ReaderModal = class extends Modal {
   }
   async onClose() {
     this._closed = true;
+    this._ttsCleanup?.();
     this._selectionCleanup?.();
     window.clearTimeout(this._contextSettleTimer);
     clearAiSource(this);
@@ -13292,7 +13410,7 @@ async function testAndEnableAi(plugin, onStage = () => {}) {
   }
   const stillCurrent = () => {
     const current = aiConfig(plugin);
-    if (current.id !== cfg.id || current.model !== cfg.model) {
+    if (current.id !== cfg.id || current.model !== cfg.model || current.base !== cfg.base || current.key !== cfg.key) {
       const error = new Error("AI configuration changed during verification");
       error.qiaomuReaderReason = "notconfigured";
       throw error;
@@ -13334,6 +13452,12 @@ function openPluginAiSettings(app, plugin, onReady) {
       if (state.ready && state.enabled) {
         finish();
         return true;
+      }
+      const cfg = aiConfig(plugin);
+      if (state.reason === "key" && cfg.transport !== "cli") {
+        // Nothing to test yet: go to the sign-in or key step instead of failing.
+        tab._openAiAccount(cfg.id, cfg.provider, () => { if (modal.bodyEl?.isConnected) modal.draw(); }, { onReady: (result) => { modal.close(); finish(result); } });
+        return false;
       }
       try {
         const result = await testAndEnableAi(plugin, setButtonText);
@@ -13618,28 +13742,21 @@ const SettingsTab = class extends PluginSettingTab {
     const cfg = aiConfig(plugin);
     c.addClass("qiaomu-reader-ai-setup");
     if (plugin.qiaomuAgentAvailable?.()) this._aiAssistantRow(c, s);
-    this._aiProviderRow(c, s, redraw);
+    if (cfg.provider) this._aiCurrentRow(c, s, cfg, redraw, options);
+    renderAiSources(c, plugin, {
+      translate: qiaomuReaderTranslate,
+      // Only a provider-scoped secret marks a service as connected.
+      secret: id => (s.aiSecrets?.[id] || id === s.aiProvider) ? aiSecretValue(plugin, id) : "",
+      openAccount: (id, activate) => this._openAiAccount(id, AI_PROVIDERS[id], redraw, { ...options, activate }),
+      use: id => void this._useAiSource(id, redraw, options),
+      redraw,
+    });
     if (!cfg.provider) {
       if (!options.enableOnSuccess) buildAiAppearanceSettings(c, plugin);
       return;
     }
     const p = cfg.provider;
-    this._aiModelPicker(c, s, p, redraw);
-    const needsSecret = p.transport !== "cli" && p.needsKey && !cfg.key;
-    if (needsSecret || cfg.id === "custom") this._aiSecretRow(c, s, p);
-    if (cfg.id === "custom") this._aiBaseRow(c, s, p);
     if (p.transport === "cli") this._aiCliSetupHelp(c, s, redraw, options);
-    const feedback = c.createDiv("qiaomu-reader-ai-setup-feedback");
-    feedback.setAttribute("role", "status");
-    const paintStatus = () => {
-      if (feedback.getAttribute("role") === "alert") return;
-      const state = aiSetupState(plugin);
-      feedback.empty();
-      setIcon(feedback.createSpan("qiaomu-reader-ai-setup-status-icon"), state.enabled ? "circle-check" : "circle");
-      feedback.createSpan({ text: state.enabled ? qiaomuReaderTranslate("ai-ready-to-use") : qiaomuReaderTranslate("ai-connect-on-start") });
-    };
-    paintStatus();
-    c.addEventListener("change", () => window.setTimeout(paintStatus, 0));
     const advanced = this._settingsDisclosure(c, "advanced");
     advanced.parentElement.setAttribute("data-ai-advanced", "");
     if (p.transport === "cli") this._aiEffortRow(advanced, s);
@@ -13647,14 +13764,80 @@ const SettingsTab = class extends PluginSettingTab {
     const connection = this._settingsDisclosure(advanced, "ai-connection-settings");
     connection.parentElement.setAttribute("data-ai-connection", "");
     if (p.transport === "cli") this._aiCliRows(connection, s, p, redraw);
-    if (p.transport !== "cli") {
-      if (p.needsKey && !needsSecret) this._aiSecretRow(connection, s, p);
-      if (cfg.id !== "custom") this._aiBaseRow(connection, s, p);
+    if (p.transport !== "cli" && p.transport !== "chatgpt") {
+      // Key entry lives in the connect dialog; this row only reuses a key
+      // already in Obsidian's shared secret storage.
+      if (p.needsKey || cfg.id === "custom") this._aiSecretRow(connection, s, p);
+      this._aiBaseRow(connection, s, p);
     }
     this._aiTestRow(connection, p, options);
     const behavior = this._settingsDisclosure(advanced, "ai-response-preferences");
     this._aiTailRows(behavior, s, p, cfg);
     if (!options.enableOnSuccess) buildAiAppearanceSettings(c, plugin);
+  }
+  /** The service and model in use, with one picker across every connected source. */
+  _aiCurrentRow(host, s, cfg, redraw, options) {
+    const plugin = this.plugin;
+    const section = host.createDiv("qiaomu-reader-src-section");
+    section.createDiv({ cls: "qiaomu-reader-src-title", text: accountText("inUseTitle") });
+    const picker = this._aiModelPicker(section, s, cfg.provider, redraw, options);
+    picker.setName(qiaomuReaderTranslate(cfg.provider.label));
+    const feedback = picker.descEl.createDiv("qiaomu-reader-ai-setup-feedback");
+    const state = aiSetupState(plugin);
+    const error = plugin._aiSetupError;
+    feedback.setAttribute("role", error ? "alert" : "status");
+    setIcon(feedback.createSpan("qiaomu-reader-ai-setup-status-icon"), plugin._aiTesting ? "loader" : state.enabled ? "circle-check" : error ? "circle-alert" : "circle");
+    feedback.createSpan({ text: plugin._aiTesting ? accountText("testing") : error || (state.enabled ? qiaomuReaderTranslate("ai-ready-to-use") : aiSetupMessage(state)) });
+    if (!state.enabled && !plugin._aiTesting && state.reason === "key" && cfg.transport !== "cli") {
+      const connect = feedback.createEl("button", { text: accountText("connect"), attr: { type: "button" } });
+      connect.addEventListener("click", () => this._openAiAccount(cfg.id, cfg.provider, redraw, { ...options, activate: true }));
+    }
+  }
+  /** Switch to a connected source and check it right away. */
+  async _useAiSource(id, redraw, options = {}) {
+    const s = this.plugin.settings;
+    s.aiProvider = id;
+    s.aiModel = s.aiModels?.[id] || "";
+    s.aiEnabled = false;
+    s.aiNeedsVerification = true;
+    await this._saveAll();
+    if (aiSetupState(this.plugin).reason === "key" && AI_PROVIDERS[id]?.transport !== "cli") {
+      redraw();
+      this._openAiAccount(id, AI_PROVIDERS[id], redraw, { ...options, activate: true });
+      return;
+    }
+    await this._autoTestAi(redraw, options, true);
+  }
+  async _autoTestAi(redraw, options = {}, finish = false) {
+    const plugin = this.plugin;
+    plugin._aiSetupError = "";
+    plugin._aiTesting = true;
+    redraw();
+    try {
+      const result = await testAndEnableAi(plugin);
+      new Notice(qiaomuReaderTranslate("ai-assistance-enabled-0-1-ms", result.model, result.latency));
+      plugin._aiTesting = false;
+      if (finish && typeof options.onReady === "function") options.onReady(result);
+      else redraw();
+    } catch (error) {
+      plugin._aiTesting = false;
+      plugin._aiSetupError = aiConnectionErrorMessage(error);
+      redraw();
+    }
+  }
+  _openAiAccount(id, p, redraw, options = {}) {
+    const plugin = this.plugin;
+    plugin._aiSetupError = "";
+    new AiAccountModal(plugin, id, { ...p, label: qiaomuReaderTranslate(p.label) }, (result) => {
+      if (result && typeof options.onReady === "function") options.onReady(result);
+      else redraw();
+    }, async (onStage) => {
+      try {
+        return await testAndEnableAi(plugin, onStage);
+      } catch (error) {
+        throw new Error(aiConnectionErrorMessage(error));
+      }
+    }, { activate: options.activate !== false }).open();
   }
   _aiCliSetupHelp(host, s, redraw, options) {
     if (!Platform.isDesktopApp) return;
@@ -13758,56 +13941,71 @@ const SettingsTab = class extends PluginSettingTab {
       });
     });
   }
-  _aiProviderRow(host, s, redraw) {
-    new Setting(host).setName(qiaomuReaderTranslate("ai-service")).addDropdown(dropdown => {
-      dropdown.selectEl.setAttribute("aria-label", qiaomuReaderTranslate("ai-service"));
-      dropdown.addOption("", qiaomuReaderTranslate("choose-a-service"));
-      for (const category of AI_PROVIDER_CATEGORIES) {
-        const group = dropdown.selectEl.createEl("optgroup", { attr: { label: qiaomuReaderTranslate(category.label) } });
-        for (const [id, p] of Object.entries(AI_PROVIDERS)) {
-          if (p.category !== category.id || (p.desktopOnly && !Platform.isDesktopApp)) continue;
-          group.createEl("option", { text: qiaomuReaderTranslate(p.label), attr: { value: id } });
-        }
-      }
-      dropdown.setValue(s.aiProvider || "").onChange(async choice => {
-        s.aiProvider = choice;
-        s.aiModel = s.aiModels && s.aiModels[choice] || "";
-        s.aiEnabled = false;
-        s.aiNeedsVerification = Boolean(choice);
-        await this._saveAll();
-        redraw();
-      });
-    });
-  }
-  _aiModelPicker(host, s, p, redraw) {
-    const models = [...new Set([p.model, ...(p.models || [])].filter(Boolean))];
-    const custom = Boolean(s.aiModel && !models.includes(s.aiModel)) || (!p.model && p.transport !== "cli" && !s.aiModel);
-    const saveModel = async value => {
-      s.aiModel = value;
-      s.aiModels = { ...s.aiModels, [s.aiProvider]: value };
-      s.aiEnabled = false;
-      s.aiNeedsVerification = true;
-      await this._saveAll();
+  _aiModelPicker(host, s, p, redraw, options = {}) {
+    const plugin = this.plugin;
+    const sep = "\n";
+    const agents = plugin._aiCliAgents || {};
+    const secret = id => (s.aiSecrets?.[id] || id === s.aiProvider) ? aiSecretValue(plugin, id) : "";
+    // Every connected service and detected agent, current one first.
+    const sources = Object.keys(AI_PROVIDERS).filter(id => id === s.aiProvider
+      || (AI_PROVIDERS[id].transport === "cli" ? Boolean(agents[id]) : apiSourceState(plugin, id, secret(id))?.ok));
+    sources.sort((a, b) => (b === s.aiProvider) - (a === s.aiProvider));
+    const modelsFor = id => {
+      const q = AI_PROVIDERS[id];
+      const catalog = (s.aiCatalogs?.[id] || []).map(m => m.id);
+      const models = [...new Set([...(catalog.length ? catalog : [q.model, ...(q.models || [])]), s.aiModels?.[id] || ""].filter(Boolean))];
+      return q.transport === "cli" ? ["", ...models] : models;
     };
+    const current = s.aiModels?.[s.aiProvider] || s.aiModel || p.model || "";
+    const custom = Boolean(current && !modelsFor(s.aiProvider).includes(current));
     let inputRow;
-    new Setting(host).setName(qiaomuReaderTranslate("model-2")).addDropdown(dropdown => {
+    const picker = new Setting(host).setName(qiaomuReaderTranslate("model-2")).addDropdown(dropdown => {
       dropdown.selectEl.setAttribute("aria-label", qiaomuReaderTranslate("model-2"));
-      dropdown.addOption("", qiaomuReaderTranslate("default-model"));
-      for (const model of models) dropdown.addOption(model, model);
-      dropdown.addOption("__custom__", qiaomuReaderTranslate("ai-custom-model"));
-      dropdown.setValue(custom ? "__custom__" : s.aiModel || "");
+      for (const id of sources) {
+        const group = dropdown.selectEl.createEl("optgroup", { attr: { label: qiaomuReaderTranslate(AI_PROVIDERS[id].label) } });
+        for (const model of modelsFor(id)) group.createEl("option", { text: model || accountText(AI_PROVIDERS[id].transport === "cli" ? "agentDefault" : "defaultModel"), attr: { value: id + sep + model } });
+        if (id === s.aiProvider && custom) group.createEl("option", { text: current, attr: { value: id + sep + current } });
+      }
+      dropdown.addOption("__custom__", accountText("otherModel"));
+      dropdown.setValue(s.aiProvider + sep + current);
       dropdown.onChange(async value => {
         if (value === "__custom__") {
           inputRow.settingEl.removeClass("qiaomu-reader-hidden");
           inputRow.controlEl.querySelector("input")?.focus();
           return;
         }
-        await saveModel(value); redraw();
+        const [id, model] = value.split(sep);
+        s.aiProvider = id;
+        s.aiModel = model;
+        s.aiModels = { ...s.aiModels, [id]: model };
+        s.aiEnabled = false;
+        s.aiNeedsVerification = true;
+        await this._saveAll();
+        await this._autoTestAi(redraw, options);
       });
     });
     inputRow = new Setting(host).setName(qiaomuReaderTranslate("model-id"))
-      .addText(field => field.setValue(s.aiModel || "").setPlaceholder(p.model || "model-id").onChange(value => saveModel(value.trim())));
+      .addText(field => {
+        field.setValue(custom ? current : "").setPlaceholder(p.model || "model-id");
+        const commit = async () => {
+          const value = field.getValue().trim();
+          if (!value || value === s.aiModel) return;
+          s.aiModel = value;
+          s.aiModels = { ...s.aiModels, [s.aiProvider]: value };
+          s.aiEnabled = false;
+          s.aiNeedsVerification = true;
+          await this._saveAll();
+          await this._autoTestAi(redraw, options);
+        };
+        field.inputEl.addEventListener("change", () => void commit());
+      });
     inputRow.settingEl.toggleClass("qiaomu-reader-hidden", !custom);
+    const efforts = s.aiCatalogs?.[s.aiProvider]?.find(m => m.id === s.aiModel)?.efforts || [];
+    if (efforts.length) new Setting(host).setName(qiaomuReaderTranslate("reasoning-effort")).addDropdown(dropdown => {
+      dropdown.addOption('', qiaomuReaderTranslate("default-model")); efforts.forEach(e => dropdown.addOption(e, e));
+      dropdown.setValue(s.aiModelEfforts?.[s.aiProvider + ':' + s.aiModel] || '').onChange(async value => { s.aiModelEfforts = { ...s.aiModelEfforts, [s.aiProvider + ':' + s.aiModel]: value }; await this._saveAll(); });
+    });
+    return picker;
   }
   _aiCliRows(host, s, p, redraw) {
     if (!Platform.isDesktopApp) {
