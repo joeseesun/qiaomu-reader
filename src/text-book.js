@@ -1,4 +1,4 @@
-import { Lexer, Parser, getDefaults } from "marked";
+import { Marked } from "marked";
 import { createEngineObjectURL, revokeEngineObjectURL } from "./engine-frame.js";
 
 export const TEXT_EXTENSIONS = ["md", "markdown", "txt", "html", "htm"];
@@ -31,7 +31,7 @@ export function decodeBookText(bytes) {
 
 const CHAPTER = /^(?:第[零〇一二三四五六七八九十百千万两\d]+[章回卷部节篇](?:\s.*|[^\s]{0,35})|(?:chapter|part|book)\s+(?:\d+|[ivxlcdm]+)\b.*|序章|序言|前言|楔子|尾声|后记)$/iu;
 const SAFE_TAGS = new Set("p div span section article h1 h2 h3 h4 h5 h6 strong b em i u s del mark sub sup br hr pre code blockquote ul ol li dl dt dd table thead tbody tfoot tr th td caption a img input".split(" "));
-const ATTRS = new Set(["id", "href", "src", "alt", "colspan", "rowspan", "start", "type", "checked", "align"]);
+const ATTRS = new Set(["id", "href", "src", "alt", "width", "height", "colspan", "rowspan", "start", "type", "checked", "align"]);
 const imageURL = value => /^(?:https?:|app:|capacitor:|blob:|data:image\/(?:png|jpeg|gif|webp);)/i.test(value);
 const decodeLink = value => { try { return decodeURIComponent(value); } catch { return value; } };
 
@@ -47,12 +47,16 @@ export function sanitizeTextDocument(doc, resolveResource) {
         }
         const href = el.getAttribute("href");
         for (const attr of Array.from(el.attributes)) if (!ATTRS.has(attr.name)) el.removeAttribute(attr.name);
+        if (tag !== "img") { el.removeAttribute("width"); el.removeAttribute("height"); }
         if (el.hasAttribute("align") && !["left", "center", "right"].includes(el.getAttribute("align"))) el.removeAttribute("align");
         if (tag === "input") {
             if (el.getAttribute("type") !== "checkbox") { el.remove(); continue; }
             el.setAttribute("disabled", "");
         }
         if (tag === "img") {
+            for (const size of ["width", "height"]) {
+                if (!/^[1-9]\d{0,4}$/.test(el.getAttribute(size) || "")) el.removeAttribute(size);
+            }
             const source = el.getAttribute("src") || "";
             const resolved = imageURL(source) ? source : resolveResource?.(decodeLink(source));
             if (resolved && imageURL(resolved)) el.setAttribute("src", resolved);
@@ -69,8 +73,30 @@ export function sanitizeTextDocument(doc, resolveResource) {
 
 // Parse with fresh options, independent of host plugins and executable blocks.
 function gfmHtml(text) {
-    const options = { ...getDefaults(), gfm: true, breaks: false };
-    return Parser.parse(Lexer.lex(text, options), options);
+    // An inline tokenizer respects Markdown's code/escape boundaries. A global
+    // replacement would also turn examples and fenced code into live images.
+    const escape = value => String(value).replace(/[&<>"']/g, char => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    })[char]);
+    const parser = new Marked({ gfm: true, breaks: false, extensions: [{
+        name: "vaultImage", level: "inline",
+        start: source => source.indexOf("![["),
+        tokenizer(source) {
+            if (this.lexer.state.inRawBlock) return;
+            const match = /^!\[\[([^\]\n|]+)(?:\|([^\]\n]*))?\]\]/.exec(source);
+            if (!match) return;
+            const path = match[1].trim();
+            if (!/\.(?:avif|bmp|gif|jpe?g|png|svg|webp)$/i.test(path) || /^(?:[a-z][\w+.-]*:|\/\/)/i.test(path)) return;
+            const label = (match[2] || "").trim();
+            const size = /^([1-9]\d{0,4})(?:x([1-9]\d{0,4}))?$/.exec(label);
+            return { type: "vaultImage", raw: match[0], path, alt: size ? path : label || path,
+                width: size?.[1], height: size?.[2] };
+        },
+        renderer(token) {
+            return `<img src="${escape(encodeURI(token.path))}" alt="${escape(token.alt)}"${token.width ? ` width="${token.width}"` : ""}${token.height ? ` height="${token.height}"` : ""}>`;
+        },
+    }] });
+    return parser.parse(text, { async: false });
 }
 
 const TEXT_STYLE = `.qbr-plain-line{white-space:pre-wrap}body{overflow-wrap:anywhere}p{margin:0 0 .8em}h1,h2,h3,h4,h5,h6{break-after:avoid;line-height:1.3}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85em;padding:.8em;background:rgba(128,128,128,.08)}code{font-family:monospace}img{max-width:100%;max-height:80vh;object-fit:contain}table{border-collapse:collapse;width:100%;font-size:.85em}td,th{border:1px solid rgba(128,128,128,.3);padding:.4em}a{color:inherit;text-decoration:underline}blockquote{margin:1em;padding:0}input[type=checkbox]{pointer-events:none;accent-color:currentColor;margin-inline-end:.5em}li:has(>input[type=checkbox]){list-style:none}`;

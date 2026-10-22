@@ -8,6 +8,7 @@ import { accountText, setAccountLanguage } from './model-access/i18n/accounts.js
 import { apiSourceState, renderAiSources } from './ai-sources.js';
 import { watchPaneDividers } from "./pane-dividers.js";
 import { selectionActionPreferences } from "./selection-preferences.js";
+import { createReaderSelectionLifecycle } from "./reader-selection.js";
 import { watchQuietUi } from "./quiet-ui.js";
 import { watchReaderStatusBar } from "./status-bar.js";
 import { protectBooksFromNoteDeletion } from "./book-deletion-guard.js";
@@ -831,13 +832,7 @@ function revealReaderChromeFromPage(view, e) {
 // iframe events do not bubble to the host's immersive chrome or tap zones.
 // Convert section coordinates before reusing the reader's navigation rules.
 function attachEngineChrome(view, doc, index) {
-  doc.addEventListener("pointerdown", (event) => {
-    beginReaderSelection(view, event);
-  });
-  const release = () => { view._selectionDragging = false; };
-  doc.addEventListener("pointerup", release);
-  doc.addEventListener("pointercancel", release);
-  doc.addEventListener("contextmenu", (event) => openReaderSelectionContext(view, event, doc, index));
+  view._selectionLifecycle?.bind(doc, index);
   doc.addEventListener("pointermove", (event) => {
     const frame = doc.defaultView?.frameElement?.getBoundingClientRect();
     if (!frame) return;
@@ -3732,6 +3727,7 @@ function restoreAiSource(view) {
 }
 function updateEngineLocation(view, detail) {
   if (!detail || view._closed) return;
+  if (view._engineLocation && ["navigation", "page", "scroll"].includes(detail.reason)) view._hideHlPopup?.();
   view._engineLocation = detail;
   const pct = Math.round(Math.max(0, Math.min(1, detail.fraction || 0)) * 100);
   if (view.pbarFill) view.pbarFill.style.width = `${pct}%`;
@@ -3969,34 +3965,14 @@ function setReadingFocus(view, enabled) {
   if (view.focusBtn) setIcon(view.focusBtn, view._focusRestore ? "minimize" : "maximize");
 }
 function setupReaderSelection(view) {
-  const area = view.areaEl;
-  const doc = area.ownerDocument;
-  const down = (event) => beginReaderSelection(view, event);
-  const up = () => {
-    if (!view._selectionDragging) return;
-    view._selectionDragging = false;
-    view._scheduleSelCheck();
-  };
-  const context = (event) => openReaderSelectionContext(view, event, doc);
-  const outside = (event) => {
-    if (view._selectionMenuOpen || view.hlPopup?.contains(event.target) || area.contains(event.target)) return;
-    view._hideHlPopup();
-  };
-  area.addEventListener("contextmenu", context);
-  doc.addEventListener("pointerdown", outside);
-  area.addEventListener("pointerdown", down);
-  doc.addEventListener("pointerup", up);
-  doc.addEventListener("pointercancel", up);
+  view._selectionCleanup?.();
+  const lifecycle = view._selectionLifecycle = createReaderSelectionLifecycle(view,
+    (event, doc, index) => openReaderSelectionContext(view, event, doc, index));
   view._selectionCleanup = () => {
     view._hideHlPopup();
-    view._selectionMenu?.hide();
+    lifecycle.dispose();
     window.clearTimeout(view._selectionFeedbackTimer);
     view._selectionFeedback?.remove();
-    area.removeEventListener("contextmenu", context);
-    doc.removeEventListener("pointerdown", outside);
-    area.removeEventListener("pointerdown", down);
-    doc.removeEventListener("pointerup", up);
-    doc.removeEventListener("pointercancel", up);
   };
 }
 function readerPageContext(view) {
@@ -5201,15 +5177,14 @@ function positionHlPopup(view, anchorRect, estW, estH) {
     const viewport = docOf(root).defaultView?.visualViewport;
     const visibleBottom = viewport ? Math.min(rootBox.bottom, viewport.offsetTop + viewport.height) : rootBox.bottom;
     const floorY = visibleBottom - rootBox.top - popH - 74;
-    const anchored = false;
-    const top = Math.max(8, floorY);
+    const above = anchorRect.top - rootBox.top - popH - 24;
+    const below = anchorRect.bottom - rootBox.top + 24;
+    const top = above >= 8 ? Math.min(above, floorY) : below <= floorY ? below : floorY;
     pop.classList.add("qiaomu-reader-hl-popup-docked");
     pop.style.removeProperty("bottom");
     const topPx = Math.round(Math.max(8, top));
     pop.style.top = `${topPx}px`;
-    const wantLeft = anchored
-      ? anchorRect.left - rootBox.left + anchorRect.width / 2 - popW / 2
-      : (rootBox.width - popW) / 2;
+    const wantLeft = anchorRect.left - rootBox.left + anchorRect.width / 2 - popW / 2;
     pop.style.left = `${Math.round(clampNum(wantLeft, 8, rootBox.width - popW - 8))}px`;
     return;
   }
@@ -5499,11 +5474,11 @@ function clearReaderSelection(view) {
   selOf(view.areaEl)?.removeAllRanges();
   view._selectionDoc = null;
 }
-function beginReaderSelection(view, event) {
-  if (event.button !== 0 || view._selectionMenuOpen) return;
-  view._dismissSelectionClick = !!view.hlPopup?.classList.contains("qiaomu-reader-hl-popup-on");
-  view._hideHlPopup?.();
-  if (event.pointerType === "mouse") view._selectionDragging = true;
+function closeReaderSelectionMenu(view) {
+  const menu = view._selectionMenu;
+  view._selectionMenu = null;
+  view._selectionMenuOpen = false;
+  menu?.hide();
 }
 function engineSelectionRect(doc, range) {
   const r = range.getBoundingClientRect();
@@ -5524,6 +5499,15 @@ function openReaderSelectionContext(view, event, doc, index) {
   if (view._commentEditing || view._lookupOpen || view.pdfPanMode) return;
   const sel = doc.getSelection();
   if (!sel || sel.isCollapsed || !sel.toString().trim()) return;
+  // Android's long-press contextmenu arrives before the handle is released.
+  // Keep the native selection, then offer the compact toolbar after release.
+  if (qiaomuReaderIsMobile(view.app) || view._selectionLifecycle?.touch || event.pointerType === "touch") {
+    event.preventDefault(); event.stopPropagation();
+    view._selectionLifecycle?.schedule(doc);
+    return;
+  }
+  closeReaderSelectionMenu(view);
+  view._selectionLifecycle?.allow(doc);
   view._editHlId = null;
   view._selectionDragging = false;
   if (view.engine) view._engineSelectionCheck({ doc, index });
@@ -5711,6 +5695,7 @@ function openSelectionMoreMenu(view, event, includePrimary = false) {
   if (!cur || !file) return;
   const pending = view._pendingSel, id = view._editHlId, rect = view._hlPopupRect;
   const doc = view._selectionDoc;
+  closeReaderSelectionMenu(view);
   const menu = new Menu();
   let acted = false;
   view._selectionMenu = menu;
@@ -5721,8 +5706,9 @@ function openSelectionMoreMenu(view, event, includePrimary = false) {
     item.setTitle(label).setIcon(icon);
     if (checked !== undefined) item.setChecked(checked);
     item.onClick(() => {
+      if (view._selectionMenu !== menu || view._closed) return;
       acted = true;
-      view._selectionMenuOpen = false;
+      closeReaderSelectionMenu(view);
       if (view.file?.path !== file.path) return;
       view._pendingSel = pending; view._editHlId = id; view._selectionDoc = doc;
       if (rect) view._showHlPopup(rect);
@@ -10725,9 +10711,8 @@ const ReaderView = class extends ItemView {
     if (lazy?.destroy) lazy.destroy(); this._pdfLazy = null;
   }
   _releaseEngine() {
-    this._selectionMenu?.hide();
+    this._selectionLifecycle?.reset();
     this._hideHlPopup();
-    window.clearTimeout(this._engineSelTimer);
     this.engine?.destroy?.();
     this.engine = null;
     this._engineLocation = null;
@@ -10816,18 +10801,6 @@ const ReaderView = class extends ItemView {
         // load the selected reading font into it directly.
         try { void ensureSelectedReaderFont(doc, plugin, plugin.settings); }
         catch (e) { console.warn("Qiaomu Reader: could not load the reading font into a book document", e); }
-        // Selections live inside the iframe too; forward them so the highlight
-        // popup works for engine formats.
-        try {
-          const notify = () => {
-            window.clearTimeout(this._engineSelTimer);
-            this._engineSelTimer = window.setTimeout(() => {
-              if (typeof this._engineSelectionCheck === "function") this._engineSelectionCheck({ doc, index });
-            }, 60);
-          };
-          doc.addEventListener("pointerup", notify);
-          doc.addEventListener("selectionchange", notify);
-        } catch (e) { console.warn("Qiaomu Reader: could not watch selections in a book document", e); }
       },
       onRelocate: (detail) => {
         if (this.file?.path !== file.path || this.engine !== engine || loadToken.signal.aborted) return;
@@ -10860,6 +10833,7 @@ const ReaderView = class extends ItemView {
   // Selections inside engine sections arrive from the iframe documents the
   // mount hook is watching; anchor them by CFI and raise the same popup.
   _engineSelectionCheck({ doc, index }) {
+    if (this._selectionLifecycle && !this._selectionLifecycle.canShow(doc)) return;
     if (!this.engine || !this.file || this.file.extension === "pdf") return;
     if (this._selectionMenuOpen || this._editHlId || this._commentEditing || this._lookupOpen || this._selectionDragging || this.pdfPanMode) return;
     let sel = null;
@@ -11124,9 +11098,6 @@ const ReaderView = class extends ItemView {
       },
       buildPopup: () => this.buildHlPopup(),
     });
-    this.registerDomEvent(docOf(this.containerEl), "selectionchange", () => this._scheduleSelCheck());
-    const flagSelection = () => this._scheduleSelCheck();
-    this.areaEl.addEventListener("mouseup", flagSelection);
     attachReaderContentClick(this);
     const hidePopup = () => this._hideHlPopup();
     this.registerDomEvent(docOf(this.containerEl), "mousedown", (ev) => {
@@ -11389,11 +11360,8 @@ const ReaderView = class extends ItemView {
       wrapBlockRange(anchor.block, anchor.loc.start, anchor.loc.start + anchor.loc.len, { id: hl.id, color: hlColorCss(hl.color) });
     }
   }
-  _scheduleSelCheck() {
-    window.clearTimeout(this._selTimer);
-    this._selTimer = window.setTimeout(() => this._onSelectionCheck(), 60);
-  }
   _onSelectionCheck() {
+    if (this._selectionLifecycle && !this._selectionLifecycle.canShow(docOf(this.areaEl))) return;
     if (this.engine || this._selectionMenuOpen || this._selectionDragging || this._pdfPanning || this.pdfPanMode || this._editHlId || this._commentEditing || this._lookupOpen) return;
     const found = flowSelectionParts(this);
     if (!found) {
@@ -11475,7 +11443,9 @@ const ReaderView = class extends ItemView {
     pop.classList.add("qiaomu-reader-hl-popup-on");
     positionHlPopup(this, rect, 320, 44);
   }
-  _hideHlPopup() {
+  _hideHlPopup({ preserveSelection = false } = {}) {
+    if (!preserveSelection) this._selectionLifecycle?.dismiss();
+    closeReaderSelectionMenu(this);
     qiaomuReaderClearPaintedSelection();
     closeSelectionColorDropdown(this);
     closeInlineHighlightComment(this);
@@ -12653,11 +12623,6 @@ const ReaderModal = class extends Modal {
       },
       buildPopup: () => this._buildHlPopup(),
     });
-    const pageDoc = docOf(this.areaEl);
-    this._selDoc = pageDoc;
-    const noteSelection = () => this._scheduleSelCheck();
-    this._selHandler = noteSelection;
-    this._selDoc.addEventListener("selectionchange", noteSelection);
     attachReaderContentClick(this);
     attachReaderSwipeNav(this);
     wireReaderChrome(this, root);
@@ -12891,14 +12856,6 @@ const ReaderModal = class extends Modal {
         attachEngineChrome(this, doc, index);
         try { void ensureSelectedReaderFont(doc, plugin, plugin.settings); }
         catch (e) { console.warn("Qiaomu Reader: could not load the reading font into a book document", e); }
-        try {
-          const notify = () => {
-            window.clearTimeout(this._engineSelTimer);
-            this._engineSelTimer = window.setTimeout(() => this._engineSelectionCheck({ doc, index }), 60);
-          };
-          doc.addEventListener("pointerup", notify);
-          doc.addEventListener("selectionchange", notify);
-        } catch (e) { console.warn("Qiaomu Reader: could not watch selections in a book document", e); }
       },
       onRelocate: (detail) => {
         if (this.file?.path !== file.path || this.engine !== engine || loadToken.signal.aborted) return;
@@ -12932,8 +12889,9 @@ const ReaderModal = class extends Modal {
     return readerTextCss(s, t, resolveReaderFont(s, FONTS), this.contentEl);
   }
   _engineSelectionCheck({ doc, index }) {
+    if (this._selectionLifecycle && !this._selectionLifecycle.canShow(doc)) return;
     if (!this.engine || !this.file) return;
-    if (this._editHlId || this._commentEditing || this._lookupOpen || this._selectionDragging) return;
+    if (this._selectionMenuOpen || this._editHlId || this._commentEditing || this._lookupOpen || this._selectionDragging) return;
     let sel = null;
     try { sel = doc.getSelection(); } catch { return; }
     if (!sel || sel.isCollapsed || sel.rangeCount === 0) return;
@@ -13116,11 +13074,8 @@ const ReaderModal = class extends Modal {
       wrapBlockRange(anchor.block, anchor.loc.start, anchor.loc.start + anchor.loc.len, { id: hl.id, color: hlColorCss(hl.color) });
     }
   }
-  _scheduleSelCheck() {
-    window.clearTimeout(this._selTimer);
-    this._selTimer = window.setTimeout(() => this._onSelectionCheck(), 80);
-  }
   _onSelectionCheck() {
+    if (this._selectionLifecycle && !this._selectionLifecycle.canShow(docOf(this.areaEl))) return;
     if (this.engine || this._selectionMenuOpen || this._selectionDragging || this._pdfPanning || this.pdfPanMode || this._editHlId || this._commentEditing || this._lookupOpen) return;
     const found = flowSelectionParts(this);
     if (!found) {
@@ -13200,7 +13155,9 @@ const ReaderModal = class extends Modal {
     pop.classList.add("qiaomu-reader-hl-popup-on");
     positionHlPopup(this, rect, 320, 44);
   }
-  _hideHlPopup() {
+  _hideHlPopup({ preserveSelection = false } = {}) {
+    if (!preserveSelection) this._selectionLifecycle?.dismiss();
+    closeReaderSelectionMenu(this);
     qiaomuReaderClearPaintedSelection();
     closeSelectionColorDropdown(this);
     closeInlineHighlightComment(this);
@@ -13249,20 +13206,11 @@ const ReaderModal = class extends Modal {
     clearAiSource(this);
     this._loadCoordinator.cancel();
     await persistCurrentReaderPosition(this); stopReadingTimer(this);
-    window.clearTimeout(this._engineSelTimer);
     this.engine?.destroy(); this.engine = null; this._engineLocation = null;
     this._pageKeysCleanup?.(); this._pageKeysCleanup = null;
     if (this.plugin._openReaderModal === this) { this.plugin._openReaderModal = null; }
-    clearFoundIn(this); this._removeSelectionListener();
+    clearFoundIn(this);
     this._detachReaderObservers(); this.contentEl.empty();
-  }
-  _removeSelectionListener() {
-    const handler = this._selHandler;
-    if (!handler) {
-      return;
-    }
-    const listenDoc = this._selDoc || document;
-    listenDoc.removeEventListener("selectionchange", handler);
   }
   _detachReaderObservers() {
     this._visibilityCleanup?.(); this._visibilityCleanup = null;
