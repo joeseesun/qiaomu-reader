@@ -34,6 +34,33 @@ export function displayEbookTitle(value) {
   });
 }
 
+let progressSequence = 0;
+export function createEbookDownloadProgress(button, t) {
+  const host = button.closest('.qiaomu-reader-ebook-result') || button.parentElement;
+  host.querySelector(':scope > .qiaomu-reader-ebook-progress')?.remove();
+  const root = element(host, 'div', undefined, 'qiaomu-reader-ebook-progress');
+  const label = element(root, 'span'); label.id = 'qiaomu-ebook-progress-' + ++progressSequence;
+  label.setAttribute('role', 'status');
+  const track = element(root, 'div', undefined, 'qiaomu-reader-ebook-progress-track');
+  track.setAttribute('role', 'progressbar'); track.setAttribute('aria-labelledby', label.id);
+  track.setAttribute('aria-valuemin', '0'); track.setAttribute('aria-valuemax', '100');
+  return {
+    get connected() { return root.isConnected; },
+    update(state) {
+      root.dataset.state = state;
+      label.textContent = t('ebook.' + state);
+      track.hidden = false;
+      if (state === 'imported') track.setAttribute('aria-valuenow', '100');
+      else track.removeAttribute('aria-valuenow');
+      button.setAttribute('aria-busy', String(state !== 'imported'));
+    },
+    fail(message) {
+      root.dataset.state = 'error'; label.textContent = message;
+      track.hidden = true; button.setAttribute('aria-busy', 'false');
+    }
+  };
+}
+
 export function createEbookResult(parent, book, t, { onDownload, icon, pageUrl } = {}) {
   const row = element(parent, 'article', undefined, 'qiaomu-reader-discovery-result qiaomu-reader-ebook-result');
   const coverBox = element(row, 'div', undefined, 'qiaomu-reader-ebook-cover');
@@ -155,12 +182,21 @@ export function mountEbookDiscovery(shell, plugin, library, t, { icon, sourcePar
     const results = element(premium, 'div', undefined, 'qiaomu-reader-discovery-results');
     const coverNote = element(premium, 'p', t('ebook.cover-note'), 'qiaomu-reader-ebook-cover-note'); coverNote.hidden = true;
     async function download(book, button, resume) {
+      if (button.disabled) return;
       const text = button.textContent;
+      const feedback = createEbookDownloadProgress(button, t);
+      feedback.update('queued'); button.textContent = t('ebook.working'); tell('');
       await action(button, async () => {
-        await service.download(book, files => library._importBooks(files), state => {
-          tell(t('ebook.' + state)); if (live(ticket)) button.textContent = t('ebook.working');
-        }, signal, resume);
+        try {
+          await service.download(book, files => library._importBooks(files), state => {
+            if (live(ticket)) { feedback.update(state); if (!feedback.connected) tell(t('ebook.' + state)); }
+          }, signal, resume);
+        } catch (error) {
+          if (live(ticket)) feedback.fail(ebookMessage(error, t));
+          throw error;
+        }
         if (!live(ticket)) return;
+        feedback.update('imported');
         tell(t('book-import-finished')); button.disabled = true; button.textContent = t('ebook.imported');
         button.dataset.imported = 'true';
         try { const next = await service.profile(signal); if (live(ticket)) accountText.textContent = profileText(next); }
