@@ -58,3 +58,27 @@ test("mobile entry does not initialize desktop SSH dependencies", async () => {
   await assert.rejects(f.controller.pairUsb("/usb"), { code: "key" });
   assert.equal(globalThis.__kindleLoads, 0);
 });
+
+test("switching reading modes preserves each receiver identity and pairing, including legacy settings", async () => {
+  const original = { secretId: "existing", host: "192.168.1.4", port: 2222, paired: true, fingerprint: "a".repeat(64) };
+  const f = fixture(original); f.store.set("existing", "private-fixture");
+  await f.controller.setMode("native");
+  assert.equal(f.controller.config().paired, false); assert.equal(f.controller.config().port, 2223);
+  await f.controller.test({ host: "192.168.1.5", mode: "native" });
+  await f.controller.setMode("koreader");
+  assert.equal(f.controller.config().host, original.host); assert.equal(f.controller.config().fingerprint, original.fingerprint);
+  assert.equal(f.controller.isPaired(), true);
+  await f.controller.setMode("native");
+  assert.equal(f.controller.config().host, "192.168.1.5"); assert.equal(f.controller.config().port, 2223);
+});
+test("native delivery converts before transfer and reports index failure as delivered, with no blind retry", async () => {
+  const f = fixture({ mode: "native", secretId: "existing", host: "192.168.1.4", paired: true, port: 2223, fingerprint: "a".repeat(64) });
+  f.store.set("existing", "private-fixture");
+  const file = { path: "中文.epub", name: "中文.epub" }; f.files.set(file.path, file);
+  let cleaned = false, sent = 0;
+  f.transport.prepareKindleFile = async () => ({ path: "/tmp/output.azw3", name: "中文.azw3", root: "/tmp", converted: true, cleanup: async () => { cleaned = true; } });
+  f.transport.sendKindleFile = async (_c, _k, p, name) => { assert.equal(p, "/tmp/output.azw3"); assert.equal(name, "中文.azw3"); sent++; return { bytes: 123, sha256: "verified" }; };
+  f.transport.refreshKindleLibrary = async () => { throw Error("scanner stopped"); };
+  const receipt = await f.controller.send(file);
+  assert.equal(receipt.scanRequested, false); assert.equal(receipt.converted, true); assert.equal(sent, 1); assert.equal(cleaned, true);
+});

@@ -1,0 +1,10 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+import JSZip from "jszip";
+const names = ["prepare.py", "Prepare Kindle.command", "install.sh", "uninstall.sh", "serve.sh", "dispatch.sh", "firewall.sh", "scan.sh", "qiaomu-kindle.conf", "qiaomu-kindle-scan.conf", "README.md"];
+const zip = new JSZip();
+for (const name of names) zip.file(`qiaomu-kindle-receiver/${name}`, await fs.readFile(path.join("kindle-receiver", name)), { unixPermissions: /\.(?:sh|command|py)$/.test(name) ? 0o100755 : 0o100644 });
+zip.file("qiaomu-kindle-receiver/LICENSE", await fs.readFile("LICENSE"));
+await fs.mkdir("dist", { recursive: true });
+await fs.writeFile("dist/qiaomu-kindle-receiver.zip", await zip.generateAsync({ type: "nodebuffer", platform: "UNIX", compression: "DEFLATE" }));
+console.log("Packaged standalone receiver source and setup scripts; no third-party binaries.");

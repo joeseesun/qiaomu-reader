@@ -1,17 +1,22 @@
 import { Modal, Notice, Platform } from "obsidian";
+import { kindleMode } from "./kindle-config.js";
 
-function errorText(t, error) {
+function errorText(t, error, mode) {
   const code = error?.code;
   if (code === "cancelled" || error?.name === "AbortError") return t("kindle.cancelled");
   if (code === "address") return t("kindle.error-address");
-  if (code === "not-found") return t("kindle.not-found");
+  if (code === "not-found") return t(kindleMode(mode) === "native" ? "kindle.native-wifi-help" : "kindle.not-found");
   if (code === "host-key") return t("kindle.error-host");
   if (["usb", "usb-settings"].includes(code)) return t("kindle.error-usb");
   if (["key", "save", "auth"].includes(code)) return t("kindle.error-key");
   if (["file", "format", "size", "changed"].includes(code)) return t("kindle.error-file");
   if (code === "verify") return t("kindle.error-verify");
   if (code === "busy") return t("kindle.busy");
-  return t("kindle.error-network");
+  if (code === "receiver") return t("kindle.error-receiver");
+  if (code === "native-format") return t("kindle.error-native-format");
+  if (code === "converter-missing") return t("kindle.error-converter");
+  if (code === "conversion") return t("kindle.error-conversion");
+  return t(kindleMode(mode) === "native" ? "kindle.native-wifi-help" : "kindle.error-network");
 }
 async function chooseUsbRoot(controller) {
   const roots = await controller.findUsb();
@@ -35,6 +40,18 @@ export class KindlePairingModal extends Modal {
     this.modalEl.addClass("qiaomu-reader-kindle-modal");
     this.setTitle(this.t("kindle.title"));
     const body = this.contentEl; body.addClass("qiaomu-reader-kindle-body");
+    const mode = body.createDiv({ cls: "qiaomu-reader-kindle-mode" });
+    const modeId = `kindle-mode-${body.ownerDocument.defaultView.crypto.randomUUID()}`;
+    mode.createEl("span", { text: this.t("kindle.mode"), attr: { id: modeId } });
+    const choices = mode.createDiv({ cls: "qiaomu-reader-kindle-choices", attr: { role: "group", "aria-labelledby": modeId } });
+    this.modeButtons = ["koreader", "native"].map(value => {
+      const button = choices.createEl("button", { text: this.t(`kindle.mode-${value}`), attr: { type: "button", "data-mode": value } });
+      button.addEventListener("click", () => void this.changeMode(value));
+      return button;
+    });
+    this.nativeHelp = mode.createDiv({ cls: "qiaomu-reader-kindle-help" });
+    this.nativeHelp.createEl("p", { text: this.t("kindle.native-description") });
+    this.nativeHelp.createEl("a", { text: this.t("kindle.receiver-help"), attr: { href: "https://github.com/joeseesun/qiaomu-reader/tree/main/kindle-receiver", target: "_blank", rel: "noopener noreferrer" } });
     const pair = body.createDiv({ cls: "qiaomu-reader-kindle-pair" });
     this.usbHeading = pair.createEl("h3");
     this.usbHelp = pair.createEl("p", { text: this.t("kindle.usb-description") });
@@ -62,6 +79,12 @@ export class KindlePairingModal extends Modal {
   }
   updateSteps() {
     const paired = this.controller.isPaired();
+    const native = kindleMode(this.controller.config().mode) === "native";
+    this.pairButton.textContent = this.t(paired ? "kindle.repair" : "kindle.pair");
+    for (const button of this.modeButtons) button.setAttribute("aria-pressed", String(button.dataset.mode === (native ? "native" : "koreader")));
+    this.nativeHelp.hidden = !native;
+    this.usbHelp.textContent = this.t(native ? "kindle.native-usb-description" : "kindle.usb-description");
+    this.wifi.querySelector("p").textContent = this.t(native ? "kindle.native-wifi-help" : "kindle.address-help");
     this.usbHeading.textContent = this.t(paired ? "kindle.usb-complete" : "kindle.step-usb");
     this.usbHeading.parentElement.classList.toggle("qiaomu-reader-kindle-pair-complete", paired);
     this.usbHelp.hidden = paired;
@@ -70,8 +93,20 @@ export class KindlePairingModal extends Modal {
   }
   setBusy(busy) {
     this.busy = busy;
-    for (const button of [this.pairButton, this.testButton, this.findButton]) button.disabled = busy;
+    for (const button of [this.pairButton, this.testButton, this.findButton, ...this.modeButtons]) button.disabled = busy;
     this.host.disabled = busy;
+  }
+  async changeMode(mode) {
+    if (this.busy) return;
+    this.setBusy(true);
+    try {
+      await this.controller.setMode(mode);
+      if (this.closed) return;
+      this.host.value = this.controller.config().host || "";
+      this.status.textContent = "";
+      this.updateSteps();
+    } catch (error) { if (!this.closed) this.status.textContent = errorText(this.t, error, this.controller.config().mode); }
+    finally { if (!this.closed) this.setBusy(false); }
   }
   async pair() {
     if (this.busy) return; this.setBusy(true);
@@ -81,10 +116,10 @@ export class KindlePairingModal extends Modal {
       if (!root || this.closed) return;
       await this.controller.pairUsb(root, this.abortController.signal);
       if (this.closed) return;
-      this.status.textContent = this.t("kindle.usb-done");
+      this.status.textContent = this.t(kindleMode(this.controller.config().mode) === "native" ? "kindle.native-usb-done" : "kindle.usb-done");
       this.pairButton.textContent = this.t("kindle.repair");
       this.updateSteps();
-    } catch (error) { if (!this.closed) this.status.textContent = errorText(this.t, error); }
+    } catch (error) { if (!this.closed) this.status.textContent = errorText(this.t, error, this.controller.config().mode); }
     finally { if (!this.closed) { this.setBusy(false); this.host.focus(); } }
   }
   async discover() {
@@ -95,7 +130,7 @@ export class KindlePairingModal extends Modal {
       if (this.closed) return;
       this.host.value = result.host;
       this.status.textContent = this.t("kindle.found");
-    } catch (error) { if (!this.closed) this.status.textContent = errorText(this.t, error); }
+    } catch (error) { if (!this.closed) this.status.textContent = errorText(this.t, error, this.controller.config().mode); }
     finally { if (!this.closed) { this.setBusy(false); this.host.focus(); } }
   }
   async connect() {
@@ -106,7 +141,7 @@ export class KindlePairingModal extends Modal {
       if (this.closed) return;
       this.status.textContent = this.t("kindle.connected");
       if (this.file) { const file = this.file; this.close(); void sendBookToKindle(this.plugin, file, this.t); }
-    } catch (error) { if (!this.closed) this.status.textContent = errorText(this.t, error); }
+    } catch (error) { if (!this.closed) this.status.textContent = errorText(this.t, error, this.controller.config().mode); }
     finally { if (!this.closed) this.setBusy(false); }
   }
   onClose() {
@@ -133,15 +168,15 @@ export async function sendBookToKindle(plugin, file, t) {
   const notice = new Notice(content, 0);
   let last = 0, lastPhase = "";
   try {
-    await plugin.kindle.send(file, progress => {
+    const receipt = await plugin.kindle.send(file, progress => {
       if (plugin._unloading) return;
       const now = Date.now();
       if (now - last < 200 && lastPhase === progress.phase) return;
       last = now; lastPhase = progress.phase;
-      status.textContent = progress.phase === "verify" ? t("kindle.verifying") : t("kindle.sending", Math.min(100, Math.floor(progress.sent / progress.total * 100)));
+      status.textContent = progress.phase === "convert" ? t("kindle.converting") : progress.phase === "index" ? t("kindle.indexing") : progress.phase === "verify" ? t("kindle.verifying") : t("kindle.sending", Math.min(100, Math.floor(progress.sent / progress.total * 100)));
     }, aborter.signal);
-    if (!plugin._unloading) new Notice(t("kindle.sent", file.basename || file.name), 7000);
+    if (!plugin._unloading) new Notice(t(receipt?.mode === "native" && receipt.scanRequested === false ? "kindle.sent-index-pending" : "kindle.sent", file.basename || file.name), 9000);
   } catch (error) {
-    if (!plugin._unloading) new Notice(errorText(t, error), 9000);
+    if (!plugin._unloading) new Notice(errorText(t, error, plugin.kindle.config().mode), 9000);
   } finally { plugin._kindleSending = false; notice.hide(); }
 }

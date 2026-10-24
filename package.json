@@ -1,10 +1,11 @@
 {
   "name": "qiaomu-reader",
-  "version": "4.8.0",
+  "version": "4.9.0",
   "description": "中文优先的 Obsidian EPUB 与 PDF 阅读器，支持划线、批注、阅读笔记和进度同步。",
   "main": "main.js",
   "type": "module",
   "scripts": {
+    "package:kindle-receiver": "node scripts/package-kindle-receiver.mjs",
     "postinstall": "node patch-pdfjs.cjs",
     "dev": "node esbuild.config.mjs",
     "build": "node scripts/generate-pdf-cmaps.mjs && node esbuild.config.mjs production && node patch-pdfjs.cjs",

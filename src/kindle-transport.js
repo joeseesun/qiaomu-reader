@@ -1,7 +1,8 @@
 // Loaded only after a desktop user explicitly starts pairing or a transfer.
 import { Platform } from "obsidian";
 import ssh2 from "ssh2";
-import { KINDLE_FOLDER, KINDLE_MAX_BYTES, kindleBookName, kindleConnection, kindleError, kindleLuaSettings, appendKindleKey, kindleDiscoveryHosts } from "./kindle-config.js";
+import { createKindleNative } from "./kindle-native.js";
+import { KINDLE_FOLDER, KINDLE_MAX_BYTES, KINDLE_NATIVE_PORT, kindleMode, kindleBookName, kindleConnection, kindleError, kindleLuaSettings, appendKindleKey, kindleDiscoveryHosts } from "./kindle-config.js";
 
 export async function loadKindleTransport() {
   if (!Platform.isDesktop) throw kindleError("key");
@@ -11,6 +12,7 @@ export async function loadKindleTransport() {
   const { createHash, randomUUID } = window.require("node:crypto");
   const { Client, utils } = ssh2;
   const fsp = fs.promises;
+  const native = createKindleNative({ fs, path, os, randomUUID, childProcess: window.require("node:child_process"), env: window.require("node:process").env });
 const timing = typeof window === "undefined" ? { setTimeout, clearTimeout } : window;
 const aborted = () => Object.assign(kindleError("cancelled"), { name: "AbortError" });
 const check = signal => { if (signal?.aborted) throw aborted(); };
@@ -24,17 +26,17 @@ function kindlePublicKey(privateKey) {
   if (!parsed || parsed instanceof Error || parsed.type !== "ecdsa-sha2-nistp256") throw kindleError("key");
   return `${parsed.type} ${parsed.getPublicSSH().toString("base64")} qiaomu-reader`;
 }
-async function verifyKindleUsb(candidate) {
+async function verifyKindleUsb(candidate, { mode } = {}) {
   const root = await fsp.realpath(candidate);
   if (root === path.parse(root).root && (os.platform() !== "win32" || /^[cC]:/.test(root))) throw kindleError("usb");
-  for (const rel of ["system/version.txt", "koreader/koreader.sh", "koreader/settings.reader.lua"]) {
+  for (const rel of mode === "native" ? ["system/version.txt"] : ["system/version.txt", "koreader/koreader.sh", "koreader/settings.reader.lua"]) {
     const resolved = await fsp.realpath(path.join(root, rel));
     if (!resolved.startsWith(root + path.sep) || !(await fsp.stat(resolved)).isFile()) throw kindleError("usb");
   }
   if (!/^Kindle\s+\d/.test(await fsp.readFile(path.join(root, "system/version.txt"), "utf8"))) throw kindleError("usb");
   return root;
 }
-async function findKindleUsb() {
+async function findKindleUsb(options) {
   let candidates = [];
   if (os.platform() === "darwin") candidates = (await fsp.readdir("/Volumes").catch(() => [])).map(x => path.join("/Volumes", x));
   else if (os.platform() === "win32") candidates = Array.from({ length: 23 }, (_, i) => `${String.fromCharCode(68 + i)}:\\`);
@@ -44,12 +46,16 @@ async function findKindleUsb() {
     }
   }
   const found = [];
-  for (const p of candidates) { try { found.push(await verifyKindleUsb(p)); } catch { /* Not a KOReader Kindle. */ } }
+  for (const p of candidates) { try { found.push(await verifyKindleUsb(p, options)); } catch { /* Not a compatible Kindle. */ } }
   return found;
 }
-async function pairKindleUsb(candidate, publicKey, { signal, port } = {}) {
+async function pairKindleUsb(candidate, publicKey, { signal, port, mode } = {}) {
   check(signal);
-  const root = await verifyKindleUsb(candidate);
+  const root = await verifyKindleUsb(candidate, { mode });
+  if (mode === "native") {
+    try { return await native.pairNative(root, publicKey, { signal }); }
+    catch (error) { if (error.code === "ENOENT") throw kindleError("receiver"); throw error; }
+  }
   const settingsPath = path.join(root, "koreader/settings.reader.lua");
   const settings = await fsp.readFile(settingsPath, "utf8");
   const updated = kindleLuaSettings(settings, port);
@@ -126,7 +132,18 @@ function withKindleSession(raw, privateKey, action, { signal, allowLoopback = fa
             check(signal); touch();
             sftp[method](...args, (err, value) => { touch(); if (settled) rej(signal?.aborted ? aborted() : kindleError("network")); else if (err) rej(err); else res(value); });
           });
-          const value = await action({ sftp, call, touch, fingerprint });
+          const execCommand = command => new Promise((res, rej) => {
+            if (!["qiaomu-receiver-v1", "qiaomu-scan-v1"].includes(command)) { rej(kindleError("receiver")); return; }
+            check(signal); touch();
+            client.exec(command, (err, channel) => {
+              if (err) { rej(kindleError("receiver")); return; }
+              let output = "", failed = false;
+              channel.on("data", data => { touch(); output += data.toString(); if (output.length > 4096) { failed = true; channel.close(); } });
+              channel.on("error", () => { failed = true; rej(kindleError("receiver")); });
+              channel.on("close", code => { if (failed || code !== 0) rej(kindleError("receiver")); else res(output.trim()); });
+            });
+          });
+          const value = await action({ sftp, call, touch, fingerprint, execCommand });
           check(signal); finish(null, value);
         } catch (err) { finish(err); }
       });
@@ -141,11 +158,16 @@ function withKindleSession(raw, privateKey, action, { signal, allowLoopback = fa
   });
 }
 async function checkKindleConnection(config, privateKey, options) {
-  return withKindleSession(config, privateKey, async ({ call }) => {
+  return withKindleSession(config, privateKey, async ({ call, execCommand }) => {
     const dir = await call("realpath", KINDLE_FOLDER);
     if (dir !== KINDLE_FOLDER) throw kindleError("folder");
     const stats = await call("stat", dir);
     if (!stats.isDirectory()) throw kindleError("folder");
+    if (config.mode === "native") {
+      let capability;
+      try { capability = JSON.parse(await execCommand("qiaomu-receiver-v1")); } catch { throw kindleError("receiver"); }
+      if (capability.protocol !== 1 || capability.scan !== true) throw kindleError("receiver");
+    }
     return { ready: true };
   }, options);
 }
@@ -157,7 +179,7 @@ async function discoverKindle(config, privateKey, { signal } = {}) {
   const deadline = timing.setTimeout(abort, 20000);
   let next = 0, result;
   const probe = host => new Promise(resolve => {
-    const socket = net.createConnection({ host, port: config.port || 2222 });
+    const socket = net.createConnection({ host, port: config.port || (kindleMode(config.mode) === "native" ? KINDLE_NATIVE_PORT : 2222) });
     let done = false, banner = "";
     const finish = found => {
       if (done) return; done = true;
@@ -245,5 +267,12 @@ async function sendKindleFile(config, privateKey, localPath, name, { signal, onP
   }, { ...options, signal });
 }
 
-return { createKindleKey, kindlePublicKey, verifyKindleUsb, findKindleUsb, pairKindleUsb, withKindleSession, checkKindleConnection, discoverKindle, sendKindleFile };
+async function refreshKindleLibrary(config, privateKey, options) {
+  return withKindleSession(config, privateKey, async ({ execCommand }) => {
+    const status = await execCommand("qiaomu-scan-v1");
+    if (!["scan-requested", "scan-pending"].includes(status)) throw kindleError("index");
+    return { scanRequested: status === "scan-requested", scanPending: status === "scan-pending" };
+  }, options);
+}
+return { createKindleKey, kindlePublicKey, verifyKindleUsb, findKindleUsb, pairKindleUsb, withKindleSession, checkKindleConnection, discoverKindle, sendKindleFile, refreshKindleLibrary, prepareKindleFile: native.prepareFile };
 }
