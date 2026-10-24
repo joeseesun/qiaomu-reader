@@ -26,7 +26,8 @@ export const EBOOK_TEXT = {
     "ebook.error-busy": "已有下载正在处理，请等待完成。",
     "ebook.error-pending": "下载仍在处理。重新打开乔木书库后，可继续导入。",
     "ebook.error-expired": "结果或下载文件已过期，请重新搜索。",
-    "ebook.imported": "已加入"
+    "ebook.imported": "已加入",
+    "ebook.error-interrupted": "操作已中断，请关闭找书窗口后重新打开。"
   },
   "en": {
     "ebook.source-public": "Public sources",
@@ -55,7 +56,8 @@ export const EBOOK_TEXT = {
     "ebook.error-busy": "A download is already in progress. Wait for it to finish.",
     "ebook.error-pending": "The download is still processing. Reopen Qiaomu library to continue importing.",
     "ebook.error-expired": "The result or file expired. Search again.",
-    "ebook.imported": "Imported"
+    "ebook.imported": "Imported",
+    "ebook.error-interrupted": "The operation was interrupted. Close and reopen Find books."
   },
   "ja": {
     "ebook.source-public": "公開書籍ソース",
@@ -84,7 +86,8 @@ export const EBOOK_TEXT = {
     "ebook.error-busy": "ダウンロードの完了をお待ちください。",
     "ebook.error-pending": "処理中です。ライブラリを開き直すと取り込みを続行できます。",
     "ebook.error-expired": "結果またはファイルの期限が切れました。再検索してください。",
-    "ebook.imported": "取り込み済み"
+    "ebook.imported": "取り込み済み",
+    "ebook.error-interrupted": "操作が中断されました。本の検索画面を閉じて開き直してください。"
   },
   "ru": {
     "ebook.source-public": "Открытые источники",
@@ -113,7 +116,8 @@ export const EBOOK_TEXT = {
     "ebook.error-busy": "Дождитесь завершения текущей загрузки.",
     "ebook.error-pending": "Загрузка обрабатывается. Откройте библиотеку Qiaomu снова, чтобы продолжить импорт.",
     "ebook.error-expired": "Срок результата или файла истёк. Выполните поиск снова.",
-    "ebook.imported": "Импортировано"
+    "ebook.imported": "Импортировано",
+    "ebook.error-interrupted": "Операция прервана. Закройте и снова откройте поиск книг."
   },
   "es": {
     "ebook.source-public": "Fuentes públicas",
@@ -142,7 +146,8 @@ export const EBOOK_TEXT = {
     "ebook.error-busy": "Espera a que termine la descarga actual.",
     "ebook.error-pending": "La descarga sigue en curso. Reabre la biblioteca Qiaomu para continuar la importación.",
     "ebook.error-expired": "El resultado o archivo caducó. Busca de nuevo.",
-    "ebook.imported": "Importado"
+    "ebook.imported": "Importado",
+    "ebook.error-interrupted": "La operación se interrumpió. Cierra y vuelve a abrir Buscar libros."
   },
   "fr": {
     "ebook.source-public": "Sources publiques",
@@ -171,7 +176,8 @@ export const EBOOK_TEXT = {
     "ebook.error-busy": "Attendez la fin du téléchargement en cours.",
     "ebook.error-pending": "Téléchargement en cours. Rouvrez la bibliothèque Qiaomu pour continuer l’importation.",
     "ebook.error-expired": "Le résultat ou le fichier a expiré. Relancez la recherche.",
-    "ebook.imported": "Importé"
+    "ebook.imported": "Importé",
+    "ebook.error-interrupted": "L’opération a été interrompue. Fermez puis rouvrez la recherche de livres."
   },
   "de": {
     "ebook.source-public": "Öffentliche Quellen",
@@ -200,7 +206,8 @@ export const EBOOK_TEXT = {
     "ebook.error-busy": "Warte, bis der laufende Download beendet ist.",
     "ebook.error-pending": "Download läuft noch. Öffne die Qiaomu-Bibliothek erneut, um den Import fortzusetzen.",
     "ebook.error-expired": "Ergebnis oder Datei abgelaufen. Suche erneut.",
-    "ebook.imported": "Importiert"
+    "ebook.imported": "Importiert",
+    "ebook.error-interrupted": "Der Vorgang wurde unterbrochen. Schließe die Buchsuche und öffne sie erneut."
   },
   "ko": {
     "ebook.source-public": "공개 도서 소스",
@@ -229,7 +236,8 @@ export const EBOOK_TEXT = {
     "ebook.error-busy": "진행 중인 다운로드가 끝날 때까지 기다리세요.",
     "ebook.error-pending": "다운로드가 진행 중입니다. Qiaomu 서재를 다시 열어 가져오기를 계속하세요.",
     "ebook.error-expired": "결과 또는 파일이 만료되었습니다. 다시 검색하세요.",
-    "ebook.imported": "가져옴"
+    "ebook.imported": "가져옴",
+    "ebook.error-interrupted": "작업이 중단되었습니다. 도서 검색 창을 닫았다가 다시 여세요."
   },
   "pt": {
     "ebook.source-public": "Fontes públicas",
@@ -258,6 +266,7 @@ export const EBOOK_TEXT = {
     "ebook.error-busy": "Aguarde o download atual terminar.",
     "ebook.error-pending": "O download continua em andamento. Reabra a biblioteca Qiaomu para continuar a importação.",
     "ebook.error-expired": "O resultado ou arquivo expirou. Pesquise novamente.",
-    "ebook.imported": "Importado"
+    "ebook.imported": "Importado",
+    "ebook.error-interrupted": "A operação foi interrompida. Feche e reabra a busca de livros."
   }
 };

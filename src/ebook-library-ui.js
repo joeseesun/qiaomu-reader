@@ -6,6 +6,7 @@ function element(parent, tag, text, cls) {
 }
 export function ebookMessage(error, t) {
   const code = error?.code;
+  if (code === 'cancelled') return t('ebook.error-interrupted');
   if (['invalid-code', 'invalid-device'].includes(code)) return t('ebook.error-code');
   if (['unauthorized', 'inactive', 'device-revoked'].includes(code)) return t('ebook.error-access');
   if (code === 'device-limit') return t('ebook.error-devices');
@@ -47,7 +48,7 @@ export function mountEbookDiscovery(shell, plugin, library, t) {
     const tell = message => { if (live(ticket)) status.textContent = message; };
     const action = async (button, fn) => {
       if (button.disabled) return; button.disabled = true;
-      try { await fn(); } catch (error) { if (error.code !== 'cancelled') tell(ebookMessage(error, t)); }
+      try { await fn(); } catch (error) { tell(ebookMessage(error, t)); }
       finally { if (live(ticket)) button.disabled = false; }
     };
     const activation = () => {
@@ -57,8 +58,8 @@ export function mountEbookDiscovery(shell, plugin, library, t) {
       input.type = 'password'; input.autocomplete = 'off'; input.spellcheck = false; input.maxLength = 40;
       const submit = element(form, 'button', t('ebook.activate')); submit.type = 'submit';
       form.addEventListener('submit', event => { event.preventDefault(); void action(submit, async () => {
-        tell(t('ebook.activating')); const code = input.value; input.value = '';
-        await service.activate(code, signal); if (live(ticket)) await render();
+        tell(t('ebook.activating')); const code = input.value;
+        await service.activate(code, signal); if (live(ticket)) { input.value = ''; await render(); }
       }); });
       input.focus();
     };

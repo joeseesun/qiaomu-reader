@@ -1943,6 +1943,8 @@ const QiaomuBookReader = class extends Plugin {
     this.app.workspace.onLayoutReady(onReady);
   }
   onunload() {
+    for (const modal of this._bookDiscoveryModals || []) modal.close();
+    this._bookDiscoveryModals?.clear();
     this.ebookLibrary?.dispose();
     this.kindle?.dispose();
     cancelAccountLogins(); for (const modal of this.modelAccessModals || []) modal.close();
@@ -12368,6 +12370,7 @@ const BookDiscoveryModal = class extends Modal {
   }
   onOpen() {
     this._open = true;
+    (this.plugin._bookDiscoveryModals ||= new Set()).add(this);
     this.modalEl.addClass("qiaomu-reader-book-discovery");
     this.contentEl.empty();
     this.contentEl.createEl("h2", { text: qiaomuReaderTranslate("find-books") });
@@ -12486,6 +12489,7 @@ const BookDiscoveryModal = class extends Modal {
   }
   onClose() {
     this._open = false;
+    this.plugin._bookDiscoveryModals?.delete(this);
     this._ebookPanel?.dispose();
     this._request += 1;
     this.contentEl.empty();

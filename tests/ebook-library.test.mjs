@@ -27,6 +27,20 @@ test('public discovery remains selected with zero service or credential requests
   assert.equal(ui.publicRoot.hidden, true); assert.equal(f.calls.length, 0);
   dom.window.document.querySelector('button').click(); assert.equal(ui.publicRoot.hidden, false); ui.dispose();
 });
+test('an interrupted activation cannot leave an idle form saying it is activating', async () => {
+  const f = fixture(), dom = new JSDOM('<main></main>');
+  f.service.activate = async () => { throw Object.assign(new Error('cancelled'), { code: 'cancelled' }); };
+  const ui = mountEbookDiscovery(dom.window.document.querySelector('main'), f.plugin, {}, key => key);
+  dom.window.document.querySelectorAll('button')[1].click();
+  const panel = dom.window.document.querySelector('.qiaomu-reader-ebook-panel');
+  panel.querySelector('input').value = code;
+  panel.querySelector('form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(panel.querySelector('button[type=submit]').disabled, false);
+  assert.equal(panel.querySelector('[role=status]').textContent, 'ebook.error-interrupted');
+  assert.equal(panel.querySelector('input').value, code);
+  ui.dispose();
+});
 test('activation secrets stay out of settings and local state; no shared MCP key exists', async () => {
   const f = await activated();
   assert.ok(f.service.isActivated()); assert.ok(f.state().installationId);
