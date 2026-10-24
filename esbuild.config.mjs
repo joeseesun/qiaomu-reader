@@ -64,6 +64,8 @@ ${fs.readFileSync("node_modules/ws/LICENSE", "utf8").replaceAll("*/", "* /")}
 BUNDLED SSH CLIENT LICENSE
 ${fs.readFileSync("node_modules/ssh2/LICENSE", "utf8").replaceAll("*/", "* /")}
 ${["asn1", "bcrypt-pbkdf", "tweetnacl"].map(name => `${name}\n${fs.readFileSync(`node_modules/${name}/LICENSE`, "utf8")}`).join("\n").replaceAll("*/", "* /")}
+BUNDLED AZW3 CONVERSION LICENSES
+${["licenses/lyceum-MIT.txt", "node_modules/@xmldom/xmldom/LICENSE", "node_modules/postcss/LICENSE", "node_modules/nanoid/LICENSE", "node_modules/picocolors/LICENSE", "node_modules/source-map-js/LICENSE"].map(file => fs.readFileSync(file, "utf8")).join("\n").replaceAll("*/", "* /")}
 Build channel: ${profile.name}
 If you want to view the source, please visit the plugin's GitHub repository:
 https://github.com/joeseesun/qiaomu-reader
@@ -129,6 +131,12 @@ const workerCode = (await esbuild.transform(loadPatchedWorker(), {
 const workerZip = new JSZip();
 workerZip.file("pdf.worker.js", workerCode, { date: new Date("2000-01-01T00:00:00Z") });
 const workerArchive = await workerZip.generateAsync({ type: "base64", compression: "DEFLATE", compressionOptions: { level: 9 }, platform: "UNIX" });
+// Self-contained desktop converter. The archive is generated from reviewed
+// sources during the build; it is never downloaded or installed at runtime.
+const converterBuild = await esbuild.build({ entryPoints: ["src/kindle-converter-worker.js"], bundle: true, platform: "browser", format: "iife", alias: { setimmediate: "./src/kindle-zip-scheduler.js", immediate: "./src/kindle-zip-scheduler.js" }, target: "es2018", minify: true, write: false, legalComments: "eof" });
+const converterZip = new JSZip();
+converterZip.file("kindle-converter.js", converterBuild.outputFiles[0].text, { date: new Date("2000-01-01T00:00:00Z") });
+const converterArchive = await converterZip.generateAsync({ type: "base64", compression: "DEFLATE", compressionOptions: { level: 9 }, platform: "UNIX" });
 
 // Внутри pdf.js, epub.js и jszip есть ветки, которые создают <script> и
 // подгружают код по ссылке. В Obsidian они не выполняются никогда: воркер pdf.js
@@ -220,7 +228,7 @@ const ctx = await esbuild.context({
   minifyIdentifiers: prod,
   legalComments: "eof",
   // Injected as a plain string literal; setupWorker() reads it as __PDF_WORKER_CODE__.
-  define: { __PDF_WORKER_ARCHIVE__: JSON.stringify(workerArchive), ...foliate.define },
+  define: { __PDF_WORKER_ARCHIVE__: JSON.stringify(workerArchive), __KINDLE_CONVERTER_ARCHIVE__: JSON.stringify(converterArchive), ...foliate.define },
 });
 
 if (prod) {

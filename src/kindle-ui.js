@@ -14,7 +14,8 @@ function errorText(t, error, mode) {
   if (code === "busy") return t("kindle.busy");
   if (code === "receiver") return t("kindle.error-receiver");
   if (code === "native-format") return t("kindle.error-native-format");
-  if (code === "converter-missing") return t("kindle.error-converter");
+  if (code === "conversion-size") return t("kindle.error-conversion-size");
+  if (code === "conversion-resource") return t("kindle.error-conversion-resource");
   if (code === "conversion") return t("kindle.error-conversion");
   return t(kindleMode(mode) === "native" ? "kindle.native-wifi-help" : "kindle.error-network");
 }

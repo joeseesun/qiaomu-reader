@@ -3,13 +3,13 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import childProcess from "node:child_process";
+import { convert, epubFixture } from "./helpers/kindle-converter-fixture.mjs";
 import { randomUUID } from "node:crypto";
 import { createKindleNative } from "../src/kindle-native.js";
 import { kindleConnection, kindleDeliveryFormat, kindleMode } from "../src/kindle-config.js";
 
 const fsp = fs.promises;
-const native = createKindleNative({ fs, os, path, randomUUID, childProcess, env: process.env });
+const native = createKindleNative({ fs, os, path, randomUUID, convertEpub: convert });
 async function temporary(t) {
   const root = await fsp.mkdtemp(path.join(os.tmpdir(), "kindle-native-test-"));
   t.after(() => fsp.rm(root, { recursive: true, force: true }));
@@ -59,30 +59,26 @@ test("native PDF delivery needs no converter, and source symlinks cannot escape 
   await fsp.symlink(external, path.join(root, "linked.epub"));
   await assert.rejects(native.prepareFile(path.join(root, "linked.epub"), "linked.epub", { mode: "native", vaultRoot: root }), { code: "file" });
 });
-test("EPUB conversion never uses a shell, preserves the source, and deletes its output on cleanup", async t => {
-  const root = await temporary(t), book = path.join(root, "书 $(echo nope).epub");
-  await fsp.writeFile(book, "original EPUB");
-  let options, args;
-  const fake = createKindleNative({ fs, os, path, randomUUID, env: {}, childProcess: { execFile: (_bin, argv, opts, callback) => {
-    options = opts; args = argv;
-    const output = Buffer.alloc(100); output.write("BOOKMOBI", 60);
-    void fsp.writeFile(argv[1], output).then(() => callback(null));
-  } } });
-  const result = await fake.prepareFile(book, path.basename(book), { mode: "native", vaultRoot: root, converterPath: process.execPath });
-  assert.equal(options.shell, false); assert.equal(args[0], book); assert.equal(result.converted, true);
-  assert.equal(result.name, "书 $(echo nope).azw3");
-  assert.equal(await fsp.readFile(book, "utf8"), "original EPUB");
+test("embedded conversion preserves the source and removes its temporary AZW3", async t => {
+  const root = await temporary(t), book = path.join(root, "书 $(echo nope).epub"), bytes = await epubFixture();
+  await fsp.writeFile(book, bytes);
+  const result = await native.prepareFile(book, path.basename(book), { mode: "native", vaultRoot: root });
+  assert.equal(result.converted, true); assert.equal(result.name, "书 $(echo nope).azw3");
+  assert.deepEqual(await fsp.readFile(book), Buffer.from(bytes));
   assert.ok(fs.existsSync(result.path)); await result.cleanup(); assert.equal(fs.existsSync(result.path), false);
 });
-test("bad or cancelled conversion never returns a file for sending and removes temporary output", async t => {
-  const root = await temporary(t), book = path.join(root, "book.epub"); await fsp.writeFile(book, "book");
-  let output;
-  const fake = createKindleNative({ fs, os, path, randomUUID, env: {}, childProcess: { execFile: (_bin, args, _opts, callback) => {
-    output = args[1]; void fsp.writeFile(output, "not a Kindle file").then(() => callback(null));
-  } } });
-  await assert.rejects(fake.prepareFile(book, "book.epub", { mode: "native", vaultRoot: root, converterPath: process.execPath }), { code: "conversion" });
-  assert.equal(fs.existsSync(path.dirname(output)), false);
+test("bad or cancelled embedded conversion never returns a file for sending", async t => {
+  const root = await temporary(t), book = path.join(root, "book.epub"); await fsp.writeFile(book, "not a book");
+  await assert.rejects(native.prepareFile(book, "book.epub", { mode: "native", vaultRoot: root }), { code: "conversion" });
   const aborter = new AbortController(); aborter.abort();
   await assert.rejects(native.prepareFile(book, "book.epub", { mode: "native", vaultRoot: root, signal: aborter.signal }), { code: "cancelled" });
-  await assert.rejects(native.prepareFile(book, "book.epub", { mode: "native", vaultRoot: root, converterPath: "/missing/ebook-convert" }), { code: "converter-missing" });
+});
+test("source changes during conversion clean up this job's temporary files", async t => {
+  const root = await temporary(t), book = path.join(root, "book.epub"); await fsp.writeFile(book, "initial book");
+  const modified = createKindleNative({ fs, path, randomUUID, os: { ...os, tmpdir: () => root }, convertEpub: async () => {
+    await fsp.writeFile(book, "changed book content");
+    const bytes = new Uint8Array(100); bytes.set(new TextEncoder().encode("BOOKMOBI"), 60); return { bytes };
+  } });
+  await assert.rejects(modified.prepareFile(book, "book.epub", { mode: "native", vaultRoot: root }), { code: "changed" });
+  assert.deepEqual(await fsp.readdir(root), ["book.epub"]);
 });
