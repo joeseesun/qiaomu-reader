@@ -70,6 +70,28 @@ test('access expiry shares a single rotating refresh across concurrent requests'
   await Promise.all([f.service.search('Book A'), f.service.search('Book B')]);
   assert.equal(refreshes, 1); assert.ok([...f.secrets.values()][0].includes('refresh-b'));
 });
+test('optional covers request only search IDs and accept fixed attributed work cover URLs', async () => {
+  const cover = { url: 'https://covers.openlibrary.org/b/id/10527843-M.jpg?default=false', sourceUrl: 'https://openlibrary.org/works/OL138052W', source: 'Open Library', match: 'work' };
+  const f = await activated(async o => {
+    assert.deepEqual(JSON.parse(o.body), { candidateIds: [id] });
+    return { status: 200, json: { results: [{ id, cover, pending: false }, { id: 'b'.repeat(32), cover, pending: false }] } };
+  });
+  const result = await f.service.covers([{ id, title: 'Private title', url: 'https://upstream.example/?key=secret' }]);
+  assert.deepEqual(result, [{ id, cover, pending: false }]);
+  assert.ok(Object.isFrozen(result[0].cover));
+  assert.equal(f.calls.at(-1).url, EBOOK_API + '/covers');
+  assert.ok(!f.calls.at(-1).body.includes('Private title'));
+});
+test('untrusted image hosts, source links and edition claims cannot reach the cover UI', async () => {
+  const valid = { url: 'https://covers.openlibrary.org/b/id/10527843-M.jpg?default=false', sourceUrl: 'https://openlibrary.org/works/OL138052W', source: 'Open Library', match: 'work' };
+  for (const patch of [{ url: 'https://evil.example/image.jpg' }, { url: 'data:image/svg+xml,code' }, { url: valid.url + '&key=secret' }, { sourceUrl: 'https://openlibrary.org.evil.example/works/OL138052W' }, { match: 'edition' }]) {
+    const f = await activated(async () => ({ status: 200, json: { results: [{ id, cover: { ...valid, ...patch }, pending: false }] } }));
+    assert.equal((await f.service.covers([{ id }]))[0].cover, null);
+  }
+  const f = fixture();
+  assert.deepEqual(await f.service.covers([]), []);
+  assert.equal(f.calls.length, 0);
+});
 test('late activation after close does not persist a credential', async () => {
   let finish; const f = fixture(() => new Promise(resolve => { finish = resolve; })); const aborter = new AbortController();
   const pending = f.service.activate(code, aborter.signal); while (!finish) await new Promise(resolve => setImmediate(resolve));
@@ -109,4 +131,44 @@ test('aborting during a file request never imports into the vault', async () => 
 test('failed vault import leaves a resumable job instead of claiming success', async () => {
   const f = await activated(async o => o.url.endsWith('/file') ? { status: 200, arrayBuffer: bytes } : { status: 200, json: { id, state: 'complete', result } });
   await assert.rejects(f.service.download({ id }, async () => 0), { code: 'import' }); assert.equal(f.state().importedJobs, undefined);
+});
+
+test('result filters keep the download tied to the selected version when covers fail', async () => {
+  const f = fixture(), dom = new JSDOM('<main></main>'), downloads = [];
+  const books = [
+    { id, title: "ALICE'S ADVENTURES IN WONDERLAND", author: 'Lewis Carroll', language: 'English', year: '2008', format: 'pdf', size_str: '990.76 KB' },
+    { id: 'b'.repeat(32), title: 'Alice and Through the Looking Glass', author: 'Lewis Carroll', language: 'English', year: '2003', format: 'epub', size_str: '5.69 MB' }
+  ];
+  Object.assign(f.service, { isActivated: () => true, profile: async () => ({ expiresAt: 1800000000, dailyLimit: 20, usedToday: 0 }), jobs: async () => [], search: async () => books,
+    covers: async () => { throw Error('cover outage'); }, download: async book => { downloads.push(book.id); } });
+  const ui = mountEbookDiscovery(dom.window.document.querySelector('main'), f.plugin, {}, (key, ...values) => key + (values.length ? ':' + values.join(',') : ''));
+  dom.window.document.querySelectorAll('button')[1].click(); await new Promise(resolve => setImmediate(resolve));
+  const panel = dom.window.document.querySelector('.qiaomu-reader-ebook-panel');
+  panel.querySelector('input').value = 'Alice'; panel.querySelector('form').dispatchEvent(new dom.window.Event('submit', { cancelable: true }));
+  await new Promise(resolve => setImmediate(resolve));
+  const rows = [...panel.querySelectorAll('.qiaomu-reader-ebook-result')];
+  assert.equal(rows.length, 2); assert.match(rows[0].textContent, /990.76 KB/);
+  assert.equal(rows[0].querySelector('strong').textContent, "Alice's Adventures in Wonderland");
+  assert.equal(panel.querySelector('[role=status]').textContent, '');
+  const pdf = [...panel.querySelectorAll('.qiaomu-reader-ebook-filters button')].find(button => button.textContent === 'PDF'); pdf.click();
+  assert.equal(rows[0].hidden, false); assert.equal(rows[1].hidden, true);
+  rows[0].querySelector('.qiaomu-reader-ebook-download').click(); await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(downloads, [id]); assert.equal(rows[0].querySelector('.qiaomu-reader-ebook-download').disabled, true);
+  ui.dispose();
+});
+
+test('late covers from an older search cannot attach to the next book', async () => {
+  const f = fixture(), dom = new JSDOM('<main></main>'); let resolveCover, searches = 0, requests = 0;
+  Object.assign(f.service, { isActivated: () => true, profile: async () => ({ expiresAt: 1800000000, dailyLimit: 20, usedToday: 0 }), jobs: async () => [],
+    search: async () => [{ id: searches++ ? 'b'.repeat(32) : id, title: 'A book', format: 'epub' }],
+    covers: async () => ++requests === 1 ? new Promise(resolve => { resolveCover = resolve; }) : [] });
+  const ui = mountEbookDiscovery(dom.window.document.querySelector('main'), f.plugin, {}, key => key);
+  dom.window.document.querySelectorAll('button')[1].click(); await new Promise(resolve => setImmediate(resolve));
+  const panel = dom.window.document.querySelector('.qiaomu-reader-ebook-panel'); panel.querySelector('input').value = 'Book';
+  const search = async () => { panel.querySelector('form').dispatchEvent(new dom.window.Event('submit', { cancelable: true })); await new Promise(resolve => setImmediate(resolve)); };
+  await search(); await search();
+  resolveCover([{ id, cover: { url: 'https://covers.openlibrary.org/b/id/123-M.jpg?default=false', sourceUrl: 'https://openlibrary.org/works/OL123W' }, pending: false }]);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(panel.querySelector('.qiaomu-reader-ebook-cover img').getAttribute('src'), null);
+  ui.dispose();
 });

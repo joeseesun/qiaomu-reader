@@ -5,6 +5,12 @@ const MAX_BYTES = 32 * 1024 * 1024;
 const FORMATS = new Set(['epub', 'pdf', 'mobi', 'azw3', 'txt', 'fb2']);
 export const ebookError = code => Object.assign(new Error(code), { code });
 const jobId = value => typeof value === 'string' && /^[a-f0-9]{32}$/.test(value);
+function safeCover(value) {
+  if (!value || value.match !== 'work' || value.source !== 'Open Library'
+    || typeof value.url !== 'string' || !/^https:\/\/covers\.openlibrary\.org\/b\/id\/[1-9]\d{0,9}-M\.jpg\?default=false$/.test(value.url)
+    || typeof value.sourceUrl !== 'string' || !/^https:\/\/openlibrary\.org\/works\/OL\d+W$/.test(value.sourceUrl)) return null;
+  return Object.freeze({ url: value.url, sourceUrl: value.sourceUrl, source: value.source, match: 'work' });
+}
 const pause = (ms, signal) => new Promise((resolve, reject) => {
   if (signal?.aborted) return reject(ebookError('cancelled'));
   const abort = () => { window.clearTimeout(timer); reject(ebookError('cancelled')); };
@@ -130,6 +136,17 @@ export function createEbookLibrary(plugin, request, { cryptoApi = window.crypto,
       const result = (await api('/search', { query: value }, signal)).json;
       if (!Array.isArray(result?.results)) throw ebookError('service');
       return result.results.filter(x => jobId(x.id) && typeof x.title === 'string' && FORMATS.has(x.format)).map(x => Object.freeze({ ...x }));
+    },
+    async covers(books, signal) {
+      const ids = [...new Set((Array.isArray(books) ? books : []).map(book => book?.id).filter(jobId))];
+      if (!ids.length) return [];
+      if (ids.length > 20) throw ebookError('service');
+      const result = (await api('/covers', { candidateIds: ids }, signal)).json;
+      if (!Array.isArray(result?.results)) throw ebookError('service');
+      const allowed = new Set(ids);
+      return result.results.filter(book => allowed.has(book?.id)).map(book => Object.freeze({
+        id: book.id, cover: safeCover(book.cover), pending: book.pending === true
+      }));
     },
     async jobs(signal) {
       const response = (await api('/jobs', undefined, signal)).json;

@@ -1,5 +1,5 @@
 import { createEbookLibrary } from "./ebook-library.js";
-import { mountEbookDiscovery } from "./ebook-library-ui.js";
+import { mountEbookDiscovery, createEbookResult } from "./ebook-library-ui.js";
 import { isTextBook, isListedBook } from "./text-book.js";
 import { createKindleController } from "./kindle.js";
 import { openKindlePairing, sendBookToKindle } from "./kindle-ui.js";
@@ -88,7 +88,7 @@ import { contextProvider, findAgent, notifyContextChanged } from "./qiaomu-conte
 import { notifyHomeChanged } from "./qiaomu-home.js";
 import { createHomeProvider } from "./home.js";
 import { AI_ASSISTANT_ROUTES, readerSnapshot, shouldUseAgent } from "./agent-bridge.js";
-import { externalBookSearchUrls, gutenbergSearchUrl, gutenbergDetailUrl, parseGutenbergSearch, parseGutenbergEpub, validGutenbergEpub, safeBookFileName } from "./book-discovery.js";
+import { externalBookSearchUrls, gutenbergSearchUrl, gutenbergDetailUrl, gutenbergCoverUrl, parseGutenbergSearch, parseGutenbergEpub, validGutenbergEpub, safeBookFileName } from "./book-discovery.js";
 import { isLookupTerm, cleanLookupTerm, rangeContext, sentenceAround, buildTranslateMessages, buildLookupMessages, parseLookupAnswer, parseGoogleLookup, googleDetectedLanguage, sameLanguage, fallbackTarget, looksLikeLanguage, lookupEngine, lookupSessionKey, lookupCacheKey, createLookupCache } from "./lookup.js";
 import { defaultVocabularyPath, vocabularyDeckTag, vocabularyHeader, vocabularyKey, parseVocabularyCards, addToVocabulary, ankiFieldsFromCard } from "./vocabulary.js";
 import { ANKI_DEFAULT_URL, ANKI_DEFAULT_DECK, ANKI_ADDON_CODE, ankiNote, addAnkiNotes, ensureAnkiSetup } from "./anki.js";
@@ -12373,8 +12373,9 @@ const BookDiscoveryModal = class extends Modal {
     (this.plugin._bookDiscoveryModals ||= new Set()).add(this);
     this.modalEl.addClass("qiaomu-reader-book-discovery");
     this.contentEl.empty();
-    this.contentEl.createEl("h2", { text: qiaomuReaderTranslate("find-books") });
-    this._ebookPanel = mountEbookDiscovery(this.contentEl, this.plugin, this.library, qiaomuReaderTranslate);
+    const heading = this.contentEl.createDiv({ cls: "qiaomu-reader-discovery-heading" });
+    heading.createEl("h2", { text: qiaomuReaderTranslate("find-books") });
+    this._ebookPanel = mountEbookDiscovery(this.contentEl, this.plugin, this.library, qiaomuReaderTranslate, { icon: setIcon, sourceParent: heading });
     const root = this._ebookPanel.publicRoot;
     root.createDiv({ cls: "qiaomu-reader-discovery-intro", text: qiaomuReaderTranslate("find-books-intro") });
     const form = root.createEl("form", { cls: "qiaomu-reader-discovery-search" });
@@ -12441,13 +12442,11 @@ const BookDiscoveryModal = class extends Modal {
       const books = parseGutenbergSearch(response.text, (xml) => new DOMParser().parseFromString(xml, "application/xml"));
       status.setText(books.length ? qiaomuReaderTranslate("gutenberg-results-note") : qiaomuReaderTranslate("no-books-found"));
       for (const book of books) {
-        const row = results.createDiv({ cls: "qiaomu-reader-discovery-result" });
-        const info = row.createDiv({ cls: "qiaomu-reader-discovery-result-info" });
-        info.createEl("strong", { text: book.title });
-        if (book.author) info.createSpan({ text: book.author });
-        row.createEl("a", { text: qiaomuReaderTranslate("book-page"), href: book.pageUrl, attr: { target: "_blank", rel: "noopener noreferrer" } });
-        const download = row.createEl("button", { text: qiaomuReaderTranslate("download-to-library") });
-        download.addEventListener("click", () => void this._download(book, download, status));
+        const result = createEbookResult(results, { ...book, format: "epub" }, qiaomuReaderTranslate, {
+          icon: setIcon, pageUrl: book.pageUrl,
+          onDownload: button => void this._download(book, button, status)
+        });
+        result.setCover({ url: gutenbergCoverUrl(book.id), sourceUrl: book.pageUrl });
       }
     } catch (error) {
       if (!this._open || request !== this._request) return;
