@@ -77,6 +77,11 @@ The user deferred USB/device interaction. When convenient: exit KOReader, confir
 
 Do not promote this candidate to a fully accepted native release until those checks and the official final-SHA preview scan pass. Keep main at its last installable release until matching public assets are available. Build, device receipt, native reading, GitHub draft and official publication remain separate states.
 
+### Download-progress integration (2026-10-24)
+
+The ebook follow-up installs from `codex/progress-kindle-integration`, preserving this 4.9.0 dual-mode source and adding the independently released 4.8.1 ebook download feedback. Both rockfish and the isolated QA vault now use the integrated standard build, with data.json preserved. Do not overwrite this runtime with the original4e828a9 build, which lacks the progress fix. Existing physical-device limitations and the unpublished4.9.0 release boundary remain unchanged.
+
+Integration checks:524 Node tests,1547 i18n keys, ESLint and standard asset verification pass. QA runtime reports4.9.0 and immediately renders the animated ebook progress track. No Kindle/network pairing or physical transfer was repeated for this UI-only change. The original4.9.0 draft remains unchanged until the integration PR is accepted and its final candidate is scanned and reverified.
 
 ## Built-in conversion correction (2026-10-24)
 
@@ -102,3 +107,7 @@ Final built-in-converter verification:
 
 
 Integration follow-up: merged main commit 930d37d (download progress/import stages, 4.8.1) into the 4.9.0 candidate, preserving that feature, its styles, locales and tests. Rebuilt both profiles and reran the complete suite. Final integration asset identities supersede the standalone converter build above: main.js 5,808,973 bytes SHA256 `f5dc32d53defb8c68bcb2950f44d726eaa1fe6509d169bf47a00a01f50d626cc`; styles.css 3,721,226 bytes SHA256 `b5666714572747f6ceda4325545da98fade8984e43dcba4963938f904b53411f`. No native conversion source changed during the merge. Both installed vaults were updated again preserving data. The integrated suite has 532 passing Node tests and 1,548 i18n keys.
+
+### About and connection-copy integration (2026-10-24)
+
+This integration includes the full bf16816 built-in converter candidate plus the 4.8.2 About page and 4.8.3 first-authorization explanation. The original daily build was identified by matching all original main.js bytes to bf16816 before replacing it with this combined source. Converter/native transport/worker sources and vendored dependencies are byte-identical to bf16816; 532 tests, 1,568 i18n keys and ESLint pass. Physical native-reading acceptance remains deferred; no new device transfer is implied. The 4.9.0 candidate remains unpublished.

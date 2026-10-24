@@ -1,9 +1,11 @@
+import { ABOUT_TEXT } from "./about-i18n.js";
 import { EBOOK_TEXT } from "./ebook-i18n.js";
 // Generated from the complete source UI dictionary and reviewed for core reading terms.
 // Keep placeholders, Markdown and HTML structure identical to the source strings.
 import { KINDLE_TEXT } from "./kindle-i18n.js";
 export const QIAOMU_READER_ZH_CN = {
   ...KINDLE_TEXT.zh,
+  ...ABOUT_TEXT.zh,
   ...EBOOK_TEXT.zh,
   "ai-connect-account-or-key": "先连接账号或填写 API Key，测试通过后即可使用。",
   "library-remove": "从书库移除",
