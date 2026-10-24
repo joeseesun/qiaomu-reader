@@ -172,3 +172,46 @@ test('late covers from an older search cannot attach to the next book', async ()
   assert.equal(panel.querySelector('.qiaomu-reader-ebook-cover img').getAttribute('src'), null);
   ui.dispose();
 });
+
+test('download has immediate row progress, shows failures and completes only after import', async () => {
+  const f = fixture(), dom = new JSDOM('<main></main>');
+  let rejectDownload, completeDownload, report;
+  Object.assign(f.service, {
+    isActivated: () => true,
+    profile: async () => ({ expiresAt: 1800000000, dailyLimit: 20, usedToday: 0 }),
+    jobs: async () => [], covers: async () => [],
+    search: async () => [{ id, title: 'A book', format: 'epub' }],
+    download: async (_book, _import, progress) => { report = progress; return new Promise((resolve, reject) => { completeDownload = resolve; rejectDownload = reject; }); }
+  });
+  const ui = mountEbookDiscovery(dom.window.document.querySelector('main'), f.plugin, {}, key => key);
+  dom.window.document.querySelectorAll('button')[1].click(); await new Promise(resolve => setImmediate(resolve));
+  const panel = dom.window.document.querySelector('.qiaomu-reader-ebook-panel');
+  panel.querySelector('input').value = 'Book'; panel.querySelector('form').dispatchEvent(new dom.window.Event('submit', { cancelable: true }));
+  await new Promise(resolve => setImmediate(resolve));
+  const row = panel.querySelector('.qiaomu-reader-ebook-result'), button = row.querySelector('button');
+  button.click();
+  assert.equal(row.querySelector('[role=progressbar]')?.getAttribute('aria-valuenow'), null);
+  assert.match(row.querySelector('.qiaomu-reader-ebook-progress')?.textContent || '', /ebook.queued/);
+  assert.equal(button.disabled, true);
+  rejectDownload(Object.assign(Error('network'), { code: 'network' })); await new Promise(resolve => setImmediate(resolve));
+  assert.match(row.querySelector('.qiaomu-reader-ebook-progress').textContent, /ebook.error-network/);
+  assert.equal(row.querySelector('[role=progressbar]').hidden, true); assert.equal(button.disabled, false);
+  button.click(); report('running');
+  assert.equal(row.querySelectorAll('.qiaomu-reader-ebook-progress').length, 1);
+  report('importing'); assert.match(row.querySelector('.qiaomu-reader-ebook-progress').textContent, /ebook.importing/);
+  assert.equal(row.querySelector('[role=progressbar]').hasAttribute('aria-valuenow'), false);
+  completeDownload(); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(row.querySelector('[role=progressbar]').getAttribute('aria-valuenow'), '100');
+  assert.equal(button.disabled, true); assert.equal(button.textContent, 'ebook.imported');
+  ui.dispose(); dom.window.close();
+});
+
+test('download reports transfer and verification before vault import', async () => {
+  const events = [];
+  const f = await activated(async o => {
+    if (o.url.endsWith('/file')) { assert.equal(events.at(-1), 'running'); return { status: 200, arrayBuffer: bytes }; }
+    return { status: 200, json: { id, state: 'complete', result } };
+  });
+  await f.service.download({ id }, async () => { assert.equal(events.at(-1), 'importing'); return 1; }, state => events.push(state));
+  assert.deepEqual(events, ['running', 'verifying', 'importing']);
+});

@@ -169,4 +169,3 @@ export function isPlaceholderTitle(value?: string) {
 export function extractBodyHtml(value: string) {
   return value.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)?.[1] ?? value;
 }
-
