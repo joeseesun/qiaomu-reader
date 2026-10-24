@@ -1,7 +1,9 @@
+import { ABOUT_TEXT } from "../about-i18n.js";
 import { EBOOK_TEXT } from "../ebook-i18n.js";
 import { KINDLE_TEXT } from "../kindle-i18n.js";
 export default {
   ...KINDLE_TEXT.ja,
+  ...ABOUT_TEXT.ja,
   ...EBOOK_TEXT.ja,
   "ai-connect-account-or-key": "アカウントを接続するか API キーを入力し、テストに合格すると使えます。",
   "library-remove": "本棚から取り除く",
