@@ -1899,7 +1899,7 @@ body.qiaomu-reader-active-view .status-bar { display: none; }
 .qiaomu-reader-kindle-field { display: flex; flex-direction: column; gap: 8px; }
 .qiaomu-reader-kindle-field label { font-weight: 500; }
 .qiaomu-reader-kindle-body h3 { margin: 0; font-size: var(--font-ui-medium); }
-.qiaomu-reader-kindle-pair-complete { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.qiaomu-reader-kindle-pair-complete { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .qiaomu-reader-kindle-wifi { display: flex; flex-direction: column; gap: 12px; }
 .qiaomu-reader-kindle-wifi[hidden], .qiaomu-reader-kindle-body [hidden] { display: none; }
 .qiaomu-reader-kindle-address-row { display: flex; align-items: center; gap: 8px; }
