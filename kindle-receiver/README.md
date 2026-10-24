@@ -13,7 +13,9 @@
 5. 唤醒 Kindle，连接与电脑相同的 Wi-Fi，回乔木 Reader 点击 **查找 Kindle → 测试连接**。
 
 电脑找不到 Python 时请先安装 [Python 3](https://www.python.org/downloads/)。
-EPUB 发送前会在电脑端调用已安装的 [Calibre](https://calibre-ebook.com/download) 转为 AZW3，无需打开 Calibre。
+EPUB 由插件内置引擎在电脑端自动转为 AZW3，无需安装 Calibre 或其他转换软件。
+内置转换支持 64 MiB 以内的 EPUB；不支持 DRM、固定版式、公式、独立 SVG/音视频等复杂资源。
+这类书可继续用 KOReader 发送原书。转换不嵌入 EPUB 字体，使用 Kindle 的字体设置。
 PDF、TXT、AZW3、AZW、MOBI 不需要转换。当前原生模式不转换其他格式；它们仍可通过 KOReader 模式发送。
 
 ## 日常使用

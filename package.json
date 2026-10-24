@@ -40,10 +40,12 @@
     "marked": "18.1.1",
     "pdfjs-dist": "^6.2.108",
     "ssh2": "1.17.0",
-    "ws": "^8.22.0"
+    "ws": "^8.22.0",
+    "@xmldom/xmldom": "0.9.12",
+    "postcss": "8.5.31"
   },
   "overrides": {
-    "@xmldom/xmldom": "^0.9.12",
+    "@xmldom/xmldom": "$@xmldom/xmldom",
     "minimatch@3.1.5": {
       "brace-expansion": "2.0.2"
     },

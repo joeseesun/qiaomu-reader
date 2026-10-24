@@ -236,3 +236,7 @@ cover stays beside it. No horizontal scroll or nested result scrollbar.
 Keyboard focus is visible; no hover tooltips. Unknown progress stays inline;
 failed searches offer retry through the existing form, failed downloads retain
 their action, and cover errors remain local. No decorative animation.
+
+### Book download feedback
+
+The clicked book owns a visible, neutral progress track and a short stage label. Show it immediately, including while waiting for the server. Unknown byte progress uses continuous motion without a fabricated percentage; only a successful vault import fills the track. Errors stop motion and retain a retryable action. Reuse the same feedback for public sources, Qiaomu library and resumed jobs. Respect reduced motion and keep feedback within narrow result rows.

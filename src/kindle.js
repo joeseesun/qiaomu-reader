@@ -111,14 +111,14 @@ export function createKindleController(plugin) {
         if (!adapter.getFullPath || !adapter.getBasePath) throw kindleError("file");
         let prepared;
         try {
-          if (kindleMode(current.mode) === "native") prepared = await prepareKindleFile(adapter.getFullPath(snapshot.path), snapshot.name, { mode: "native", signal: abortSignal, onProgress, vaultRoot: adapter.getBasePath(), converterPath: current.converterPath });
+          if (kindleMode(current.mode) === "native") prepared = await prepareKindleFile(adapter.getFullPath(snapshot.path), snapshot.name, { mode: "native", signal: abortSignal, onProgress, vaultRoot: adapter.getBasePath() });
           const receipt = await sendKindleFile(kindleConnection(current), key, prepared?.path || adapter.getFullPath(snapshot.path), prepared?.name || snapshot.name, { signal: abortSignal, onProgress, vaultRoot: prepared?.root || adapter.getBasePath() });
           if (kindleMode(current.mode) === "native") {
             onProgress?.({ phase: "index", sent: receipt.bytes, total: receipt.bytes });
             try { Object.assign(receipt, await refreshKindleLibrary(kindleConnection(current), key, { signal: abortSignal })); }
             catch { receipt.scanRequested = false; }
           }
-          return { ...receipt, mode: kindleMode(current.mode), converted: !!prepared?.converted };
+          return { ...receipt, mode: kindleMode(current.mode), converted: !!prepared?.converted, ...(prepared?.engine ? { conversionEngine: prepared.engine } : {}) };
         } finally { await prepared?.cleanup().catch(() => {}); }
       }, signal).finally(() => { if (upload === job) upload = null; });
       return job.promise;

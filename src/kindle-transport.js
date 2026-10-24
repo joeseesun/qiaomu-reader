@@ -2,6 +2,7 @@
 import { Platform } from "obsidian";
 import ssh2 from "ssh2";
 import { createKindleNative } from "./kindle-native.js";
+import { createKindleConverter } from "./kindle-converter.js";
 import { KINDLE_FOLDER, KINDLE_MAX_BYTES, KINDLE_NATIVE_PORT, kindleMode, kindleBookName, kindleConnection, kindleError, kindleLuaSettings, appendKindleKey, kindleDiscoveryHosts } from "./kindle-config.js";
 
 export async function loadKindleTransport() {
@@ -12,7 +13,7 @@ export async function loadKindleTransport() {
   const { createHash, randomUUID } = window.require("node:crypto");
   const { Client, utils } = ssh2;
   const fsp = fs.promises;
-  const native = createKindleNative({ fs, path, os, randomUUID, childProcess: window.require("node:child_process"), env: window.require("node:process").env });
+  const native = createKindleNative({ fs, path, os, randomUUID, convertEpub: createKindleConverter() });
 const timing = typeof window === "undefined" ? { setTimeout, clearTimeout } : window;
 const aborted = () => Object.assign(kindleError("cancelled"), { name: "AbortError" });
 const check = signal => { if (signal?.aborted) throw aborted(); };

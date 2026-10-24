@@ -22,6 +22,7 @@ export default [
         // Replaced at build time by esbuild's `define` with the pdf.js worker
         // source, so it never exists as a variable in the shipped file.
         __PDF_WORKER_ARCHIVE__: "readonly",
+        __KINDLE_CONVERTER_ARCHIVE__: "readonly",
         __QBR_ENGINE_VIEW_TAG__: "readonly",
         // CSS Custom Highlight API, used for the in-book search paint.
         Highlight: "readonly",
@@ -30,6 +31,7 @@ export default [
         activeWindow: "readonly",
         document: "readonly",
         window: "readonly",
+        self: "readonly",
         globalThis: "readonly",
         console: "readonly",
         setTimeout: "readonly",

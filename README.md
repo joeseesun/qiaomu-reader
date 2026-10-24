@@ -106,7 +106,7 @@ PDF 保留原始版式，支持独立缩放。有可靠文字层时，可选择�
 在书库或文件菜单中右键电子书，选择「发送到 Kindle」。支持两种阅读方式，连接窗口会记住各自的配对、地址和设备身份：
 
 - **KOReader**：保留原有流程。Kindle 已越狱并安装 KOReader，退出它后接 USB 配对；再安全弹出、打开 KOReader，连接同一 Wi-Fi 后查找和测试连接。无需 Calibre。
-- **Kindle 原生**：已越狱的 Kindle 通过[独立接收端](kindle-receiver/README.md)完成一次准备与 USB 配对，在设备上运行一次安装项后，即可保持 KOReader 关闭并传书。EPUB 在电脑端调用已安装的 Calibre 转为 AZW3；PDF、TXT、AZW3、AZW、MOBI 直接发送。此模式需支持 Scriptlet 的现代越狱；其他型号和旧固件需另行验证。
+- **Kindle 原生**：已越狱的 Kindle 通过[独立接收端](kindle-receiver/README.md)完成一次准备与 USB 配对，在设备上运行一次安装项后，即可保持 KOReader 关闭并传书。EPUB 由插件内置引擎在本机自动转为 AZW3，无需安装 Calibre；PDF、TXT、AZW3、AZW、MOBI 直接发送。此模式需支持 Scriptlet 的现代越狱；其他型号和旧固件需另行验证。
 
 文件上传后完整回读校验，已有同名书不会被覆盖。原生模式会请求 Kindle 刷新书库；“文件送达”“已请求刷新”“图书馆可见并可阅读”是不同状态。Kindle 需要保持唤醒和 Wi-Fi 连通；休眠时不承诺可达。格式转换保留原书，结束后清理临时副本。
 
@@ -342,7 +342,7 @@ Saving an AI reply preserves its complete Markdown body with the source below it
 
 ### Send books to Kindle (desktop)
 
-Right-click a book and choose Send to Kindle. Choose KOReader or Kindle native reading in the connection dialog; each mode retains its own pairing and device identity. Existing KOReader delivery needs no Calibre. Native delivery uses the separately prepared [standalone receiver](kindle-receiver/README.md), works with KOReader closed, and converts EPUB to AZW3 using user-installed Calibre. PDF, TXT, AZW3, AZW and MOBI are transferred directly. Native setup requires a modern jailbreak with scriptlet support. The plugin never installs external executables or dependencies. Receiver preparation is a separate user-run tool that downloads checksum-pinned upstream packages from GitHub. Books are converted locally and sent only over the local network. Keep Kindle awake with Wi-Fi connected. Uploads up to 512 MiB are streamed and fully read back before publication; existing files are preserved. A requested native library scan is not proof of indexing or readability. See [verification boundaries](docs/kindle-wireless.md).
+Right-click a book and choose Send to Kindle. Choose KOReader or Kindle native reading in the connection dialog; each mode retains its own pairing and device identity. Existing KOReader delivery needs no Calibre. Native delivery uses the separately prepared [standalone receiver](kindle-receiver/README.md), works with KOReader closed, and converts EPUB to AZW3 locally with the bundled engine, without requiring Calibre or any conversion software. PDF, TXT, AZW3, AZW and MOBI are transferred directly. Built-in EPUB conversion supports files up to 64 MiB; complex unsupported media/layouts can use KOReader. Native setup requires a modern jailbreak with scriptlet support. The plugin never installs external executables or dependencies. Receiver preparation is a separate user-run tool that downloads checksum-pinned upstream packages from GitHub. Books are converted locally and sent only over the local network. Keep Kindle awake with Wi-Fi connected. Uploads up to 512 MiB are streamed and fully read back before publication; existing files are preserved. A requested native library scan is not proof of indexing or readability. See [verification boundaries](docs/kindle-wireless.md).
 
 ### Verification and limits
 

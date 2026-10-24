@@ -9,7 +9,7 @@ import { build } from "esbuild";
 import { createRequire } from "node:module";
 import ssh2 from "ssh2";
 import { appendKindleKey, kindleBookName, kindleConnection, kindleLuaSettings, kindleDiscoveryHosts } from "../src/kindle-config.js";
-const bundle = await build({ entryPoints: ["src/kindle-transport.js"], bundle: true, platform: "node", format: "cjs", write: false, external: ["ssh2", "node:*"], plugins: [{ name: "obsidian-desktop", setup(b) {
+const bundle = await build({ entryPoints: ["src/kindle-transport.js"], bundle: true, platform: "node", format: "cjs", write: false, define: { __KINDLE_CONVERTER_ARCHIVE__: '""' }, external: ["ssh2", "node:*"], plugins: [{ name: "obsidian-desktop", setup(b) {
   b.onResolve({ filter: /^obsidian$/ }, () => ({ path: "obsidian", namespace: "host" }));
   b.onLoad({ filter: /.*/, namespace: "host" }, () => ({ contents: "export const Platform = { isDesktop: true };" }));
 } }] });

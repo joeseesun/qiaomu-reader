@@ -1,7 +1,7 @@
 import { KINDLE_MAX_BYTES, KINDLE_NATIVE_PORT, appendKindleKey, kindleDeliveryFormat, kindleError } from "./kindle-config.js";
 
 // Node objects are injected by the guarded desktop loader. No Node work on import.
-export function createKindleNative({ fs, path, os, randomUUID, childProcess, env = {} }) {
+export function createKindleNative({ fs, path, os, randomUUID, convertEpub }) {
   const fsp = fs.promises;
   const check = signal => { if (signal?.aborted) throw kindleError("cancelled"); };
   async function inside(root, relative) {
@@ -35,25 +35,7 @@ export function createKindleNative({ fs, path, os, randomUUID, childProcess, env
     } finally { await fsp.unlink(temp).catch(() => {}); }
     return { paired: true, mode: "native", port: KINDLE_NATIVE_PORT, installPending: info.installed !== true };
   }
-  async function converter(explicit) {
-    const names = os.platform() === "win32" ? ["ebook-convert.exe"] : ["ebook-convert"];
-    const candidates = explicit ? [explicit] : [
-      "/Applications/calibre.app/Contents/MacOS/ebook-convert", "/opt/homebrew/bin/ebook-convert", "/usr/local/bin/ebook-convert", "/usr/bin/ebook-convert",
-      ...[env.ProgramFiles, env["ProgramFiles(x86)"]].filter(Boolean).map(p => path.join(p, "Calibre2", "ebook-convert.exe")),
-      ...String(env.PATH || "").split(path.delimiter).filter(Boolean).flatMap(dir => names.map(n => path.join(dir, n))),
-    ];
-    for (const candidate of candidates) {
-      if (!path.isAbsolute(candidate)) continue;
-      try {
-        const real = await fsp.realpath(candidate);
-        if (!(await fsp.stat(real)).isFile()) continue;
-        await fsp.access(real, fs.constants.X_OK);
-        return real;
-      } catch { /* Try another known installation, never a shell command. */ }
-    }
-    throw kindleError("converter-missing");
-  }
-  async function prepareFile(source, name, { mode, signal, onProgress, vaultRoot, converterPath } = {}) {
+  async function prepareFile(source, name, { mode, signal, onProgress, vaultRoot } = {}) {
     check(signal);
     const plan = kindleDeliveryFormat(name, mode);
     const root = await fsp.realpath(vaultRoot), real = await fsp.realpath(source);
@@ -61,16 +43,16 @@ export function createKindleNative({ fs, path, os, randomUUID, childProcess, env
     if (!plan.convert) return { path: real, name, root, cleanup: async () => {} };
     const before = await fsp.stat(real);
     if (!before.isFile() || before.size <= 0 || before.size > KINDLE_MAX_BYTES) throw kindleError("size");
-    const bin = await converter(converterPath);
+    if (before.size > 64 * 1024 * 1024) throw kindleError("conversion-size");
     const dir = await fsp.mkdtemp(path.join(os.tmpdir(), "qiaomu-kindle-"));
     const output = path.join(dir, "book.azw3");
     const cleanup = () => fsp.rm(dir, { recursive: true, force: true });
     try {
       onProgress?.({ phase: "convert", sent: 0, total: before.size });
-      await new Promise((resolve, reject) => childProcess.execFile(bin, [real, output, "--output-profile", "tablet"], {
-        signal, timeout: 120000, maxBuffer: 262144, windowsHide: true, shell: false,
-      }, error => error ? reject(signal?.aborted ? kindleError("cancelled") : kindleError("conversion")) : resolve()));
+      const converted = await convertEpub(await fsp.readFile(real), { signal });
       check(signal);
+      if (!(converted?.bytes instanceof Uint8Array) || converted.bytes.length > KINDLE_MAX_BYTES) throw kindleError("conversion");
+      await fsp.writeFile(output, converted.bytes, { flag: "wx" });
       const after = await fsp.stat(real), result = await fsp.stat(output);
       if (after.size !== before.size || after.mtimeMs !== before.mtimeMs) throw kindleError("changed");
       if (result.size <= 78 || result.size > KINDLE_MAX_BYTES) throw kindleError("conversion");
@@ -79,8 +61,8 @@ export function createKindleNative({ fs, path, os, randomUUID, childProcess, env
         const head = new Uint8Array(78); await handle.read(head, 0, head.length, 0);
         if (String.fromCharCode(...head.subarray(60, 68)) !== "BOOKMOBI") throw kindleError("conversion");
       } finally { await handle.close(); }
-      return { path: output, name: plan.name, root: await fsp.realpath(dir), converted: true, cleanup };
+      return { path: output, name: plan.name, root: await fsp.realpath(dir), converted: true, engine: "embedded-azw3", stats: converted.stats, cleanup };
     } catch (error) { await cleanup(); throw error; }
   }
-  return { pairNative, prepareFile, converter };
+  return { pairNative, prepareFile };
 }
