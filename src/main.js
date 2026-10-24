@@ -1,3 +1,5 @@
+import { createEbookLibrary } from "./ebook-library.js";
+import { mountEbookDiscovery } from "./ebook-library-ui.js";
 import { isTextBook, isListedBook } from "./text-book.js";
 import { createKindleController } from "./kindle.js";
 import { openKindlePairing, sendBookToKindle } from "./kindle-ui.js";
@@ -1564,6 +1566,7 @@ const QiaomuBookReader = class extends Plugin {
     await this.loadAll(); await this._attachAiDraftStore();
     this._unloading = false;
     this.kindle = createKindleController(this);
+    this.ebookLibrary = createEbookLibrary(this, requestUrl);
     this.register(protectBooksFromNoteDeletion(this.app, new Set([...BOOK_EXTENSIONS].filter(ext => ext !== "md" && ext !== "markdown"))));
     this._watchCompanionAndNotes();
     this._registerReaderViews();
@@ -1940,6 +1943,7 @@ const QiaomuBookReader = class extends Plugin {
     this.app.workspace.onLayoutReady(onReady);
   }
   onunload() {
+    this.ebookLibrary?.dispose();
     this.kindle?.dispose();
     cancelAccountLogins(); for (const modal of this.modelAccessModals || []) modal.close();
     this._unloading = true;
@@ -12365,9 +12369,10 @@ const BookDiscoveryModal = class extends Modal {
   onOpen() {
     this._open = true;
     this.modalEl.addClass("qiaomu-reader-book-discovery");
-    const root = this.contentEl;
-    root.empty();
-    root.createEl("h2", { text: qiaomuReaderTranslate("find-books") });
+    this.contentEl.empty();
+    this.contentEl.createEl("h2", { text: qiaomuReaderTranslate("find-books") });
+    this._ebookPanel = mountEbookDiscovery(this.contentEl, this.plugin, this.library, qiaomuReaderTranslate);
+    const root = this._ebookPanel.publicRoot;
     root.createDiv({ cls: "qiaomu-reader-discovery-intro", text: qiaomuReaderTranslate("find-books-intro") });
     const form = root.createEl("form", { cls: "qiaomu-reader-discovery-search" });
     const label = form.createEl("label", { text: qiaomuReaderTranslate("book-title-or-author") });
@@ -12481,6 +12486,7 @@ const BookDiscoveryModal = class extends Modal {
   }
   onClose() {
     this._open = false;
+    this._ebookPanel?.dispose();
     this._request += 1;
     this.contentEl.empty();
   }

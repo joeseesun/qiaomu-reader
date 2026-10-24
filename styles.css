@@ -1920,6 +1920,19 @@ body.qiaomu-reader-active-view .status-bar { display: none; }
 .qiaomu-reader-kindle-notice { display: flex; align-items: center; gap: 12px; }
 .qiaomu-reader-kindle-notice button { color: inherit; background: transparent; border: 1px solid currentColor; box-shadow: none; padding: 3px 8px; }
 
+/* Explicit source choice; public discovery remains the default. */
+.qiaomu-reader-ebook-sources { display:flex; gap:8px; margin:16px 0 20px; flex-wrap:wrap; }
+.qiaomu-reader-ebook-sources button { box-shadow:none; border:1px solid var(--background-modifier-border); background:var(--background-primary); color:var(--text-muted); }
+.qiaomu-reader-ebook-sources button[aria-pressed="true"] { color:var(--text-normal); background:var(--background-secondary); border-color:var(--text-muted); }
+.qiaomu-reader-ebook-panel[hidden], .qiaomu-reader-book-discovery [hidden] { display:none; }
+.qiaomu-reader-ebook-account { display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:20px; color:var(--text-muted); font-size:var(--font-ui-small); flex-wrap:wrap; }
+.qiaomu-reader-ebook-account button { flex-shrink:0; }
+.qiaomu-reader-ebook-recent { border-top:1px solid var(--background-modifier-border); margin-top:24px; padding-top:16px; }
+.qiaomu-reader-ebook-panel input { min-width:0; width:100%; }
+.qiaomu-reader-ebook-panel .qiaomu-reader-discovery-result-info { min-width:0; overflow-wrap:anywhere; }
+.qiaomu-reader-ebook-panel .qiaomu-reader-discovery-result button { white-space:normal; flex-shrink:0; max-width:45%; }
+@media (max-width:480px) { .qiaomu-reader-ebook-panel .qiaomu-reader-discovery-result { align-items:flex-start; } }
+
 /* Bundled reading subset: SIL OFL 1.1
 Copyright (c) 2023, Zhejiang JadeFoci Techonology Co. LTD
 (https://www.jadefoci.com/)

@@ -9,6 +9,7 @@ import { QIAOMU_READER_ZH_CN } from "../src/i18n-zh.js";
 const source = await fs.readFile(new URL("../src/main.js", import.meta.url), "utf8");
 const calibreModalSource = await fs.readFile(new URL("../src/calibre-modal.js", import.meta.url), "utf8");
 const kindleUiSource = await fs.readFile(new URL("../src/kindle-ui.js", import.meta.url), "utf8");
+const ebookUiSource = await fs.readFile(new URL("../src/ebook-library-ui.js", import.meta.url), "utf8");
 const readingNoteSource = await fs.readFile(new URL("../src/reading-note.js", import.meta.url), "utf8");
 const manifest = JSON.parse(await fs.readFile(new URL("../manifest.json", import.meta.url), "utf8"));
 const packageJson = JSON.parse(await fs.readFile(new URL("../package.json", import.meta.url), "utf8"));
@@ -39,7 +40,7 @@ const english = QIAOMU_READER_EN;
 const isChineseSource = (key) => /[\u3400-\u9fff]/.test(key);
 const chineseValue = (key) => isChineseSource(key) ? key : QIAOMU_READER_ZH_CN[key];
 const missing = Object.keys(english).filter((key) => !isChineseSource(key) && (QIAOMU_READER_ZH_CN[key] == null || QIAOMU_READER_ZH_CN[key] === ""));
-const usedLiterals = [...new Set([...translatedLiterals(source), ...translatedLiterals(calibreModalSource, 1), ...translatedLiterals(kindleUiSource), ...AI_PROVIDER_CATEGORIES.map((c) => c.label),
+const usedLiterals = [...new Set([...translatedLiterals(source), ...translatedLiterals(calibreModalSource, 1), ...translatedLiterals(kindleUiSource), ...translatedLiterals(ebookUiSource), ...AI_PROVIDER_CATEGORIES.map((c) => c.label),
   ...Object.values(AI_PROVIDERS).flatMap((p) => [p.label, p.description]).filter((value) => /[\u3400-\u9fffА-Яа-яЁё]/.test(value))])];
 const missingUsedEnglish = usedLiterals.filter((key) => english[key] == null);
 const missingUsedChinese = usedLiterals.filter((key) => !isChineseSource(key) && (QIAOMU_READER_ZH_CN[key] == null || QIAOMU_READER_ZH_CN[key] === ""));
