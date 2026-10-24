@@ -35,6 +35,7 @@ export class KindlePairingModal extends Modal {
     this.modalEl.addClass("qiaomu-reader-kindle-modal");
     this.setTitle(this.t("kindle.title"));
     const body = this.contentEl; body.addClass("qiaomu-reader-kindle-body");
+    this.intro = body.createEl("p", { cls: "qiaomu-reader-kindle-intro" });
     const pair = body.createDiv({ cls: "qiaomu-reader-kindle-pair" });
     this.usbHeading = pair.createEl("h3");
     this.usbHelp = pair.createEl("p", { text: this.t("kindle.usb-description") });
@@ -62,6 +63,8 @@ export class KindlePairingModal extends Modal {
   }
   updateSteps() {
     const paired = this.controller.isPaired();
+    this.intro.textContent = this.t(paired ? "kindle.ready-intro" : "kindle.setup-intro");
+    this.pairButton.textContent = this.t(paired ? "kindle.repair" : "kindle.pair");
     this.usbHeading.textContent = this.t(paired ? "kindle.usb-complete" : "kindle.step-usb");
     this.usbHeading.parentElement.classList.toggle("qiaomu-reader-kindle-pair-complete", paired);
     this.usbHelp.hidden = paired;

@@ -635,7 +635,7 @@ img.qiaomu-reader-pdf-lazy:not([data-loaded="1"]) { background:color-mix(in srgb
 .qiaomu-reader-about-qr-hint { color: var(--text-muted); font-size: 11px; line-height: 1.7; overflow-wrap: anywhere; }
 .qiaomu-reader-about-footer { color: var(--text-muted); font-size: 11px; line-height: 1.6; }
 .qiaomu-reader-about-links { display: flex; flex-wrap: wrap; gap: 8px 16px; }
-.qiaomu-reader-settings-root .qiaomu-reader-about-links a { color: var(--text-muted); text-decoration: underline; text-decoration-color: var(--background-modifier-border); text-underline-offset: 3px; }
+.qiaomu-reader-settings-root .qiaomu-reader-about-links a { color: var(--text-muted); text-decoration: underline; text-underline-offset: 3px; }
 .qiaomu-reader-settings-root .qiaomu-reader-about-links a:hover { color: var(--text-normal); }
 .qiaomu-reader-about-footer p { margin: 12px 0 0; }
 @container (max-width: 500px) {
