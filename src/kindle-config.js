@@ -1,8 +1,18 @@
 // Shared validation stays free of Node imports so the reader still loads on mobile.
 export const KINDLE_PORT = 2222;
+export const KINDLE_NATIVE_PORT = 2223;
 export const KINDLE_FOLDER = "/mnt/us/documents";
 export const KINDLE_MAX_BYTES = 512 * 1024 * 1024;
 const FORMATS = new Set(["epub", "pdf", "mobi", "azw", "azw3", "fb2", "txt", "html", "htm", "cbz", "cbr", "djvu", "djv", "rtf", "chm", "doc"]);
+export function kindleMode(value) { return value === "native" ? "native" : "koreader"; }
+export function kindleDeliveryFormat(name, mode) {
+  kindleBookName(name);
+  const ext = name.split(".").pop().toLowerCase();
+  if (kindleMode(mode) !== "native") return { convert: false, name };
+  if (["pdf", "mobi", "azw", "azw3", "txt"].includes(ext)) return { convert: false, name };
+  if (ext === "epub") return { convert: true, name: name.slice(0, -5) + ".azw3" };
+  throw kindleError("native-format");
+}
 
 export function kindleError(code) { return Object.assign(new Error(code), { code }); }
 export function kindleBookName(name) {
@@ -22,11 +32,11 @@ export function kindleConnection(raw = {}) {
   if (octets.length !== 4 || octets.some(n => !/^\d{1,3}$/.test(n) || Number(n) > 255)) throw kindleError("address");
   const [a, b] = octets.map(Number);
   if (!(a === 10 || a === 192 && b === 168 || a === 172 && b >= 16 && b <= 31)) throw kindleError("address");
-  const port = Number(raw.port || KINDLE_PORT);
+  const port = Number(raw.port || (kindleMode(raw.mode) === "native" ? KINDLE_NATIVE_PORT : KINDLE_PORT));
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw kindleError("address");
   const fingerprint = String(raw.fingerprint || "");
   if (fingerprint && !/^[a-f0-9]{64}$/.test(fingerprint)) throw kindleError("host-key");
-  return { host: octets.map(Number).join("."), port, fingerprint };
+  return { host: octets.map(Number).join("."), port, fingerprint, mode: kindleMode(raw.mode) };
 }
 export function kindleLuaSettings(source, port = KINDLE_PORT) {
   if (typeof source !== "string" || source.length > 2_000_000 || !/^\s*(?:--[^\n]*\n\s*)*return\s*\{/.test(source) || !/\}\s*$/.test(source)) throw kindleError("usb-settings");

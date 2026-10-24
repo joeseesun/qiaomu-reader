@@ -1939,8 +1939,15 @@ body.qiaomu-reader-active-view .status-bar { display: none; }
 .qiaomu-reader-src-section .setting-item-control select { max-width: 260px; }
 /* Kindle pairing stays within the reader's quiet, neutral control language. */
 .modal.qiaomu-reader-kindle-modal { width: min(480px, calc(100vw - 32px)); max-height: calc(100vh - 40px); padding: 24px; }
-.qiaomu-reader-kindle-body { display: flex; flex-direction: column; gap: 16px; overflow: auto; min-height: 0; }
+.qiaomu-reader-kindle-body { display: flex; flex-direction: column; gap: 16px; overflow: auto; min-height: 0; padding: 3px; }
 .qiaomu-reader-kindle-body p { margin: 0; line-height: 1.6; }
+.qiaomu-reader-kindle-mode { display: flex; flex-direction: column; gap: 10px; }
+.qiaomu-reader-kindle-choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.qiaomu-reader-kindle-choices button { flex: 1; }
+.qiaomu-reader-kindle-choices button[aria-pressed="true"] { font-weight: 600; background: color-mix(in srgb, var(--text-normal) 7%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-normal) 32%, transparent); }
+.qiaomu-reader-kindle-help a { color: var(--text-muted); text-decoration: underline; text-underline-offset: 3px; }
+.qiaomu-reader-kindle-help a:hover { color: var(--text-normal); }
+.qiaomu-reader-kindle-mode .qiaomu-reader-kindle-help { display: flex; flex-direction: column; gap: 6px; }
 .qiaomu-reader-kindle-intro, .qiaomu-reader-kindle-help { color: var(--text-muted); font-size: var(--font-ui-small); }
 .qiaomu-reader-kindle-pair { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding-block: 4px; }
 .qiaomu-reader-kindle-pair p { font-size: var(--font-ui-small); }
