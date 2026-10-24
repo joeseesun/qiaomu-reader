@@ -1543,7 +1543,7 @@ button.qiaomu-reader-find-item.qiaomu-reader-toc-active { background: var(--back
 .qiaomu-reader-discovery-result a,.qiaomu-reader-discovery-sources a { color:var(--text-accent); font-size:13px; }
 .qiaomu-reader-discovery-result button { flex:none; font-size:14px; box-shadow:none; }
 .qiaomu-reader-discovery-sources { display:flex; flex-wrap:wrap; gap:8px 20px; margin:12px 0 5px; }
-.qiaomu-reader-ebook-result { display:grid; grid-template-columns:72px minmax(0,1fr) 136px; column-gap:18px; align-items:center; min-height:128px; }
+.qiaomu-reader-ebook-result { display:grid; grid-template-columns:72px minmax(0,1fr) 136px; gap:18px; align-items:center; min-height:128px; }
 .qiaomu-reader-ebook-cover { display:flex; flex-direction:column; align-items:center; gap:5px; min-width:0; align-self:center; }
 .qiaomu-reader-ebook-cover img,.qiaomu-reader-ebook-no-cover { width:64px; height:88px; border-radius:2px; border:1px solid var(--background-modifier-border); }
 .qiaomu-reader-ebook-cover img { object-fit:contain; background:var(--background-secondary); }
@@ -1572,7 +1572,7 @@ button.qiaomu-reader-find-item.qiaomu-reader-toc-active { background: var(--back
   .qiaomu-reader-ebook-cover a:hover { text-decoration:underline; }
 }
 @container (max-width:520px) {
-  .qiaomu-reader-ebook-result { grid-template-columns:64px minmax(0,1fr); column-gap:14px; row-gap:10px; align-items:start; }
+  .qiaomu-reader-ebook-result { grid-template-columns:64px minmax(0,1fr); gap:10px 14px; align-items:start; }
   .qiaomu-reader-ebook-cover { grid-row:1 / span 2; align-self:start; }
   .qiaomu-reader-ebook-file { grid-column:2; flex-direction:row; flex-wrap:wrap; align-items:center; gap:6px 10px; }
   .qiaomu-reader-ebook-file .qiaomu-reader-ebook-download { margin:0 0 0 auto; min-height:36px; }

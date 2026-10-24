@@ -35,3 +35,7 @@
 388px实测容器宽度无横向溢出，所有下载按钮在行内，文件操作移至书目下方。深色前景rgb(218,218,218)、背景rgb(28,28,28)。实搜三体刘慈欣的长合集标题可展开、行高增加且不溢出。桌面窄窗不等于移动真机验收。测试凭证仅用于临时QA，结束后禁用，不写入仓库。
 
 511 Node测试、6 Python TTS测试、1530国际化键、全部src ESLint零警告，standard/community构建通过。发布使用标准构建的根main.js，避免与官方npm run build结果不一致；community仅作为额外候选验证。后端封面接口PR3已合并部署，32项测试通过，详情见独立后端进度文档。
+
+最终包补充验收：已登录下载的Draft三文件与根标准构建逐字节一致；本项目预算5,750,000字节（通用audit脚本默认5,000,000不是本项目限制），按项目预算审核通过。原生4.7.9→4.8.0升级后所选设置、所有图书文件和reading-progress.json均保留；临时移开QA配置的首次启用默认公开书源，乔木服务调用0，随后已恢复原QA配置。日常rockfish三个文件摘要与标准包一致，data.json保留，CLI重载后version4.8.0、enabled=true。
+
+预扫描3ad0f5f Completed，仅展示CSS LINT与DEPENDENCIES；CSS提示column-gap归入multicolumn旧版兼容性，已改为等价grid gap避免误分类。尚不能将缺失的Source/Build检查宣称通过，最终候选需再次扫描。
