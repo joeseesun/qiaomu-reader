@@ -10006,6 +10006,7 @@ function bookNoteAction(settings, bookPath) {
 }
 const WHATS_NEW = [
   { v: "4.9.0", items: [qiaomuReaderTranslate("kindle.description"), qiaomuReaderTranslate("kindle.native-description")] },
+  { v: "4.8.3", items: [qiaomuReaderTranslate("kindle.setup-update")] },
   { v: "4.8.2", items: [qiaomuReaderTranslate("about.update")] },
   { v: "4.8.1", items: [qiaomuReaderTranslate("ebook.progress-update")] },
   { v: "4.8.0", items: [qiaomuReaderTranslate("kindle.description"), qiaomuReaderTranslate("kindle.settings-description")] },

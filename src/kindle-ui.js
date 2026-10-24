@@ -40,6 +40,7 @@ export class KindlePairingModal extends Modal {
     this.modalEl.addClass("qiaomu-reader-kindle-modal");
     this.setTitle(this.t("kindle.title"));
     const body = this.contentEl; body.addClass("qiaomu-reader-kindle-body");
+    this.intro = body.createEl("p", { cls: "qiaomu-reader-kindle-intro" });
     const mode = body.createDiv({ cls: "qiaomu-reader-kindle-mode" });
     const modeId = `kindle-mode-${body.ownerDocument.defaultView.crypto.randomUUID()}`;
     mode.createEl("span", { text: this.t("kindle.mode"), attr: { id: modeId } });
@@ -79,6 +80,7 @@ export class KindlePairingModal extends Modal {
   }
   updateSteps() {
     const paired = this.controller.isPaired();
+    this.intro.textContent = this.t(paired ? "kindle.ready-intro" : "kindle.setup-intro");
     const native = kindleMode(this.controller.config().mode) === "native";
     this.pairButton.textContent = this.t(paired ? "kindle.repair" : "kindle.pair");
     for (const button of this.modeButtons) button.setAttribute("aria-pressed", String(button.dataset.mode === (native ? "native" : "koreader")));
