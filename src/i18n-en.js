@@ -1,4 +1,6 @@
+import { KINDLE_TEXT } from "./kindle-i18n.js";
 export const QIAOMU_READER_EN = {
+  ...KINDLE_TEXT.en,
   "ai-connect-account-or-key": "Connect an account or enter an API key, then finish the test to start using AI.",
   "library-remove": "Remove from library",
   "library-removed": "Removed “{0}” from the library. File and reading records kept.",

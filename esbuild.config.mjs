@@ -9,6 +9,18 @@ import { foliateElements } from "./scripts/foliate-elements.mjs";
 const profileArg = process.argv.find((arg) => arg.startsWith("--profile="));
 const profile = buildProfile(profileArg?.slice("--profile=".length) || "standard");
 const foliate = foliateElements();
+// Desktop SSH is lazy. Preserve actual Node builtins rather than the PDF stubs;
+// optional native acceleration is deliberately excluded for portable releases.
+const kindleSsh = {
+  name: "desktop-kindle-ssh",
+  setup(build) {
+    build.onResolve({ filter: /^cpu-features$|sshcrypto\.node$/ }, () => ({ path: "ssh-optional", namespace: "kindle-ssh" }));
+    build.onLoad({ filter: /.*/, namespace: "kindle-ssh" }, () => ({ contents: "module.exports = undefined;", loader: "js" }));
+    build.onLoad({ filter: /node_modules[\\/]ssh2[\\/].*\.js$/ }, async ({ path: file }) => ({
+      contents: (await fs.promises.readFile(file, "utf8")).replace(/require\('(assert|buffer|child_process|crypto|dns|events|fs|http|https|net|os|path|process|readline|stream|string_decoder|tls|url|util|zlib)'\)/g, "require('node:$1')"), loader: "js",
+    }));
+  },
+};
 // ws is loaded only through the desktop TTS dynamic import. Preserve its Node
 // builtins without changing the PDF/EPUB browser stubs used everywhere else.
 const speechWebSocket = {
@@ -49,6 +61,9 @@ EDGE TTS INTEROPERABILITY LICENSE / WS LICENSE
 Edge TTS interoperability: LGPLv3; full notices and license accompany this bundle
 in styles.css and licenses/edge-tts-LGPL.txt in the source repository.
 ${fs.readFileSync("node_modules/ws/LICENSE", "utf8").replaceAll("*/", "* /")}
+BUNDLED SSH CLIENT LICENSE
+${fs.readFileSync("node_modules/ssh2/LICENSE", "utf8").replaceAll("*/", "* /")}
+${["asn1", "bcrypt-pbkdf", "tweetnacl"].map(name => `${name}\n${fs.readFileSync(`node_modules/${name}/LICENSE`, "utf8")}`).join("\n").replaceAll("*/", "* /")}
 Build channel: ${profile.name}
 If you want to view the source, please visit the plugin's GitHub repository:
 https://github.com/joeseesun/qiaomu-reader
@@ -198,7 +213,7 @@ const ctx = await esbuild.context({
   metafile: true,
   // Keep all notices verbatim apart from indentation in production bundles.
   banner: { js: prod ? banner.replace(/^[ \t]+/gm, "") : banner },
-  plugins: [...profile.plugins, speechWebSocket, neutralise, foliate.plugin],
+  plugins: [...profile.plugins, kindleSsh, speechWebSocket, neutralise, foliate.plugin],
   charset: "utf8",
   minifyWhitespace: prod,
   minifySyntax: prod,

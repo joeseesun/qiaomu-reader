@@ -95,6 +95,12 @@ PDF 保留原始版式，支持独立缩放。有可靠文字层时，可选择�
 
 目录、书内搜索和位置跳转集中在底栏。搜索支持结果高亮、`Enter` 下一处、`Shift+Enter` 上一处、`Esc` 关闭，并保留返回原阅读位置的入口。
 
+## 无线发送到 Kindle（桌面端）
+
+Kindle 已越狱并安装 KOReader 后，可以在书库或文件菜单中右键电子书，选择「发送到 Kindle」。首次按两步引导完成：退出 KOReader、接 USB 并点击配对；再安全弹出并拔线，打开 KOReader、连接同一 Wi-Fi，点击「查找 Kindle」和「测试连接」。之后同一网络下即可直接发送，无需 Calibre。
+
+配对私钥保存在 Obsidian SecretStorage；插件仅在你主动连接或发送时访问设备。每本书上传后都会读回校验，再放入 `documents`，已有同名文件会保留。本功能仅传书，不同步划线和阅读进度；支持的单文件大小上限为 512 MiB。
+
 ## 离线示例书
 
 从 4.2.5 起，首次打开书库会自动加入六本 EPUB 示例书，即使仓库已有书籍或 PDF 附件。此前被旧版自动跳过的安装也会在打开书库时补齐；不会覆盖同名文件，已经成功导入后主动删除的示例书不会再次自动添加。也可在设置 → 存储与同步 → 添加示例书中手动恢复。
@@ -318,6 +324,10 @@ Reading works fully offline. In-reader settings are split into Reading and AI As
 **New in 4.2.6:** Selection actions use icons by default, with translation shown when enabled. Configure labels, visibility and order under Settings → Page turning → Selection toolbar. Hidden actions remain in More and the context menu. AI source links can reopen the correct book and navigate across chapters.
 
 Saving an AI reply preserves its complete Markdown body with the source below it, either in a separate note or appended to the book's reading note. An editable title is extracted locally from the reply's topic, emphasis or content, with no extra model request. Saving keeps the chat open, and the saved action opens the existing note. Unsent drafts are persisted locally for up to 30 books (20,000 characters each) and survive sidebar closure/restarts; third-party syncing of the plugin folder may also copy them. Deleting conversations requires confirmation. Screenshots above were captured with the published [4.2.4 release](https://github.com/joeseesun/qiaomu-reader/releases/tag/4.2.4); see the [official listing](https://community.obsidian.md/plugins/qiaomu-reader) for installation.
+
+### Send books to Kindle (desktop)
+
+Right-click a book to send it over your local network to a jailbroken Kindle running KOReader. Pair once over USB, safely eject, then open KOReader, enable Wi-Fi and click Find Kindle (or enter its local IPv4 address). No Calibre or cloud relay is required. The private key stays in Obsidian SecretStorage. Uploads are streamed, read back and verified before publication, with existing same-name books preserved. This transfers files up to 512 MiB; it does not synchronize highlights or reading progress.
 
 ### Verification and limits
 

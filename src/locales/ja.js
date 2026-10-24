@@ -1,4 +1,6 @@
+import { KINDLE_TEXT } from "../kindle-i18n.js";
 export default {
+  ...KINDLE_TEXT.ja,
   "ai-connect-account-or-key": "アカウントを接続するか API キーを入力し、テストに合格すると使えます。",
   "library-remove": "本棚から取り除く",
   "library-removed": "「{0}」を取り除きました。ファイルと読書記録は保持されます。",

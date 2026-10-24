@@ -1,6 +1,8 @@
 // Generated from the complete source UI dictionary and reviewed for core reading terms.
 // Keep placeholders, Markdown and HTML structure identical to the source strings.
+import { KINDLE_TEXT } from "./kindle-i18n.js";
 export const QIAOMU_READER_ZH_CN = {
+  ...KINDLE_TEXT.zh,
   "ai-connect-account-or-key": "先连接账号或填写 API Key，测试通过后即可使用。",
   "library-remove": "从书库移除",
   "library-removed": "已移除《{0}》；原文件和阅读记录保留。",

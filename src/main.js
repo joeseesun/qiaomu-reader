@@ -1,4 +1,6 @@
 import { isTextBook, isListedBook } from "./text-book.js";
+import { createKindleController } from "./kindle.js";
+import { openKindlePairing, sendBookToKindle } from "./kindle-ui.js";
 import { setBookMembership } from "./library-membership.js";
 import { openReaderLeaf } from "./open-reader.js";
 import { AiAccountModal } from './ai-account-modal.js';
@@ -1561,6 +1563,7 @@ const QiaomuBookReader = class extends Plugin {
     configureEngineFrames(Platform.isAndroidApp);
     await this.loadAll(); await this._attachAiDraftStore();
     this._unloading = false;
+    this.kindle = createKindleController(this);
     this.register(protectBooksFromNoteDeletion(this.app, new Set([...BOOK_EXTENSIONS].filter(ext => ext !== "md" && ext !== "markdown"))));
     this._watchCompanionAndNotes();
     this._registerReaderViews();
@@ -1770,6 +1773,19 @@ const QiaomuBookReader = class extends Plugin {
     this.addSettingTab(this.settingsTab);
     const laterCommands = [
       {
+        id: "connect-kindle", name: qiaomuReaderTranslate("kindle.title"),
+        checkCallback: probe => { if (!Platform.isDesktopApp) return false; if (!probe) this.openKindlePairing(); return true; },
+      },
+      {
+        id: "send-to-kindle", name: qiaomuReaderTranslate("kindle.send"),
+        checkCallback: probe => {
+          const file = this.app.workspace.getActiveFile();
+          if (!Platform.isDesktopApp || !this.kindle?.isBook(file)) return false;
+          if (!probe) void this.sendToKindle(file);
+          return true;
+        },
+      },
+      {
         id: "show-onboarding", name: qiaomuReaderTranslate("show-welcome-onboarding"),
         callback: () => { new OnboardingModal(this.app, this).open(); },
       },
@@ -1827,6 +1843,9 @@ const QiaomuBookReader = class extends Plugin {
     const onFileMenu = (menu, file) => {
       if (!(file instanceof TFile) || !BOOK_EXTENSIONS.has(file.extension.toLowerCase())) return;
       menu.addItem((item) => item.setTitle(qiaomuReaderTranslate("open-in-book-reader")).setIcon("book-open").onClick(() => this.openFile(file)));
+      if (Platform.isDesktopApp && this.kindle?.isBook(file)) {
+        menu.addItem(item => item.setTitle(qiaomuReaderTranslate("kindle.send")).setIcon("send").onClick(() => void this.sendToKindle(file)));
+      }
     };
     this.registerEvent(this.app.workspace.on("file-menu", onFileMenu));
   }
@@ -1921,6 +1940,7 @@ const QiaomuBookReader = class extends Plugin {
     this.app.workspace.onLayoutReady(onReady);
   }
   onunload() {
+    this.kindle?.dispose();
     cancelAccountLogins(); for (const modal of this.modelAccessModals || []) modal.close();
     this._unloading = true;
     for (const modal of this._announcementModals || []) modal.close();
@@ -1943,6 +1963,8 @@ const QiaomuBookReader = class extends Plugin {
   async rememberTextBook(file) {
     return setBookMembership(this, file, true, isTextBook(file.name));
   }
+  openKindlePairing(file = null) { openKindlePairing(this, qiaomuReaderTranslate, file); }
+  sendToKindle(file) { return sendBookToKindle(this, file, qiaomuReaderTranslate); }
   async removeBookFromLibrary(file) {
     return setBookMembership(this, file, false, isTextBook(file.name));
   }
@@ -9976,6 +9998,7 @@ function bookNoteAction(settings, bookPath) {
   return asked[bookPath] ? "prompted" : "ask";
 }
 const WHATS_NEW = [
+  { v: "4.8.0", items: [qiaomuReaderTranslate("kindle.description"), qiaomuReaderTranslate("kindle.settings-description")] },
   { v: "4.0.1", items: [
     qiaomuReaderTranslate("ai-assistance-now-binds-to-the-newly-opened-book-immediately-so"),
     qiaomuReaderTranslate("fixed-blank-first-screens-collapsed-pagination-during-sidebar-ch"),
@@ -14776,6 +14799,10 @@ const SettingsTab = class extends PluginSettingTab {
       commit: (v) => persistViaDisk("booksFolder", v),
     });
     if (Platform.isDesktopApp) {
+      new Setting(c)
+        .setName(tx("kindle.title"))
+        .setDesc(tx("kindle.settings-description"))
+        .addButton(button => button.setButtonText(tx("configure")).onClick(() => this.plugin.openKindlePairing()));
       const found = detectCalibreLibraryPath(settings.calibreLibraryPath);
       new Setting(c)
         .setName(tx("calibre-library-path"))

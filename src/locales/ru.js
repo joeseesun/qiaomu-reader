@@ -1,6 +1,8 @@
 // Russian locale pack. Inherited Russian UI strings keep their original wording;
 // strings that were originally Chinese source keys are translated to Russian here.
+import { KINDLE_TEXT } from "../kindle-i18n.js";
 export default {
+  ...KINDLE_TEXT.ru,
   "ai-connect-account-or-key": "Подключите аккаунт или введите API-ключ и пройдите проверку, чтобы начать работу с ИИ.",
   "library-remove": "Убрать из библиотеки",
   "library-removed": "«{0}» убрано. Файл и записи чтения сохранены.",

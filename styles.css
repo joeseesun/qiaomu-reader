@@ -1889,6 +1889,36 @@ body.qiaomu-reader-active-view .status-bar { display: none; }
 .qiaomu-reader-src-section > .setting-item { padding: 10px 0 4px; border-top: 0; }
 .qiaomu-reader-src-section .setting-item-description .qiaomu-reader-ai-setup-feedback { padding: 2px 0 0; font-size: var(--font-ui-smaller); }
 .qiaomu-reader-src-section .setting-item-control select { max-width: 260px; }
+/* Kindle pairing stays within the reader's quiet, neutral control language. */
+.modal.qiaomu-reader-kindle-modal { width: min(480px, calc(100vw - 32px)); max-height: calc(100vh - 40px); padding: 24px; }
+.qiaomu-reader-kindle-body { display: flex; flex-direction: column; gap: 16px; overflow: auto; min-height: 0; }
+.qiaomu-reader-kindle-body p { margin: 0; line-height: 1.6; }
+.qiaomu-reader-kindle-intro, .qiaomu-reader-kindle-help { color: var(--text-muted); font-size: var(--font-ui-small); }
+.qiaomu-reader-kindle-pair { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding-block: 4px; }
+.qiaomu-reader-kindle-pair p { font-size: var(--font-ui-small); }
+.qiaomu-reader-kindle-field { display: flex; flex-direction: column; gap: 8px; }
+.qiaomu-reader-kindle-field label { font-weight: 500; }
+.qiaomu-reader-kindle-body h3 { margin: 0; font-size: var(--font-ui-medium); }
+.qiaomu-reader-kindle-pair-complete { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.qiaomu-reader-kindle-wifi { display: flex; flex-direction: column; gap: 12px; }
+.qiaomu-reader-kindle-wifi[hidden], .qiaomu-reader-kindle-body [hidden] { display: none; }
+.qiaomu-reader-kindle-address-row { display: flex; align-items: center; gap: 8px; }
+.qiaomu-reader-kindle-address-row input { flex: 1; min-width: 0; }
+.qiaomu-reader-kindle-address-row button { flex: none; white-space: nowrap; }
+.qiaomu-reader-kindle-status:empty { display: none; }
+.qiaomu-reader-kindle-field input { width: 100%; min-height: 36px; flex-shrink: 0; background: var(--background-primary); color: var(--text-normal); border: 1px solid var(--background-modifier-border); box-shadow: none; border-radius: 8px; padding: 8px 10px; }
+.qiaomu-reader-kindle-field input:focus { border-color: var(--text-muted); outline: none; box-shadow: none; }
+.qiaomu-reader-kindle-status { min-height: 40px; font-size: var(--font-ui-small); color: var(--text-muted); overflow-wrap: anywhere; }
+.qiaomu-reader-kindle-footer { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; padding-top: 16px; border-top: 1px solid var(--background-modifier-border); }
+.qiaomu-reader-kindle-body button { min-height: 34px; border: none; border-radius: 8px; padding: 7px 12px; color: var(--text-normal); background: transparent; box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-normal) 12%, transparent); cursor: pointer; }
+.qiaomu-reader-kindle-body button:hover { background: color-mix(in srgb, var(--text-normal) 6%, transparent); }
+.qiaomu-reader-kindle-body button:active { opacity: .7; }
+.qiaomu-reader-kindle-body button:focus-visible { outline: 1px solid var(--text-muted); outline-offset: 2px; }
+.qiaomu-reader-kindle-body button:disabled { opacity: .5; cursor: default; }
+.qiaomu-reader-kindle-body button.qiaomu-reader-kindle-primary { color: var(--background-primary); background: var(--text-normal); box-shadow: none; }
+.qiaomu-reader-kindle-body button.qiaomu-reader-kindle-primary:hover { opacity: .85; }
+.qiaomu-reader-kindle-notice { display: flex; align-items: center; gap: 12px; }
+.qiaomu-reader-kindle-notice button { color: inherit; background: transparent; border: 1px solid currentColor; box-shadow: none; padding: 3px 8px; }
 
 /* Bundled reading subset: SIL OFL 1.1
 Copyright (c) 2023, Zhejiang JadeFoci Techonology Co. LTD
