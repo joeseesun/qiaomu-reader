@@ -172,9 +172,11 @@ export function createEbookLibrary(plugin, request, { cryptoApi = window.crypto,
         }
         if (!jobId(job.id) || job.state !== 'complete' || !job.result) throw ebookError(job.error || 'download-failed');
         if ((local().importedJobs || []).includes(job.id)) throw ebookError('already-imported');
-        progress?.('importing');
+        progress?.('running');
         const response = await api('/jobs/' + job.id + '/file', undefined, activeSignal);
+        progress?.('verifying');
         const file = await verifyEbook(response.arrayBuffer, job.result, cryptoApi); alive(activeSignal);
+        progress?.('importing');
         const imported = await importer([file]);
         if (!imported) throw ebookError('import');
         // Record the receipt even if the modal closed while the vault import ran.

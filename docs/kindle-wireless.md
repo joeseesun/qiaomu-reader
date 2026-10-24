@@ -76,3 +76,9 @@ Sources checked: [Obsidian dependency policy](https://docs.obsidian.md/community
 The user deferred USB/device interaction. When convenient: exit KOReader, confirm 道德经 appears in the native library and opens with correct Chinese content, reboot Kindle and confirm reconnection without starting KOReader, then exercise sleep/wake. Verify a first-time receiver preparation + USB pairing path on a device without KOReader before widening compatibility claims. Windows/Linux conversion and host detection are fixture-verified, not physically verified.
 
 Do not promote this candidate to a fully accepted native release until those checks and the official final-SHA preview scan pass. Keep main at its last installable release until matching public assets are available. Build, device receipt, native reading, GitHub draft and official publication remain separate states.
+
+### Download-progress integration (2026-10-24)
+
+The ebook follow-up installs from `codex/progress-kindle-integration`, preserving this 4.9.0 dual-mode source and adding the independently released 4.8.1 ebook download feedback. Both rockfish and the isolated QA vault now use the integrated standard build, with data.json preserved. Do not overwrite this runtime with the original4e828a9 build, which lacks the progress fix. Existing physical-device limitations and the unpublished4.9.0 release boundary remain unchanged.
+
+Integration checks:524 Node tests,1547 i18n keys, ESLint and standard asset verification pass. QA runtime reports4.9.0 and immediately renders the animated ebook progress track. No Kindle/network pairing or physical transfer was repeated for this UI-only change. The original4.9.0 draft remains unchanged until the integration PR is accepted and its final candidate is scanned and reverified.

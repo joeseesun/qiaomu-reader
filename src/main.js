@@ -1,5 +1,5 @@
 import { createEbookLibrary } from "./ebook-library.js";
-import { mountEbookDiscovery, createEbookResult } from "./ebook-library-ui.js";
+import { mountEbookDiscovery, createEbookResult, createEbookDownloadProgress } from "./ebook-library-ui.js";
 import { isTextBook, isListedBook } from "./text-book.js";
 import { createKindleController } from "./kindle.js";
 import { openKindlePairing, sendBookToKindle } from "./kindle-ui.js";
@@ -10005,6 +10005,7 @@ function bookNoteAction(settings, bookPath) {
 }
 const WHATS_NEW = [
   { v: "4.9.0", items: [qiaomuReaderTranslate("kindle.description"), qiaomuReaderTranslate("kindle.native-description")] },
+  { v: "4.8.1", items: [qiaomuReaderTranslate("ebook.progress-update")] },
   { v: "4.8.0", items: [qiaomuReaderTranslate("kindle.description"), qiaomuReaderTranslate("kindle.settings-description")] },
   { v: "4.0.1", items: [
     qiaomuReaderTranslate("ai-assistance-now-binds-to-the-newly-opened-book-immediately-so"),
@@ -12464,26 +12465,36 @@ const BookDiscoveryModal = class extends Modal {
     }
     button.disabled = true;
     button.setText(qiaomuReaderTranslate("downloading-book"));
+    const feedback = createEbookDownloadProgress(button, qiaomuReaderTranslate);
+    feedback.update("queued");
+    let completed = false;
     try {
       const detail = await requestUrl({ url: gutenbergDetailUrl(book.id), method: "GET", throw: false });
       if (!this._open) return;
       if (detail.status !== 200) throw new Error(`Catalog HTTP ${detail.status}`);
       const epub = parseGutenbergEpub(detail.text, book.id, (xml) => new DOMParser().parseFromString(xml, "application/xml"));
       if (!epub) throw new Error("No EPUB acquisition link");
+      feedback.update("running");
       const response = await requestUrl({ url: epub.url, method: "GET", throw: false });
       if (!this._open) return;
+      feedback.update("verifying");
       if (response.status !== 200 || !validGutenbergEpub(response.arrayBuffer)) throw new Error("Invalid EPUB response");
+      feedback.update("importing");
       const imported = await this.library._importBooks([{ name: fileName, type: "application/epub+zip", arrayBuffer: async () => response.arrayBuffer }]);
       if (!imported) throw new Error("Vault import failed");
+      completed = true;
+      if (!this._open) return;
+      feedback.update("imported");
       status.setText(qiaomuReaderTranslate("book-import-finished"));
     } catch (error) {
       if (!this._open) return;
       console.warn("Qiaomu Reader: book download failed", error);
+      feedback.fail(qiaomuReaderTranslate("book-download-failed"));
       status.setText(qiaomuReaderTranslate("book-download-failed"));
     } finally {
       if (this._open) {
-        button.disabled = false;
-        button.setText(qiaomuReaderTranslate("download-to-library"));
+        button.disabled = completed;
+        button.setText(qiaomuReaderTranslate(completed ? "ebook.imported" : "ebook.download"));
       }
     }
   }
