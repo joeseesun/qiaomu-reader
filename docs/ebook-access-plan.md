@@ -1,0 +1,13 @@
+# 邀请制乔木书库（2026-10-24）
+
+Go: keep existing public book discovery as the default and add an explicitly selected Qiaomu library. The feature changes two existing repositories and more than eight files; it adds no independent service. Reader HTTPS API and administrator UI run inside the existing ebook MCP process, sharing the existing serial Telegram lock. Master MCP credentials/session never go to Reader.
+
+Research: Keygen's official activation model separates licenses from machines and supports deactivation/revocation; its authentication docs distinguish license and administrator tokens. Inspected its machine model read-only, including per-license uniqueness/limit checks. The repository is fair-source; no code or distinctive UI is copied. OWASP Authentication/Session/CSRF guidance informs throttling, server-side hashed credentials, revocable cookies, origin and CSRF checks. The existing Reader and Obsidian SecretStorage remain the native integration points.
+
+Sources: https://keygen.sh/docs/activating-machines/ ; https://keygen.sh/docs/api/authentication/ ; https://github.com/keygen-sh/keygen-api/blob/master/app/models/machine.rb ; https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html ; https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html ; https://docs.obsidian.md/plugins/guides/secret-storage .
+
+MVP: administrator login, batch code creation with one-time secret display, owner notes, expiry/device/daily-download limits, disable/restore, regenerate codes, revoke devices, bounded audit trail. Defaults are editable (2 installations, 10 successful downloads/day, 90-day license). Device identity is an installation ID, not uncopyable hardware enforcement. Credentials and quotas are enforced online on every protected action; original public searches do not depend on activation or service availability.
+
+Reader flow: original search by default; Qiaomu source → activation when required → search metadata → download job → file validation/import. No automatic switch or hidden fallback. Authenticated download endpoint checks ownership; new private files never enter the legacy public `/files/` tree. Existing MCP links continue to work.
+
+Verification: concurrency/redeem limits, credential persistence failures, revoke/expiry/refresh, quota reservation/refund, job idempotency/ownership, file traversal, unauthenticated access, CSRF/session/rate limits; existing public discovery regression, UI errors/input/keyboard/language/theme; actual native vault import and live backend checks. Admin credentials are initialized outside the repository; a real administrator password is entered by the user.

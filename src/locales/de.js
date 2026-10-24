@@ -1,4 +1,8 @@
+import { EBOOK_TEXT } from "../ebook-i18n.js";
+import { KINDLE_TEXT } from "../kindle-i18n.js";
 export default {
+  ...KINDLE_TEXT.de,
+  ...EBOOK_TEXT.de,
   "ai-connect-account-or-key": "Verbinde ein Konto oder gib einen API-Schlüssel ein und schließe den Test ab, um KI zu nutzen.",
   "library-remove": "Aus Bibliothek entfernen",
   "library-removed": "„{0}“ entfernt. Datei und Lesedaten bleiben erhalten.",

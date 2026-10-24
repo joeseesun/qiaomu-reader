@@ -1,0 +1,41 @@
+# 邀请制书库验收 · 2026-10-24
+
+用户结果：没有激活码时仍使用原有找书；有激活码时在 Reader 内搜索、下载并导入书架。独立轻量后台管理领取人、有效期、设备和额度，总 MCP/Telegram 凭据只在服务端。
+
+实际桌面：Obsidian 1.13.7，隔离库 `/Users/joe/Documents/ChatGPT/qiaomu-reader-kindle-qa`，插件 qiaomu-reader 4.8.0 community 构建，基于 Kindle 候选 9e2d933 增量。代码位于 codex/ebook-library。
+
+已验证：
+- 原生「找书」默认公开书源，Anna’s Archive、Z-Library、Gutenberg、Standard Ebooks、维基文库保留；创建该页面不调用乔木 API 或读取登录凭据。
+- 临时 QA 授权在生产 HTTPS API 激活；凭据写入真实 Obsidian SecretStorage，data.json 无激活码/刷新凭证。重载后仍能恢复登录并刷新 access token。
+- 原生 UI 搜索 Lewis Carroll，返回 4 个带作者、语言、年份、格式和大小的版本；选择《Alice's Adventures in Wonderland and Through the Looking Glass》英文 EPUB（2003，5.69 MB）。
+- 实际导入文件 5,966,328 字节，SHA256 `b7de7123381ff2a47b3748c25ed4d9e87cfe753bcf59aad6275ee432ef4f270e`；服务器文件、API 元数据、仓库文件三者一致。完成任务已记录，重开不再列为未导入任务。该验收不涉及 Kindle 传输。
+- 关闭 QA 授权后，原登录下一请求立即 403；切回公开书源仍可用。QA 授权已停用。
+- 本机隔离管理后台经真实 Chrome 登录、批量生成 2 码、关闭完整码展示、编辑下载额度并回读；修正了日期选择保存造成的时区偏移，并确认同日期再次保存不会变化。测试密码与测试码不用于生产。
+- 生产 /reader/admin/ 200，/reader/api/me 和 /mcp 未鉴权均 401，/healthz 200。新图书位于独立 private 目录，不在旧 /files/ 路径；未改动原 MCP token/session 和旧公开下载文件。
+
+自动检查：506 Node 测试、6 Python TTS 测试、1515 i18n keys、全部 src ESLint 零警告、standard/community 构建；后端 25 Python 测试覆盖并发设备限制、刷新轮换、撤销/到期、CSRF、额度/idempotency、文件隔离、真实 bot 元数据格式、大小/损坏清理与备份恢复。
+
+边界：移动端真机未验证；安装 ID 不是硬件锁；默认下载文件上限32MiB、授权列表500条、临时文件24小时、额度按UTC日期重置。管理员实际密码尚未初始化，由用户在自己终端输入；提供 Downloads/初始化乔木书库后台.command。首次设置后才可正式生成分发码。
+
+发布：原 Kindle 4.8.0 为草稿，官方预扫描此前缺 Source/Build 结果。此增量需对最终 SHA 再扫描，未满足门禁不公开 Release、不提升 main。后端已部署，Reader 候选已安装隔离库；日常库安装与最终 PR/预扫描另记实际结果。
+
+## 激活停留修复（2026-10-24）
+
+原生复现：保持「找书」窗口打开后重载插件，旧窗口仍连接到 DOM、旧插件已经卸载；提交激活后无服务器请求，按钮重新启用但状态停在「正在激活」。根因是 BookDiscoveryModal 未纳入插件卸载清理，UI 又静默忽略 cancelled。
+
+修复：跟踪并在插件卸载时关闭所有找书窗口；仅在仍可见的页面上显示中断恢复提示；激活失败保留已输入的码。新增回归测试先在旧代码上失败，再通过；507 Node 测试、1516 国际化键和全 src ESLint 通过，standard/community 构建完成。
+修复后原生验收：真实临时QA码激活成功、dailyLimit=20；重载后旧窗口断开DOM、旧注册表清空；新实例重开保持登录，不再显示正在激活。日常rockfish三个文件已更新并读回，data.json保留。
+
+## 选书界面与封面（2026-10-24，用户选择 A）
+
+采用封面 / 书目 / 文件及下载三列；主题沿用宿主，格式筛选不会改变候选下载ID，长标题可展开；没有码时仍默认公开书源。Gutenberg 直接加载书源封面，乔木书库从独立服务端接口补充严格匹配的 Open Library 书目参考封面。图片加载失败不阻断操作，所有网络来源已补充 README。
+
+第一轮原生截图发现头部占高与中文占位换行问题；第二轮将标题和书源放同一行、缺图文字改为两行，并避免迟到的下载历史错误覆盖当前搜索状态。原生 QA 验证四条真实 Alice 搜索结果，参考图10527843成功显示；PDF筛选只留下2项PDF，选定2008年990.76KB结果并实际导入1,014,535字节。服务器、客户端校验与仓库文件 SHA256 均为 a1c2a14df221040c427f3fdb790f21d5f0da41bb8e0c777a5272ef6d2d8d37ed；配额由20/20变为19/20。
+
+388px实测容器宽度无横向溢出，所有下载按钮在行内，文件操作移至书目下方。深色前景rgb(218,218,218)、背景rgb(28,28,28)。实搜三体刘慈欣的长合集标题可展开、行高增加且不溢出。桌面窄窗不等于移动真机验收。测试凭证仅用于临时QA，结束后禁用，不写入仓库。
+
+511 Node测试、6 Python TTS测试、1530国际化键、全部src ESLint零警告，standard/community构建通过。发布使用标准构建的根main.js，避免与官方npm run build结果不一致；community仅作为额外候选验证。后端封面接口PR3已合并部署，32项测试通过，详情见独立后端进度文档。
+
+最终包补充验收：已登录下载的Draft三文件与根标准构建逐字节一致；本项目预算5,750,000字节（通用audit脚本默认5,000,000不是本项目限制），按项目预算审核通过。原生4.7.9→4.8.0升级后所选设置、所有图书文件和reading-progress.json均保留；临时移开QA配置的首次启用默认公开书源，乔木服务调用0，随后已恢复原QA配置。日常rockfish三个文件摘要与标准包一致，data.json保留，CLI重载后version4.8.0、enabled=true。
+
+预扫描3ad0f5f Completed，仅展示CSS LINT与DEPENDENCIES；CSS提示column-gap归入multicolumn旧版兼容性，已改为等价grid gap避免误分类。尚不能将缺失的Source/Build检查宣称通过，最终候选需再次扫描。

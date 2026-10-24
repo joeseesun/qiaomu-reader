@@ -52,6 +52,12 @@ Qiaomu Reader 是中文优先的 Obsidian EPUB、PDF、FB2、MOBI、AZW3、CBZ�
 ![从 Calibre 按需加入书库](docs/assets/calibre-import.png)
 书库顶部的 **找书** 可输入书名或作者。点击 **搜索** 会在浏览器分别打开 Anna’s Archive 与 Z-Library 的搜索页，同时在插件内搜索 Project Gutenberg 公版书。也可以单独点击各站链接。选择 Gutenberg 结果后，点击 **下载并加入书库** 才会下载 EPUB 并导入当前仓库。Standard Ebooks 和维基文库提供可下载的 EPUB 书籍，也作为浏览器中的补充入口。下载有权使用的 EPUB、PDF 或 MOBI 后，可通过 **添加书籍** 导入。外部站点地址可能变化；插件不会抓取或下载外部站点内容。
 
+搜索结果以封面、书名与作者、文件格式和大小分列展示，可按格式筛选；较长的书名可以展开。公开书源从 Project Gutenberg 加载封面；乔木书库通过 Open Library 匹配书目参考封面，并显示书源提供的语言与年份。封面并非下载版本保证，未匹配或加载失败时显示「暂无封面」，不影响下载。
+
+**有激活码时，可切换到「乔木书库」。** 输入一次激活码，就能直接搜索并下载到当前书架。没有激活码，或乔木服务暂时不可用，仍可照常使用默认的「公开书源」。每个授权可由管理员设置有效期、设备数和每日额度；下载失败返还额度，已完成的下载保留 24 小时，可重新打开后继续导入。额度按 UTC 日期重置（北京时间每日 08:00）。
+
+乔木书库不会读取或上传已有图书。主动激活会发送激活码、随机安装 ID 和仓库名称作为设备备注；主动搜索和下载会发送关键词与所选版本。凭证保存在 Obsidian SecretStorage，总 MCP 密钥不会进入插件。每台设备、每个仓库分别激活；安装 ID 是本地标识，不是不可复制的硬件锁。
+
 ### 2. 选中一句话，就地划线、批注或提问
 
 ![4.2.4 选文工具栏：划线与颜色下拉、批注、问 AI、复制；正文使用青瓷主题与双页布局](docs/assets/showcase-4.2.4-selection.jpg)
@@ -94,6 +100,12 @@ Qiaomu Reader 是中文优先的 Obsidian EPUB、PDF、FB2、MOBI、AZW3、CBZ�
 PDF 保留原始版式，支持独立缩放。有可靠文字层时，可选择、复制、搜索、划线、批注和向 AI 提问；扫描页仍能阅读和保存进度，但不提供没有文字层支撑的搜索或文字问答。
 
 目录、书内搜索和位置跳转集中在底栏。搜索支持结果高亮、`Enter` 下一处、`Shift+Enter` 上一处、`Esc` 关闭，并保留返回原阅读位置的入口。
+
+## 无线发送到 Kindle（桌面端）
+
+Kindle 已越狱并安装 KOReader 后，可以在书库或文件菜单中右键电子书，选择「发送到 Kindle」。首次按两步引导完成：退出 KOReader、接 USB 并点击配对；再安全弹出并拔线，打开 KOReader、连接同一 Wi-Fi，点击「查找 Kindle」和「测试连接」。之后同一网络下即可直接发送，无需 Calibre。
+
+配对私钥保存在 Obsidian SecretStorage；插件仅在你主动连接或发送时访问设备。每本书上传后都会读回校验，再放入 `documents`，已有同名文件会保留。本功能仅传书，不同步划线和阅读进度；支持的单文件大小上限为 512 MiB。
 
 ## 离线示例书
 
@@ -214,6 +226,8 @@ Mac 桌面另提供「Mac 本地语音」，枚举本机已安装声音和实际
 | 可选功能 | 发送内容 | 目标服务 |
 | --- | --- | --- |
 | 找书与下载 | 主动搜索时发送书名或作者关键词；仅在点击下载时请求所选书籍目录和 EPUB | Project Gutenberg |
+| 搜索结果封面 | 公开书源请求 Gutenberg 图书封面；乔木书库由服务端以书名、作者匹配参考封面，客户端仅以封面 ID 请求图片，不携带激活码或登录凭证 | Project Gutenberg、[Open Library](https://openlibrary.org/dev/docs/api/covers) |
+| 乔木书库（可选激活） | 激活码、安装 ID、设备备注；主动搜索的关键词与所选下载版本，不上传仓库书籍 | `ebook-mcp.qiaomu.ai`，由服务端经 Telegram 机器人查询 |
 | 外部书源搜索 | 主动搜索时在浏览器打开带有关键词的搜索页；插件不向这些网站发送仓库内容 | Anna’s Archive、Z-Library |
 | 外部书源链接 | 点击后在浏览器打开网站；插件不向这些网站发送仓库内容 | Standard Ebooks、维基文库 |
 | 翻译与查词 | 当前选中的文字；使用 AI 引擎时还包括所在句子和书名 | Google Translate，或你选择的 AI 服务 |
@@ -318,6 +332,10 @@ Reading works fully offline. In-reader settings are split into Reading and AI As
 **New in 4.2.6:** Selection actions use icons by default, with translation shown when enabled. Configure labels, visibility and order under Settings → Page turning → Selection toolbar. Hidden actions remain in More and the context menu. AI source links can reopen the correct book and navigate across chapters.
 
 Saving an AI reply preserves its complete Markdown body with the source below it, either in a separate note or appended to the book's reading note. An editable title is extracted locally from the reply's topic, emphasis or content, with no extra model request. Saving keeps the chat open, and the saved action opens the existing note. Unsent drafts are persisted locally for up to 30 books (20,000 characters each) and survive sidebar closure/restarts; third-party syncing of the plugin folder may also copy them. Deleting conversations requires confirmation. Screenshots above were captured with the published [4.2.4 release](https://github.com/joeseesun/qiaomu-reader/releases/tag/4.2.4); see the [official listing](https://community.obsidian.md/plugins/qiaomu-reader) for installation.
+
+### Send books to Kindle (desktop)
+
+Right-click a book to send it over your local network to a jailbroken Kindle running KOReader. Pair once over USB, safely eject, then open KOReader, enable Wi-Fi and click Find Kindle (or enter its local IPv4 address). No Calibre or cloud relay is required. The private key stays in Obsidian SecretStorage. Uploads are streamed, read back and verified before publication, with existing same-name books preserved. This transfers files up to 512 MiB; it does not synchronize highlights or reading progress.
 
 ### Verification and limits
 

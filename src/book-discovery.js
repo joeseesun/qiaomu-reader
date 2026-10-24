@@ -33,6 +33,11 @@ export function gutenbergPageUrl(id) {
   return `${GUTENBERG_ORIGIN}/ebooks/${id}`;
 }
 
+export function gutenbergCoverUrl(id) {
+  if (!/^\d+$/.test(String(id))) throw new Error("Invalid Gutenberg book ID");
+  return `${GUTENBERG_ORIGIN}/cache/epub/${id}/pg${id}.cover.medium.jpg`;
+}
+
 function atomChildren(parent, name) {
   return Array.from(parent?.children || []).filter((node) => node.localName === name && node.namespaceURI === "http://www.w3.org/2005/Atom");
 }
@@ -57,8 +62,9 @@ export function parseGutenbergSearch(xml, parseXml) {
     const title = atomText(entry, "title");
     if (!title) continue;
     const authorNode = atomChildren(entry, "content")[0];
-    const author = atomChildren(entry, "author").map((person) => atomText(person, "name")).filter(Boolean).join(", ") ||
+    const authorValue = atomChildren(entry, "author").map((person) => atomText(person, "name")).filter(Boolean).join(", ") ||
       (authorNode?.getAttribute("type") === "text" ? authorNode.textContent?.trim() || "" : "");
+    const author = /^[\d,. ]+\s+downloads?$/i.test(authorValue) ? "" : authorValue;
     books.set(id, { id, title, author, pageUrl: gutenbergPageUrl(id) });
   }
   return Array.from(books.values()).slice(0, 25);
