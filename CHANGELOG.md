@@ -1,5 +1,21 @@
 # 更新记录
 
+## 4.8.1
+
+- 点击下载立即显示书籍行内进度条，依次反馈下载、校验和加入书架；完成后显示已加入，失败保留原因并可重试。
+- 公开书源和乔木书库共用进度反馈；未知文件传输比例时显示等待动画，完成导入后才显示完成。
+
+## 4.8.0
+
+- 重新设计「找书」结果：封面、书目信息、格式与下载分列展示，支持格式筛选和展开完整书名，适配窄屏及深色主题。
+- 可用激活码接入乔木书库，在插件中搜索、核对语言/年份/大小并下载到书架；公开书源保留默认入口，无需激活码。
+- 参考封面异步加载，未匹配或图片失败不阻断下载；Open Library 封面明确标为书目参考，不冒充具体下载版本。
+- 修复插件重载后旧找书窗口遗留，导致激活状态停在「正在激活」的问题。
+
+- Desktop: send EPUB, PDF and other supported books directly to a jailbroken Kindle running KOReader over the same local network. No Calibre or cloud account is required.
+- Pair once over USB; keep the private key in Obsidian SecretStorage and verify the device identity on subsequent connections.
+- Stream and read back every transfer before publishing the book. Preserve existing same-name files, and support progress, cancellation and unload cleanup.
+
 ## 4.7.9
 
 - 修复 iOS 17.0 缺少 `Object.groupBy` / `Map.groupBy` 时 EPUB 无法打开的问题；兼容实现局限于阅读引擎，不修改全局 API。

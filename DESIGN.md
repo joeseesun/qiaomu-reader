@@ -214,3 +214,29 @@ forms, frames and styles are removed. Reader typography and theme remain the
 single presentation source. Local images resolve relative to the vault source;
 individual imports do not silently gather files from the user's filesystem.
 See `docs/text-formats.md` for format boundaries and acceptance evidence.
+
+## 15. Book discovery — selected direction A (2026-10-24)
+
+The user selected “清晰书目” in chat. Dials: variance 4, motion 2, density 6.
+Contract: identify the book, compare language/year/format/size, download the
+specific result; public sources remain the default and require no activation.
+Use a cover / bibliography / file-and-action list, with one quiet divider per
+row and a single scroll surface. Covers load progressively in reserved space;
+missing/failed images never block search or download. Work covers are labelled
+as references, never as proof of the downloadable edition. Do not fabricate
+publisher, ISBN, rating or page-count data.
+
+Concrete Notion DNA adapted to existing Obsidian tokens: 1px whisper dividers,
+8px spacing rhythm, 400/500/600 UI weights, 1.5 body line-height. Retain host
+system fonts and theme colours instead of importing branding or web fonts.
+Signatures: aligned file column, stable cover box, format filters above results,
+quiet account details, and inline full-title disclosure only for long titles.
+At 520px container width, file/action move below the bibliography while the
+cover stays beside it. No horizontal scroll or nested result scrollbar.
+Keyboard focus is visible; no hover tooltips. Unknown progress stays inline;
+failed searches offer retry through the existing form, failed downloads retain
+their action, and cover errors remain local. No decorative animation.
+
+### Book download feedback
+
+The clicked book owns a visible, neutral progress track and a short stage label. Show it immediately, including while waiting for the server. Unknown byte progress uses continuous motion without a fabricated percentage; only a successful vault import fills the track. Errors stop motion and retain a retryable action. Reuse the same feedback for public sources, Qiaomu library and resumed jobs. Respect reduced motion and keep feedback within narrow result rows.

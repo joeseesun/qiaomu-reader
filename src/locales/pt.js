@@ -1,4 +1,10 @@
+import { ABOUT_TEXT } from "../about-i18n.js";
+import { EBOOK_TEXT } from "../ebook-i18n.js";
+import { KINDLE_TEXT } from "../kindle-i18n.js";
 export default {
+  ...KINDLE_TEXT.pt,
+  ...ABOUT_TEXT.pt,
+  ...EBOOK_TEXT.pt,
   "ai-connect-account-or-key": "Conecte uma conta ou insira uma chave de API e conclua o teste para usar a IA.",
   "library-remove": "Remover da biblioteca",
   "library-removed": "“{0}” removido. Arquivo e registros de leitura preservados.",

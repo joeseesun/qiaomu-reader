@@ -1,4 +1,9 @@
+import { renderReaderAbout } from "./about.js";
+import { createEbookLibrary } from "./ebook-library.js";
+import { mountEbookDiscovery, createEbookResult, createEbookDownloadProgress } from "./ebook-library-ui.js";
 import { isTextBook, isListedBook } from "./text-book.js";
+import { createKindleController } from "./kindle.js";
+import { openKindlePairing, sendBookToKindle } from "./kindle-ui.js";
 import { setBookMembership } from "./library-membership.js";
 import { openReaderLeaf } from "./open-reader.js";
 import { AiAccountModal } from './ai-account-modal.js';
@@ -85,7 +90,7 @@ import { contextProvider, findAgent, notifyContextChanged } from "./qiaomu-conte
 import { notifyHomeChanged } from "./qiaomu-home.js";
 import { createHomeProvider } from "./home.js";
 import { AI_ASSISTANT_ROUTES, readerSnapshot, shouldUseAgent } from "./agent-bridge.js";
-import { externalBookSearchUrls, gutenbergSearchUrl, gutenbergDetailUrl, parseGutenbergSearch, parseGutenbergEpub, validGutenbergEpub, safeBookFileName } from "./book-discovery.js";
+import { externalBookSearchUrls, gutenbergSearchUrl, gutenbergDetailUrl, gutenbergCoverUrl, parseGutenbergSearch, parseGutenbergEpub, validGutenbergEpub, safeBookFileName } from "./book-discovery.js";
 import { isLookupTerm, cleanLookupTerm, rangeContext, sentenceAround, buildTranslateMessages, buildLookupMessages, parseLookupAnswer, parseGoogleLookup, googleDetectedLanguage, sameLanguage, fallbackTarget, looksLikeLanguage, lookupEngine, lookupSessionKey, lookupCacheKey, createLookupCache } from "./lookup.js";
 import { defaultVocabularyPath, vocabularyDeckTag, vocabularyHeader, vocabularyKey, parseVocabularyCards, addToVocabulary, ankiFieldsFromCard } from "./vocabulary.js";
 import { ANKI_DEFAULT_URL, ANKI_DEFAULT_DECK, ANKI_ADDON_CODE, ankiNote, addAnkiNotes, ensureAnkiSetup } from "./anki.js";
@@ -1556,6 +1561,8 @@ const QiaomuBookReader = class extends Plugin {
     configureEngineFrames(Platform.isAndroidApp);
     await this.loadAll(); await this._attachAiDraftStore();
     this._unloading = false;
+    this.kindle = createKindleController(this);
+    this.ebookLibrary = createEbookLibrary(this, requestUrl);
     this.register(protectBooksFromNoteDeletion(this.app, new Set([...BOOK_EXTENSIONS].filter(ext => ext !== "md" && ext !== "markdown"))));
     this._watchCompanionAndNotes();
     this._registerReaderViews();
@@ -1765,6 +1772,19 @@ const QiaomuBookReader = class extends Plugin {
     this.addSettingTab(this.settingsTab);
     const laterCommands = [
       {
+        id: "connect-kindle", name: qiaomuReaderTranslate("kindle.title"),
+        checkCallback: probe => { if (!Platform.isDesktopApp) return false; if (!probe) this.openKindlePairing(); return true; },
+      },
+      {
+        id: "send-to-kindle", name: qiaomuReaderTranslate("kindle.send"),
+        checkCallback: probe => {
+          const file = this.app.workspace.getActiveFile();
+          if (!Platform.isDesktopApp || !this.kindle?.isBook(file)) return false;
+          if (!probe) void this.sendToKindle(file);
+          return true;
+        },
+      },
+      {
         id: "show-onboarding", name: qiaomuReaderTranslate("show-welcome-onboarding"),
         callback: () => { new OnboardingModal(this.app, this).open(); },
       },
@@ -1822,6 +1842,9 @@ const QiaomuBookReader = class extends Plugin {
     const onFileMenu = (menu, file) => {
       if (!(file instanceof TFile) || !BOOK_EXTENSIONS.has(file.extension.toLowerCase())) return;
       menu.addItem((item) => item.setTitle(qiaomuReaderTranslate("open-in-book-reader")).setIcon("book-open").onClick(() => this.openFile(file)));
+      if (Platform.isDesktopApp && this.kindle?.isBook(file)) {
+        menu.addItem(item => item.setTitle(qiaomuReaderTranslate("kindle.send")).setIcon("send").onClick(() => void this.sendToKindle(file)));
+      }
     };
     this.registerEvent(this.app.workspace.on("file-menu", onFileMenu));
   }
@@ -1916,6 +1939,10 @@ const QiaomuBookReader = class extends Plugin {
     this.app.workspace.onLayoutReady(onReady);
   }
   onunload() {
+    for (const modal of this._bookDiscoveryModals || []) modal.close();
+    this._bookDiscoveryModals?.clear();
+    this.ebookLibrary?.dispose();
+    this.kindle?.dispose();
     cancelAccountLogins(); for (const modal of this.modelAccessModals || []) modal.close();
     this._unloading = true;
     for (const modal of this._announcementModals || []) modal.close();
@@ -1938,6 +1965,8 @@ const QiaomuBookReader = class extends Plugin {
   async rememberTextBook(file) {
     return setBookMembership(this, file, true, isTextBook(file.name));
   }
+  openKindlePairing(file = null) { openKindlePairing(this, qiaomuReaderTranslate, file); }
+  sendToKindle(file) { return sendBookToKindle(this, file, qiaomuReaderTranslate); }
   async removeBookFromLibrary(file) {
     return setBookMembership(this, file, false, isTextBook(file.name));
   }
@@ -9962,6 +9991,10 @@ function bookNoteAction(settings, bookPath) {
   return asked[bookPath] ? "prompted" : "ask";
 }
 const WHATS_NEW = [
+  { v: "4.8.3", items: [qiaomuReaderTranslate("kindle.setup-update")] },
+  { v: "4.8.2", items: [qiaomuReaderTranslate("about.update")] },
+  { v: "4.8.1", items: [qiaomuReaderTranslate("ebook.progress-update")] },
+  { v: "4.8.0", items: [qiaomuReaderTranslate("kindle.description"), qiaomuReaderTranslate("kindle.settings-description")] },
   { v: "4.0.1", items: [
     qiaomuReaderTranslate("ai-assistance-now-binds-to-the-newly-opened-book-immediately-so"),
     qiaomuReaderTranslate("fixed-blank-first-screens-collapsed-pagination-during-sidebar-ch"),
@@ -12311,10 +12344,13 @@ const BookDiscoveryModal = class extends Modal {
   }
   onOpen() {
     this._open = true;
+    (this.plugin._bookDiscoveryModals ||= new Set()).add(this);
     this.modalEl.addClass("qiaomu-reader-book-discovery");
-    const root = this.contentEl;
-    root.empty();
-    root.createEl("h2", { text: qiaomuReaderTranslate("find-books") });
+    this.contentEl.empty();
+    const heading = this.contentEl.createDiv({ cls: "qiaomu-reader-discovery-heading" });
+    heading.createEl("h2", { text: qiaomuReaderTranslate("find-books") });
+    this._ebookPanel = mountEbookDiscovery(this.contentEl, this.plugin, this.library, qiaomuReaderTranslate, { icon: setIcon, sourceParent: heading });
+    const root = this._ebookPanel.publicRoot;
     root.createDiv({ cls: "qiaomu-reader-discovery-intro", text: qiaomuReaderTranslate("find-books-intro") });
     const form = root.createEl("form", { cls: "qiaomu-reader-discovery-search" });
     const label = form.createEl("label", { text: qiaomuReaderTranslate("book-title-or-author") });
@@ -12380,13 +12416,11 @@ const BookDiscoveryModal = class extends Modal {
       const books = parseGutenbergSearch(response.text, (xml) => new DOMParser().parseFromString(xml, "application/xml"));
       status.setText(books.length ? qiaomuReaderTranslate("gutenberg-results-note") : qiaomuReaderTranslate("no-books-found"));
       for (const book of books) {
-        const row = results.createDiv({ cls: "qiaomu-reader-discovery-result" });
-        const info = row.createDiv({ cls: "qiaomu-reader-discovery-result-info" });
-        info.createEl("strong", { text: book.title });
-        if (book.author) info.createSpan({ text: book.author });
-        row.createEl("a", { text: qiaomuReaderTranslate("book-page"), href: book.pageUrl, attr: { target: "_blank", rel: "noopener noreferrer" } });
-        const download = row.createEl("button", { text: qiaomuReaderTranslate("download-to-library") });
-        download.addEventListener("click", () => void this._download(book, download, status));
+        const result = createEbookResult(results, { ...book, format: "epub" }, qiaomuReaderTranslate, {
+          icon: setIcon, pageUrl: book.pageUrl,
+          onDownload: button => void this._download(book, button, status)
+        });
+        result.setCover({ url: gutenbergCoverUrl(book.id), sourceUrl: book.pageUrl });
       }
     } catch (error) {
       if (!this._open || request !== this._request) return;
@@ -12403,31 +12437,43 @@ const BookDiscoveryModal = class extends Modal {
     }
     button.disabled = true;
     button.setText(qiaomuReaderTranslate("downloading-book"));
+    const feedback = createEbookDownloadProgress(button, qiaomuReaderTranslate);
+    feedback.update("queued");
+    let completed = false;
     try {
       const detail = await requestUrl({ url: gutenbergDetailUrl(book.id), method: "GET", throw: false });
       if (!this._open) return;
       if (detail.status !== 200) throw new Error(`Catalog HTTP ${detail.status}`);
       const epub = parseGutenbergEpub(detail.text, book.id, (xml) => new DOMParser().parseFromString(xml, "application/xml"));
       if (!epub) throw new Error("No EPUB acquisition link");
+      feedback.update("running");
       const response = await requestUrl({ url: epub.url, method: "GET", throw: false });
       if (!this._open) return;
+      feedback.update("verifying");
       if (response.status !== 200 || !validGutenbergEpub(response.arrayBuffer)) throw new Error("Invalid EPUB response");
+      feedback.update("importing");
       const imported = await this.library._importBooks([{ name: fileName, type: "application/epub+zip", arrayBuffer: async () => response.arrayBuffer }]);
       if (!imported) throw new Error("Vault import failed");
+      completed = true;
+      if (!this._open) return;
+      feedback.update("imported");
       status.setText(qiaomuReaderTranslate("book-import-finished"));
     } catch (error) {
       if (!this._open) return;
       console.warn("Qiaomu Reader: book download failed", error);
+      feedback.fail(qiaomuReaderTranslate("book-download-failed"));
       status.setText(qiaomuReaderTranslate("book-download-failed"));
     } finally {
       if (this._open) {
-        button.disabled = false;
-        button.setText(qiaomuReaderTranslate("download-to-library"));
+        button.disabled = completed;
+        button.setText(qiaomuReaderTranslate(completed ? "ebook.imported" : "ebook.download"));
       }
     }
   }
   onClose() {
     this._open = false;
+    this.plugin._bookDiscoveryModals?.delete(this);
+    this._ebookPanel?.dispose();
     this._request += 1;
     this.contentEl.empty();
   }
@@ -14724,6 +14770,10 @@ const SettingsTab = class extends PluginSettingTab {
       commit: (v) => persistViaDisk("booksFolder", v),
     });
     if (Platform.isDesktopApp) {
+      new Setting(c)
+        .setName(tx("kindle.title"))
+        .setDesc(tx("kindle.settings-description"))
+        .addButton(button => button.setButtonText(tx("configure")).onClick(() => this.plugin.openKindlePairing()));
       const found = detectCalibreLibraryPath(settings.calibreLibraryPath);
       new Setting(c)
         .setName(tx("calibre-library-path"))
@@ -14845,32 +14895,13 @@ const SettingsTab = class extends PluginSettingTab {
     }));
   }
   _tabAbout(c) {
-    this._sectionIntro(c, qiaomuReaderTranslate("about"), qiaomuReaderTranslate("help-updates-and-contact-information"));
-    new Setting(c)
-      .setName(qiaomuReaderTranslate("feedback-and-bugs"))
-      .setDesc(qiaomuReaderTranslate("report-a-bug-or-suggest-a-feature-and-we-will-follow-up-on-githu"))
-      .addButton((b) => b.setCta().setButtonText(qiaomuReaderTranslate("open-github-issues")).onClick(() => {
-        window.open("https://github.com/joeseesun/qiaomu-reader/issues", "_blank");
-      }));
-    new Setting(c)
-      .setName(qiaomuReaderTranslate("plugin-guide"))
-      .setDesc(qiaomuReaderTranslate("21-screens-of-explanation-formats-highlights-the-book-note-synci"))
-      .addButton((b) => b.setButtonText(qiaomuReaderTranslate("open-the-guide")).onClick(() => new OnboardingModal(this.app, this.plugin).open()));
-    new Setting(c)
-      .setName(qiaomuReaderTranslate("what-s-new"))
-      .setDesc(qiaomuReaderTranslate("changes-from-recent-versions"))
-      .addButton((b) => b.setButtonText(qiaomuReaderTranslate("show")).onClick(() => {
-        new WhatsNewModal(this.app, this.plugin, WHATS_NEW.slice(0, 4)).open();
-      }));
-    const about = c.createEl("div", { cls: "qiaomu-reader-set-note" });
-    about.createEl("b", { text: "Qiaomu Reader" });
-    about.appendText(qiaomuReaderTranslate("version-0-adapted-and-maintained-by-qiaomu", this.plugin.manifest.version));
-    about.createEl("br");
-    about.createEl("a", { text: "qiaomu.ai", href: "https://qiaomu.ai" });
-    about.appendText(" · ");
-    about.createEl("a", { text: "X @vista8", href: "https://x.com/vista8" });
-    about.appendText(" · ");
-    about.createEl("a", { text: "GitHub @joeseesun", href: "https://github.com/joeseesun" });
+    renderReaderAbout(c, {
+      version: this.plugin.manifest.version,
+      t: qiaomuReaderTranslate,
+      icon: svgIcon,
+      onGuide: () => new OnboardingModal(this.app, this.plugin).open(),
+      onUpdates: () => new WhatsNewModal(this.app, this.plugin, WHATS_NEW.slice(0, 4)).open(),
+    });
   }
 };
 export default QiaomuBookReader;

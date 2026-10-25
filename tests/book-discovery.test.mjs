@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { JSDOM } from "jsdom";
-import { externalBookSearchUrls, gutenbergSearchUrl, gutenbergDetailUrl, parseGutenbergSearch, parseGutenbergEpub, validGutenbergEpub, safeBookFileName } from "../src/book-discovery.js";
+import { externalBookSearchUrls, gutenbergSearchUrl, gutenbergDetailUrl, gutenbergCoverUrl, parseGutenbergSearch, parseGutenbergEpub, validGutenbergEpub, safeBookFileName } from "../src/book-discovery.js";
 
 test("external catalog search opens both encoded queries only for nonempty input", () => {
   assert.deepEqual(externalBookSearchUrls("  西游记 & Alice  "), {
@@ -27,7 +27,10 @@ test("Gutenberg search keeps book entries and canonical IDs only", () => {
     { id: "12", title: "Through the Looking-Glass", author: "Lewis Carroll", pageUrl: "https://www.gutenberg.org/ebooks/12" }
   ]);
   assert.equal(gutenbergSearchUrl("诗 词"), "https://www.gutenberg.org/ebooks/search.opds/?query=%E8%AF%97%20%E8%AF%8D");
+  assert.equal(parseGutenbergSearch(feed('<entry><id>/ebooks/99</id><title>Unknown author</title><content type="text">1,396 downloads</content></entry>'), parseXml)[0].author, "");
   assert.equal(gutenbergDetailUrl("11"), "https://www.gutenberg.org/ebooks/11.opds");
+  assert.equal(gutenbergCoverUrl("11"), "https://www.gutenberg.org/cache/epub/11/pg11.cover.medium.jpg");
+  assert.throws(() => gutenbergCoverUrl("../private"));
 });
 
 test("EPUB selection accepts only bounded Gutenberg acquisition links", () => {
