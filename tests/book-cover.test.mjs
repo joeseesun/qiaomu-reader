@@ -91,3 +91,15 @@ test("curated cover upgrades only starter identities and missing/generated artwo
     else assert.equal(result, resolved ? art : original);
   }
 });
+
+test('untyped MOBI cover blobs retain bytes and acquire an image MIME type', async () => {
+  const source = fs.readFileSync(new URL('../src/reader-engine.js', import.meta.url), 'utf8');
+  const method = source.slice(source.indexOf('export async function coverFromBytes')).replace('export ', '');
+  const bytes = new Uint8Array([255,216,255,224,0,16]);
+  const read = vm.runInNewContext(`${method}; coverFromBytes`, { Blob, File, isTextBook, createBookCover,
+    makeBook: async () => ({ getCover: async () => new Blob([bytes]) }),
+  });
+  const cover = await read(new Uint8Array([1]), 'book.mobi');
+  assert.equal(cover.type, 'image/jpeg');
+  assert.deepEqual(new Uint8Array(await cover.arrayBuffer()), bytes);
+});

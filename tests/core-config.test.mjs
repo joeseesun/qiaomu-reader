@@ -985,7 +985,7 @@ test("folder and template settings use searchable vault pickers", () => {
   assert.match(source, /if \(item\.kind === "create"\)/);
   assert.match(source, /\.setIcon\("folder-open"\)/);
   assert.match(source, /\.setIcon\("file-search"\)/);
-  assert.equal((source.match(/addFolderPathControl\(new Setting\(c\)/g) || []).length, 2); // two direct rows; the other two ride the pickFolder wrapper
+  assert.equal((source.match(/addFolderPathControl\(new Setting\(c\)/g) || []).length, 3); // download, books and template rows; the other two ride the pickFolder wrapper
   assert.equal((source.match(/pickFolder\(new Setting\(c\)/g) || []).length, 2);
   assert.equal((source.match(/pickFile\(new Setting\(c\)/g) || []).length, 2); // both note-path rows ride the pickFile wrapper
   assert.match(source, /target instanceof TFolder/);

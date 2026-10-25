@@ -2026,3 +2026,17 @@ body.qiaomu-reader-active-view .status-bar { display: none; }
 .qiaomu-reader-ebook-account button { font-size:13px; box-shadow:none; }
 .qiaomu-reader-ebook-recent { margin-top:24px; padding-top:16px; border-top:1px solid var(--background-modifier-border); }
 .qiaomu-reader-ebook-panel input { min-width:0; width:100%; }
+
+/* Bounded bookshelf window and explicit ordering. */
+.qiaomu-reader-lib-sort { display:flex; align-items:center; gap:8px; color:var(--text-muted); white-space:nowrap; }
+.qiaomu-reader-lib-sort select { max-width:140px; }
+.qiaomu-reader-lib-spacer { grid-column:1 / -1; height:var(--qbr-spacer-height); pointer-events:none; }
+@media (max-width:600px) { .qiaomu-reader-lib-tools { flex-wrap:wrap; } .qiaomu-reader-lib-sort { margin-left:auto; } }
+/* Equal row geometry keeps viewport offsets stable for short and long titles. */
+.qiaomu-reader-lib-virtual .qiaomu-reader-lib-book-title { height:2.9em; }
+.qiaomu-reader-lib-virtual .qiaomu-reader-lib-book-meta { height:1.5em; line-height:1.5; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.qiaomu-reader-lib-virtual .qiaomu-reader-lib-study { height:58px; flex-direction:column; flex-wrap:nowrap; align-items:flex-start; }
+.qiaomu-reader-lib-virtual .qiaomu-reader-lib-study-button { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+.qiaomu-reader-lib-resume-host:empty { display:none; }
+.qiaomu-reader-lib-resume-host { margin:0 28px 18px; }

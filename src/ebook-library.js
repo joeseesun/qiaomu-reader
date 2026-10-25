@@ -176,6 +176,7 @@ export function createEbookLibrary(plugin, request, { cryptoApi = window.crypto,
         const response = await api('/jobs/' + job.id + '/file', undefined, activeSignal);
         progress?.('verifying');
         const file = await verifyEbook(response.arrayBuffer, job.result, cryptoApi); alive(activeSignal);
+        file.bookMetadata = { title: candidate?.title || '', author: candidate?.author || '' };
         progress?.('importing');
         const imported = await importer([file]);
         if (!imported) throw ebookError('import');
