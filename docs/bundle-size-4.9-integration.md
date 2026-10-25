@@ -11,8 +11,11 @@ This integration merges stable main into that newer candidate, preserving its
 4.9.0 manifest, dual-mode Kindle, embedded EPUB-to-AZW3 conversion, About page,
 download progress and setup UX. Reader, Kindle controller/UI, conversion worker,
 native transport and vendored conversion implementations remain byte-identical
-to `fee9ceb`. This does not promote PR #75 or #77 to stable main or establish
-their deferred hardware acceptance.
+to `fee9ceb`. The initial integration targeted the candidate branch; the user
+subsequently explicitly authorized pushing and merging the complete integrated
+4.9.0 code into main. That changes the merge target, not the deferred hardware
+acceptance: native-library opening, first USB setup and device reboot are still
+not newly verified. This task does not create or publish a Release.
 
 ## Measured result
 
@@ -68,7 +71,7 @@ Manifest remains the original 4.9.0 bytes:
 - Production dependency audit has zero findings. Dependencies retain their
   locked candidate versions; Pako was already transitive and is explicitly pinned.
 
-Exact commit CI and any draft asset refresh are recorded separately. Existing
+Exact candidate and merged-main CI are recorded separately. Existing
 physical Kindle native-library opening, reboot/first-USB acceptance and mobile
-hardware limitations are unchanged. No existing public tag is overwritten and
-no stable release is repeated by this candidate-only integration.
+hardware limitations are unchanged. No existing tag or draft asset is overwritten
+and no Release is published by this main integration.
