@@ -4,7 +4,7 @@ import vm from "node:vm";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
-import { buildProfile } from "../scripts/build-profile.mjs";
+import { buildProfile, assertReleaseAssetSize, RELEASE_ASSET_BUDGET_BYTES } from "../scripts/build-profile.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -23,6 +23,16 @@ test("build profiles isolate output and reject unknown distribution names", () =
   assert.equal(buildProfile("standard", root).outputDir, root);
   assert.equal(buildProfile("community", root).outputDir, path.join(root, "dist/community"));
   assert.throws(() => buildProfile("commmunity", root), /Unknown build profile/);
+});
+
+test("release budgets leave at least 200 KB below decimal 5 MB for every installed asset", () => {
+  assert.ok(RELEASE_ASSET_BUDGET_BYTES <= 4_800_000);
+  for (const name of ["main.js", "styles.css", "manifest.json"]) {
+    assert.doesNotThrow(() => assertReleaseAssetSize(name, RELEASE_ASSET_BUDGET_BYTES));
+    for (const bytes of [0, RELEASE_ASSET_BUDGET_BYTES + 1, 5_000_000, 5_242_880]) {
+      assert.throws(() => assertReleaseAssetSize(name, bytes), new RegExp(name.replace(".", "\\.")));
+    }
+  }
 });
 
 test("community build excludes the installer module, even if an internal caller requests installation", async () => {
