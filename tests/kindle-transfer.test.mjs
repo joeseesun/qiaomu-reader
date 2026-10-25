@@ -9,14 +9,14 @@ import { build } from "esbuild";
 import { createRequire } from "node:module";
 import ssh2 from "ssh2";
 import { appendKindleKey, kindleBookName, kindleConnection, kindleLuaSettings, kindleDiscoveryHosts } from "../src/kindle-config.js";
-const bundle = await build({ entryPoints: ["src/kindle-transport.js"], bundle: true, platform: "node", format: "cjs", write: false, external: ["ssh2", "node:*"], plugins: [{ name: "obsidian-desktop", setup(b) {
+const bundle = await build({ entryPoints: ["src/kindle-transport.js"], bundle: true, platform: "node", format: "cjs", write: false, define: { __KINDLE_CONVERTER_ARCHIVE__: '""' }, external: ["ssh2", "node:*"], plugins: [{ name: "obsidian-desktop", setup(b) {
   b.onResolve({ filter: /^obsidian$/ }, () => ({ path: "obsidian", namespace: "host" }));
   b.onLoad({ filter: /.*/, namespace: "host" }, () => ({ contents: "export const Platform = { isDesktop: true };" }));
 } }] });
 const mod = { exports: {} };
 globalThis.window = { require: createRequire(import.meta.url), setTimeout, clearTimeout };
 new Function("require", "module", "exports", bundle.outputFiles[0].text)(createRequire(import.meta.url), mod, mod.exports);
-const { createKindleKey, kindlePublicKey, pairKindleUsb, verifyKindleUsb, checkKindleConnection, sendKindleFile } = await mod.exports.loadKindleTransport();
+const { createKindleKey, kindlePublicKey, pairKindleUsb, verifyKindleUsb, checkKindleConnection, sendKindleFile, refreshKindleLibrary } = await mod.exports.loadKindleTransport();
 
 const { Server, utils } = ssh2;
 const fixtureConfig = { host: "127.0.0.1" };
@@ -32,7 +32,7 @@ test("discovery stays inside attached private subnets with bounded work", () => 
   assert.deepEqual(kindleDiscoveryHosts({ a: [entry("192.168.1.3", "255.0.255.0")] }), []);
 });
 
-async function sftpFixture(t, { corruptRead = false, disconnectWrite = false } = {}) {
+async function sftpFixture(t, { corruptRead = false, disconnectWrite = false, nativeReceiver = false, scanFails = false, scanPending = false } = {}) {
   const base = await fs.mkdtemp(path.join(os.tmpdir(), "qbr-kindle-"));
   const remote = path.join(base, "remote"); await fs.mkdir(remote);
   const clientKey = createKindleKey(), hostKey = createKindleKey();
@@ -53,7 +53,16 @@ async function sftpFixture(t, { corruptRead = false, disconnectWrite = false } =
       if (valid) ctx.accept(); else ctx.reject();
     });
     client.on("ready", () => client.on("session", accept => {
-      accept().on("sftp", acceptSftp => {
+      const session = accept();
+      session.on("exec", (acceptExec, rejectExec, request) => {
+        if (!nativeReceiver || !["qiaomu-receiver-v1", "qiaomu-scan-v1"].includes(request.command)) { rejectExec(); return; }
+        const channel = acceptExec();
+        const scan = request.command === "qiaomu-scan-v1";
+        if (scan && scanFails) { channel.exit(1); channel.end(); return; }
+        channel.write(scan ? (scanPending ? "scan-pending\n" : "scan-requested\n") : '{"protocol":1,"scan":true}\n');
+        channel.exit(0); channel.end();
+      });
+      session.on("sftp", acceptSftp => {
         const stream = acceptSftp(), handles = new Map(); let next = 0;
         const event = (name, fn) => stream.on(name, (...args) => {
           void fn(...args).catch(error => { try { stream.status(args[0], error.code === "ENOENT" ? 2 : error.code === "EACCES" ? 3 : 4); } catch { /* Peer disconnected. */ } });
@@ -101,6 +110,24 @@ test("only explicit local destinations and supported safe filenames are accepted
   assert.equal(kindleBookName("中文 书名.epub"), "中文 书名.epub");
   for (const host of ["127.0.0.1", "8.8.8.8", "https://192.168.1.2", "192.168.1.256", "192.168.1.1;id"]) assert.throws(() => kindleConnection({ host }));
   for (const name of ["../book.epub", "book\n.epub", "book\\.epub", "payload.sh", "notes.md"]) assert.throws(() => kindleBookName(name));
+});
+
+test("native receiver authenticates its capabilities and requests library refresh over real SSH", async t => {
+  const { config, clientKey } = await sftpFixture(t, { nativeReceiver: true });
+  const connection = { ...config, mode: "native" };
+  const checked = await checkKindleConnection(connection, clientKey.private, fixtureOptions);
+  assert.equal(checked.ready, true);
+  const result = await refreshKindleLibrary(connection, clientKey.private, fixtureOptions);
+  assert.equal(result.scanRequested, true);
+});
+test("an ordinary SFTP server is not misidentified as a native Kindle receiver", async t => {
+  const { config, clientKey } = await sftpFixture(t);
+  await assert.rejects(checkKindleConnection({ ...config, mode: "native" }, clientKey.private, fixtureOptions), { code: "receiver" });
+});
+test("a stopped scanner queues refresh without reporting an indexing success", async t => {
+  const { config, clientKey } = await sftpFixture(t, { nativeReceiver: true, scanPending: true });
+  const result = await refreshKindleLibrary({ ...config, mode: "native" }, clientKey.private, fixtureOptions);
+  assert.equal(result.scanRequested, false); assert.equal(result.scanPending, true);
 });
 
 test("USB pairing is idempotent and preserves unrelated keys and reading settings", async t => {

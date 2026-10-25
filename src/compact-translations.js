@@ -1,7 +1,8 @@
 import pako from "pako";
 
 // Build-time compressed JSON only; no executable payload or external resources.
-// Keep decode buffers local so only the ordinary dictionaries remain resident.
+// Language and PDF CMap dictionaries share this codec. Keep decode buffers
+// local so only the ordinary dictionaries remain resident.
 export function decodeTranslationData(payload) {
   const binary = atob(payload);
   const bytes = new Uint8Array(binary.length);

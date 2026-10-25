@@ -1,5 +1,5 @@
 import { Platform } from "obsidian";
-import { isKindleBook, kindleConnection, kindleError } from "./kindle-config.js";
+import { isKindleBook, kindleConnection, kindleError, kindleMode, KINDLE_NATIVE_PORT, KINDLE_PORT } from "./kindle-config.js";
 
 export function createKindleController(plugin) {
   const aborters = new Set(), modals = new Set();
@@ -33,6 +33,16 @@ export function createKindleController(plugin) {
   const controller = {
     config, isBook: isKindleBook,
     isPaired: () => !!config().paired && !!config().secretId,
+    async setMode(mode) {
+      alive();
+      if (!["native", "koreader"].includes(mode)) throw kindleError("format");
+      if (upload || aborters.size) throw kindleError("busy");
+      const previous = config(), oldMode = kindleMode(previous.mode);
+      if (mode === oldMode) return;
+      const profiles = { ...previous.profiles, [oldMode]: { host: previous.host || "", port: previous.port || (oldMode === "native" ? KINDLE_NATIVE_PORT : KINDLE_PORT), fingerprint: previous.fingerprint || "", paired: !!previous.paired } };
+      const target = profiles[mode] || { host: previous.host || "", port: mode === "native" ? KINDLE_NATIVE_PORT : KINDLE_PORT, paired: false, fingerprint: "" };
+      await save({ ...previous, ...target, mode, profiles });
+    },
     trackModal(modal, open) { if (open) modals.add(modal); else modals.delete(modal); },
     async ensureKey() {
       alive();
@@ -47,7 +57,7 @@ export function createKindleController(plugin) {
       const id = `qiaomu-reader-kindle-${window.crypto.randomUUID()}`;
       plugin.app.secretStorage.setSecret(id, pair.private);
       if (plugin.app.secretStorage.getSecret(id) !== pair.private) throw kindleError("key");
-      try { await save({ ...previous, secretId: id, paired: false, fingerprint: "" }); }
+      try { await save({ ...previous, secretId: id, paired: false, fingerprint: "", profiles: {} }); }
       catch (error) { plugin.app.secretStorage.setSecret(id, ""); throw error; }
       return pair.public;
     },
@@ -56,12 +66,13 @@ export function createKindleController(plugin) {
       const { pairKindleUsb } = await transport();
       return run(async abortSignal => {
         const previous = config();
-        await pairKindleUsb(candidate, key, { signal: abortSignal, port: previous.port || 2222 });
-        await save({ ...previous, paired: true, fingerprint: "" });
-        return { paired: true };
+        const mode = kindleMode(previous.mode);
+        const result = await pairKindleUsb(candidate, key, { signal: abortSignal, port: previous.port || (mode === "native" ? KINDLE_NATIVE_PORT : KINDLE_PORT), mode });
+        await save({ ...previous, paired: true, fingerprint: "", installPending: !!result?.installPending });
+        return { paired: true, ...result };
       }, signal);
     },
-    async findUsb() { alive(); return (await transport()).findKindleUsb(); },
+    async findUsb() { alive(); return (await transport()).findKindleUsb({ mode: kindleMode(config().mode) }); },
     async discover(signal) {
       const key = await secret(), { discoverKindle } = await transport();
       return run(abortSignal => discoverKindle(config(), key, { signal: abortSignal }), signal);
@@ -74,7 +85,7 @@ export function createKindleController(plugin) {
         // A previously paired host always retains its trusted fingerprint.
         const fingerprint = current.fingerprint || "";
         const result = await checkKindleConnection({ ...connection, fingerprint }, key, { signal: abortSignal });
-        await save({ ...current, ...connection, paired: true, fingerprint: result.fingerprint });
+        await save({ ...current, ...connection, paired: true, installPending: false, fingerprint: result.fingerprint });
         return result;
       }, signal);
     },
@@ -87,7 +98,7 @@ export function createKindleController(plugin) {
       job.promise = run(async abortSignal => {
         let current = config();
         if (!current.paired || !current.host) throw kindleError("key");
-        const { checkKindleConnection, sendKindleFile } = await transport(), key = await secret();
+        const { checkKindleConnection, sendKindleFile, prepareKindleFile, refreshKindleLibrary } = await transport(), key = await secret();
         const connection = kindleConnection(current);
         const checked = await checkKindleConnection(connection, key, { signal: abortSignal });
         if (!current.fingerprint) {
@@ -98,7 +109,17 @@ export function createKindleController(plugin) {
         if (selected !== file) throw kindleError("changed");
         const adapter = plugin.app.vault.adapter;
         if (!adapter.getFullPath || !adapter.getBasePath) throw kindleError("file");
-        return sendKindleFile(kindleConnection(current), key, adapter.getFullPath(snapshot.path), snapshot.name, { signal: abortSignal, onProgress, vaultRoot: adapter.getBasePath() });
+        let prepared;
+        try {
+          if (kindleMode(current.mode) === "native") prepared = await prepareKindleFile(adapter.getFullPath(snapshot.path), snapshot.name, { mode: "native", signal: abortSignal, onProgress, vaultRoot: adapter.getBasePath() });
+          const receipt = await sendKindleFile(kindleConnection(current), key, prepared?.path || adapter.getFullPath(snapshot.path), prepared?.name || snapshot.name, { signal: abortSignal, onProgress, vaultRoot: prepared?.root || adapter.getBasePath() });
+          if (kindleMode(current.mode) === "native") {
+            onProgress?.({ phase: "index", sent: receipt.bytes, total: receipt.bytes });
+            try { Object.assign(receipt, await refreshKindleLibrary(kindleConnection(current), key, { signal: abortSignal })); }
+            catch { receipt.scanRequested = false; }
+          }
+          return { ...receipt, mode: kindleMode(current.mode), converted: !!prepared?.converted, ...(prepared?.engine ? { conversionEngine: prepared.engine } : {}) };
+        } finally { await prepared?.cleanup().catch(() => {}); }
       }, signal).finally(() => { if (upload === job) upload = null; });
       return job.promise;
     },

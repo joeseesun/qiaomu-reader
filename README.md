@@ -103,7 +103,14 @@ PDF 保留原始版式，支持独立缩放。有可靠文字层时，可选择�
 
 ## 无线发送到 Kindle（桌面端）
 
-Kindle 已越狱并安装 KOReader 后，可以在书库或文件菜单中右键电子书，选择「发送到 Kindle」。首次按两步引导完成：退出 KOReader、接 USB 并点击配对；再安全弹出并拔线，打开 KOReader、连接同一 Wi-Fi，点击「查找 Kindle」和「测试连接」。之后同一网络下即可直接发送，无需 Calibre。
+在书库或文件菜单中右键电子书，选择「发送到 Kindle」。支持两种阅读方式，连接窗口会记住各自的配对、地址和设备身份：
+
+- **KOReader**：保留原有流程。Kindle 已越狱并安装 KOReader，退出它后接 USB 配对；再安全弹出、打开 KOReader，连接同一 Wi-Fi 后查找和测试连接。无需 Calibre。
+- **Kindle 原生**：已越狱的 Kindle 通过[独立接收端](kindle-receiver/README.md)完成一次准备与 USB 配对，在设备上运行一次安装项后，即可保持 KOReader 关闭并传书。EPUB 由插件内置引擎在本机自动转为 AZW3，无需安装 Calibre；PDF、TXT、AZW3、AZW、MOBI 直接发送。此模式需支持 Scriptlet 的现代越狱；其他型号和旧固件需另行验证。
+
+文件上传后完整回读校验，已有同名书不会被覆盖。原生模式会请求 Kindle 刷新书库；“文件送达”“已请求刷新”“图书馆可见并可阅读”是不同状态。Kindle 需要保持唤醒和 Wi-Fi 连通；休眠时不承诺可达。格式转换保留原书，结束后清理临时副本。
+
+独立接收端由用户单独运行安装工具准备；Obsidian 插件不会下载或安装 Calibre、SSH 服务或其他可执行依赖。工具准备时会从 GitHub 原作者下载固定版本的 USBNetLite 包并校验摘要。转换在本机完成，书籍仅通过局域网发送至已配对设备。详见[实现与验证边界](docs/kindle-wireless.md)。
 
 配对私钥保存在 Obsidian SecretStorage；插件仅在你主动连接或发送时访问设备。每本书上传后都会读回校验，再放入 `documents`，已有同名文件会保留。本功能仅传书，不同步划线和阅读进度；支持的单文件大小上限为 512 MiB。
 
@@ -256,7 +263,7 @@ npm run verify:release
 npm run build:community
 ```
 
-构建产物是仓库根目录的 `main.js`、`styles.css` 和 `manifest.json`；可编辑样式位于 `src/styles.css`。标准与社区构建的每个安装资产均受 4,800,000 字节预算约束，在严格十进制 5 MB 以下至少留出 200 KB。生产包仅将九种语言的静态字典共享键名并本地压缩；原翻译文件仍可直接编辑，运行时无需网络或额外安装文件。构建同时生成忽略提交的 `main.js.json`，可用于分析各模块体积；验证记录见 [体积预算与离线验收](docs/bundle-size-qa.md)。唯一内置字体的来源、版本与许可见 [fonts/README.md](fonts/README.md) 和 [fonts/OFL.txt](fonts/OFL.txt)。
+构建产物是仓库根目录的 `main.js`、`styles.css` 和 `manifest.json`；可编辑样式位于 `src/styles.css`。标准与社区构建的每个安装资产均受 4,800,000 字节预算约束，在严格十进制 5 MB 以下至少留出 200 KB。生产包将九种语言与 44 个繁体中文 PDF CMap 的静态字典共享键名并本地无损压缩；原翻译和资源仍保留，运行时无需网络或额外安装文件。构建同时生成忽略提交的 `main.js.json`，可用于分析各模块体积；验证记录见 [4.9.0 候选体积整合](docs/bundle-size-4.9-integration.md) 与 [4.8.4 历史验收](docs/bundle-size-qa.md)。唯一内置字体的来源、版本与许可见 [fonts/README.md](fonts/README.md) 和 [fonts/OFL.txt](fonts/OFL.txt)。
 
 ### 验证与边界
 
@@ -335,7 +342,7 @@ Saving an AI reply preserves its complete Markdown body with the source below it
 
 ### Send books to Kindle (desktop)
 
-Right-click a book to send it over your local network to a jailbroken Kindle running KOReader. Pair once over USB, safely eject, then open KOReader, enable Wi-Fi and click Find Kindle (or enter its local IPv4 address). No Calibre or cloud relay is required. The private key stays in Obsidian SecretStorage. Uploads are streamed, read back and verified before publication, with existing same-name books preserved. This transfers files up to 512 MiB; it does not synchronize highlights or reading progress.
+Right-click a book and choose Send to Kindle. Choose KOReader or Kindle native reading in the connection dialog; each mode retains its own pairing and device identity. Existing KOReader delivery needs no Calibre. Native delivery uses the separately prepared [standalone receiver](kindle-receiver/README.md), works with KOReader closed, and converts EPUB to AZW3 locally with the bundled engine, without requiring Calibre or any conversion software. PDF, TXT, AZW3, AZW and MOBI are transferred directly. Built-in EPUB conversion supports files up to 64 MiB; complex unsupported media/layouts can use KOReader. Native setup requires a modern jailbreak with scriptlet support. The plugin never installs external executables or dependencies. Receiver preparation is a separate user-run tool that downloads checksum-pinned upstream packages from GitHub. Books are converted locally and sent only over the local network. Keep Kindle awake with Wi-Fi connected. Uploads up to 512 MiB are streamed and fully read back before publication; existing files are preserved. A requested native library scan is not proof of indexing or readability. See [verification boundaries](docs/kindle-wireless.md).
 
 ### Verification and limits
 
