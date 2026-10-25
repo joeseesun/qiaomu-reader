@@ -10021,6 +10021,7 @@ function bookNoteAction(settings, bookPath) {
   return asked[bookPath] ? "prompted" : "ask";
 }
 const WHATS_NEW = [
+  { v: "4.9.1", items: [qiaomuReaderTranslate("library.update")] },
   { v: "4.9.0", items: [qiaomuReaderTranslate("kindle.description"), qiaomuReaderTranslate("kindle.native-description")] },
   { v: "4.8.3", items: [qiaomuReaderTranslate("kindle.setup-update")] },
   { v: "4.8.2", items: [qiaomuReaderTranslate("about.update")] },
@@ -12092,7 +12093,7 @@ const LibraryModal = class extends Modal {
           new Notice(qiaomuReaderTranslate("library.duplicate", duplicate.path));
           continue;
         }
-        const metadata = item.bookMetadata || await readBookMetadata(data, item.name);
+        const metadata = item.bookMetadata?.title ? item.bookMetadata : await readBookMetadata(data, item.name);
         const added = await this.app.vault.createBinary(this._freeBookPath(target, cleanBookName(item.name, metadata)), data);
         records[added.path] = { addedAt: Date.now(), sha256: digest, mtime: added.stat.mtime, size: added.stat.size, title: metadata.title || "", author: metadata.author || "" };
         await this.plugin.rememberTextBook(added);
@@ -12263,7 +12264,7 @@ const LibraryModal = class extends Modal {
         const url = bookFile.extension === "pdf"
           ? await this.makePdfThumb(bookFile)
           : await this.makeEngineThumb(bookFile);
-        if (!url) { return; }
+        if (!url || !coverEl.isConnected || this.plugin._unloading) return;
         const small = await this.plugin._thumbStore.put(bookFile, url);
         if (!small) return;
         this.plugin.thumbCache[bookFile.path] = small; this._thumbDirty = true;
@@ -12276,6 +12277,7 @@ const LibraryModal = class extends Modal {
     return queued;
   }
   _scheduleThumbFlush() {
+    if (!this.contentEl.isConnected || !this._libraryRender || this.plugin._unloading) return;
     window.clearTimeout(this._thumbSaveT); this._thumbSaveT = window.setTimeout(() => this._flushThumbs(), 800);
   }
   _flushThumbs() {
