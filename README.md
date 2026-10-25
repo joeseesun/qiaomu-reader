@@ -256,7 +256,7 @@ npm run verify:release
 npm run build:community
 ```
 
-构建产物是仓库根目录的 `main.js`、`styles.css` 和 `manifest.json`；可编辑样式位于 `src/styles.css`。发布文件大小由构建与发布校验脚本中的项目预算检查。唯一内置字体的来源、版本与许可见 [fonts/README.md](fonts/README.md) 和 [fonts/OFL.txt](fonts/OFL.txt)。
+构建产物是仓库根目录的 `main.js`、`styles.css` 和 `manifest.json`；可编辑样式位于 `src/styles.css`。标准与社区构建的每个安装资产均受 4,800,000 字节预算约束，在严格十进制 5 MB 以下至少留出 200 KB。生产包仅将九种语言的静态字典共享键名并本地压缩；原翻译文件仍可直接编辑，运行时无需网络或额外安装文件。构建同时生成忽略提交的 `main.js.json`，可用于分析各模块体积；验证记录见 [体积预算与离线验收](docs/bundle-size-qa.md)。唯一内置字体的来源、版本与许可见 [fonts/README.md](fonts/README.md) 和 [fonts/OFL.txt](fonts/OFL.txt)。
 
 ### 验证与边界
 

@@ -1,11 +1,14 @@
 import path from "node:path";
 
-// Local engineering budget, not an Obsidian service limit. The speech feature
-// adds a desktop-only WebSocket client and its license (~60 KB combined); the
-// one-step AI connect flow (sign-in, model discovery, auto test) adds ~11 KB.
-// Kindle's portable SSH/SFTP client and nine-language pairing flow add ~380 KB.
-// This is a measured local budget, not an Obsidian directory limit.
-export const RELEASE_ASSET_BUDGET_BYTES = 5_750_000;
+// Both distribution profiles must leave 200 KB below a strict decimal 5 MB.
+// This engineering budget applies to every installed asset, not just main.js.
+export const RELEASE_ASSET_BUDGET_BYTES = 4_800_000;
+
+export function assertReleaseAssetSize(name, bytes) {
+  if (!Number.isSafeInteger(bytes) || bytes <= 0 || bytes > RELEASE_ASSET_BUDGET_BYTES) {
+    throw new Error(`${name} must be between 1 and ${RELEASE_ASSET_BUDGET_BYTES} bytes: ${bytes} bytes`);
+  }
+}
 
 export function buildProfile(name = "standard", root = process.cwd()) {
   if (!["standard", "community"].includes(name)) throw new Error(`Unknown build profile: ${name}`);
