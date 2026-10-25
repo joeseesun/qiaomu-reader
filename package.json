@@ -42,7 +42,8 @@
     "ssh2": "1.17.0",
     "ws": "^8.22.0",
     "@xmldom/xmldom": "0.9.12",
-    "postcss": "8.5.31"
+    "postcss": "8.5.31",
+    "pako": "1.0.11"
   },
   "overrides": {
     "@xmldom/xmldom": "$@xmldom/xmldom",

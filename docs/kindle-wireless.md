@@ -37,7 +37,7 @@ No plaintext private-key fallback. Another computer without the vault-local secr
 - Native Obsidian: menus and commands, upgrade persistence, keyboard/focus, short/narrow/English/dark/light modal states, errors and unload cleanup.
 - Physical Kindle: product-driven pairing, EPUB transfer through the running plugin and file read-back. Only platforms actually exercised are claimed as verified.
 
-Check new dependency findings separately from the baseline audit; do not silently update unrelated dependencies. The measured bundle increase is approximately 380 KB, so the explicit local asset budget changes from 5.25 MB to 5.75 MB. This is not an Obsidian policy limit.
+Check new dependency findings separately from the baseline audit; do not silently update unrelated dependencies. The original Kindle addition increased the bundle by approximately 380 KB and used a 5.75 MB engineering budget. The current standard and community builds share a 4,800,000-byte per-asset budget after lossless language/CMap packing; all Kindle code and language strings remain included. See [the 4.9.0 integration checks](bundle-size-4.9-integration.md).
 
 ## Local acceptance record (2026-10-24)
 

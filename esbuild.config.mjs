@@ -3,8 +3,9 @@ import JSZip from "jszip";
 import process from "process";
 import fs from "fs";
 import path from "path";
-import { buildProfile, RELEASE_ASSET_BUDGET_BYTES } from "./scripts/build-profile.mjs";
+import { buildProfile, assertReleaseAssetSize } from "./scripts/build-profile.mjs";
 import { foliateElements } from "./scripts/foliate-elements.mjs";
+import { compactTranslations } from "./scripts/compact-translations.mjs";
 
 const profileArg = process.argv.find((arg) => arg.startsWith("--profile="));
 const profile = buildProfile(profileArg?.slice("--profile=".length) || "standard");
@@ -221,7 +222,7 @@ const ctx = await esbuild.context({
   metafile: true,
   // Keep all notices verbatim apart from indentation in production bundles.
   banner: { js: prod ? banner.replace(/^[ \t]+/gm, "") : banner },
-  plugins: [...profile.plugins, kindleSsh, speechWebSocket, neutralise, foliate.plugin],
+  plugins: [...profile.plugins, ...(prod ? [await compactTranslations()] : []), kindleSsh, speechWebSocket, neutralise, foliate.plugin],
   charset: "utf8",
   minifyWhitespace: prod,
   minifySyntax: prod,
@@ -233,6 +234,7 @@ const ctx = await esbuild.context({
 
 if (prod) {
   const result = await ctx.rebuild();
+  fs.writeFileSync(path.join(profile.outputDir, "main.js.json"), JSON.stringify(result.metafile, null, 2) + "\n");
   const mainPath = path.join(profile.outputDir, "main.js");
   fs.writeFileSync(mainPath, fs.readFileSync(mainPath, "utf8").replace(/[ \t]+$/gm, ""));
   const fontData = fs.readFileSync("fonts/QiaomuReadingFangsong.woff2").toString("base64");
@@ -248,7 +250,7 @@ if (prod) {
   }
   for (const name of ["main.js", "styles.css"]) {
     const bytes = fs.statSync(path.join(profile.outputDir, name)).size;
-    if (bytes > RELEASE_ASSET_BUDGET_BYTES) throw new Error(`${name} exceeds the ${RELEASE_ASSET_BUDGET_BYTES} byte release budget: ${bytes} bytes`);
+    assertReleaseAssetSize(name, bytes);
     console.log(`${name}: ${bytes} bytes`);
   }
   // The pdf.js worker is now embedded in main.js (see loadPatchedWorker above), so
