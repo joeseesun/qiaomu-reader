@@ -1,3 +1,4 @@
+import { createReaderSelectionLifecycle } from "../src/reader-selection.js";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
@@ -257,18 +258,20 @@ test("opening AI and activating its right dock preserve focus without restoring 
   assert.equal(cleared, 1);
 });
 
-test("selection toolbar stays hidden until mouse release and removes document listeners on close", () => {
-  const { window } = new JSDOM('<main><div class="popup qiaomu-reader-hl-popup-on"></div><article></article></main>');
+test("selection toolbar stays hidden until mouse release and removes document listeners on close", async () => {
+  const { window } = new JSDOM('<main><div class="popup qiaomu-reader-hl-popup-on"></div><article>selection text</article></main>');
   const area = window.document.querySelector("article");
   let checks = 0;
-  const view = { areaEl: area, hlPopup: window.document.querySelector(".popup"), _hideHlPopup() { this.hlPopup.classList.remove("qiaomu-reader-hl-popup-on"); }, _scheduleSelCheck() { checks++; } };
+  const view = { areaEl: area, hlPopup: window.document.querySelector(".popup"), _hideHlPopup() { this.hlPopup.classList.remove("qiaomu-reader-hl-popup-on"); }, _onSelectionCheck() { checks++; } };
   const fn = source.slice(source.indexOf("function setupReaderSelection("), source.indexOf("function readerPageContext("));
-  const begin = source.slice(source.indexOf("function beginReaderSelection("), source.indexOf("function engineSelectionRect("));
-  vm.runInNewContext(`${begin}\n${fn}\nsetupReaderSelection`, { window })(view);
+  vm.runInNewContext(`${fn}\nsetupReaderSelection`, { window, createReaderSelectionLifecycle })(view);
   area.dispatchEvent(new window.PointerEvent("pointerdown", { pointerType: "mouse", button: 0 }));
   assert.equal(view._selectionDragging, true);
   assert.equal(view.hlPopup.classList.contains("qiaomu-reader-hl-popup-on"), false);
+  const range = window.document.createRange(); range.selectNodeContents(area);
+  window.document.getSelection().addRange(range);
   window.document.dispatchEvent(new window.PointerEvent("pointerup"));
+  await new Promise(resolve => setTimeout(resolve, 80));
   assert.equal(view._selectionDragging, false);
   assert.equal(checks, 1);
   view._selectionCleanup();
@@ -291,6 +294,28 @@ test("selection toolbar is clamped inside a narrow reader viewport", () => {
   assert.ok(parseFloat(pop.style.top) >= 0);
   assert.ok(parseFloat(pop.style.top) + 70 <= 500);
   assert.equal(pop.style.maxWidth, "244px");
+});
+
+test("mobile selection tools avoid the selected line and its handles when space is available", () => {
+  const { window } = new JSDOM("<main><div></div></main>");
+  const root = window.document.querySelector("main"), pop = root.firstChild;
+  root.getBoundingClientRect = () => rect(0, 0, 390, 700);
+  Object.defineProperties(root, { clientWidth: { value: 390 }, clientHeight: { value: 700 } });
+  Object.defineProperties(pop, { offsetWidth: { value: 270 }, offsetHeight: { value: 44 } });
+  const start = source.indexOf("function positionHlPopup(");
+  const end = source.indexOf("function followFootnote(", start);
+  const place = vm.runInNewContext(`${source.slice(start, end)}\npositionHlPopup`, {
+    qiaomuReaderIsMobile: () => true, docOf: el => el.ownerDocument,
+    clampNum: (n, lo, hi) => Math.max(lo, Math.min(hi, n)),
+  });
+  for (const y of [8, 330, 560]) {
+    const selected = rect(10, y, 320, 24);
+    place({ contentEl: root, hlPopup: pop }, selected, 270, 44);
+    const top = parseFloat(pop.style.top);
+    assert.ok(top + 44 <= selected.top - 24 || top >= selected.bottom + 24);
+    assert.ok(top >= 8 && top + 44 <= 700 - 74);
+  }
+  window.close();
 });
 
 test("PDF page picker uses original pages even when zoom creates more screenfuls", () => {
