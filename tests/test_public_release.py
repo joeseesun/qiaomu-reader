@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import io
 from pathlib import Path
 import tempfile
 import unittest
@@ -62,7 +63,7 @@ class PublicReleaseTests(unittest.TestCase):
 
     def test_draft_like_404_fails_even_when_local_assets_exist(self):
         def opener(request, timeout):
-            raise HTTPError(request.full_url, 404, "Not Found", {}, None)
+            raise HTTPError(request.full_url, 404, "Not Found", {}, io.BytesIO(b"not found"))
 
         result = module.check_public_release(
             self.root, "owner/plugin", "1.2.3", opener=opener
