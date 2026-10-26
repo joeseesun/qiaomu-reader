@@ -1074,7 +1074,11 @@ export async function probeCliAi(id, options = {}) {
     signal: options.signal,
   });
   let loggedIn = false;
-  if (id === "codex-cli") loggedIn = /logged in/i.test(result.stdout + result.stderr);
+  if (id === "codex-cli") {
+    // Codex reports API-key auth without "Logged in" in some versions.
+    // Match a status line so "Not logged in" cannot count as authenticated.
+    loggedIn = /^(?:logged in\b|api key configured\b)/im.test(`${result.stdout}\n${result.stderr}`);
+  }
   else if (id === "claude-cli") {
     try { loggedIn = JSON.parse(result.stdout).loggedIn === true; } catch { loggedIn = false; }
   } else if (id === "grok-cli") {
