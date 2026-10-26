@@ -461,6 +461,15 @@ export class EpubEngine {
     }
 }
 
+// Read container metadata without changing the book or creating a reader view.
+export async function readBookMetadata(bytes, fileName) {
+    if (isTextBook(fileName) || /\.pdf$/i.test(fileName)) return {};
+    let book;
+    try { book = await makeBook(new File([bytes], fileName)); return book.metadata || {}; }
+    catch { return {}; }
+    finally { book?.destroy?.(); }
+}
+
 // Prefer embedded artwork; otherwise create an offline metadata cover. Existing
 // book bytes and reading locations stay untouched. Return a durable thumbnail Blob.
 export async function coverFromBytes(bytes, fileName, resolveStarterCover) {
@@ -469,6 +478,16 @@ export async function coverFromBytes(bytes, fileName, resolveStarterCover) {
     try {
         let blob;
         try { blob = await book.getCover?.(); } catch { /* use the book's metadata */ }
+        // MOBI/AZW3 parsers can return an untyped Blob. Data URLs must carry
+        // the actual image type before Chromium can use them as CSS artwork.
+        if (blob && (!blob.type || blob.type === "application/octet-stream")) {
+            const head = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
+            const type = head[0] === 255 && head[1] === 216 ? "image/jpeg"
+                : head[0] === 137 && head[1] === 80 && head[2] === 78 && head[3] === 71 ? "image/png"
+                : head[0] === 71 && head[1] === 73 && head[2] === 70 ? "image/gif"
+                : head[8] === 87 && head[9] === 69 && head[10] === 66 && head[11] === 80 ? "image/webp" : "";
+            if (type) blob = new Blob([blob], { type });
+        }
         if (resolveStarterCover && (!blob || (blob.type === "image/svg+xml" && isGeneratedBookCover(await blob.text())))) {
             try { blob = await resolveStarterCover(book.metadata) || blob; }
             catch { /* keep the embedded cover or metadata fallback */ }

@@ -54,6 +54,7 @@ if (profile.name === "community") {
   requireCheck(!mainSource.includes("ACP installed but its executable was not found"), "installer execution code leaked into the community bundle");
 }
 const cssSource = fs.readFileSync(path.join(profile.outputDir, "styles.css"), "utf8");
+requireCheck(cssSource.includes(fs.readFileSync(path.join(root, "LICENSE"), "utf8").replaceAll("*/", "* /")), "styles.css is missing the complete project license");
 for (const name of ["edge-tts-LGPL.txt", "marked-MIT.txt"]) {
   requireCheck(cssSource.includes(fs.readFileSync(path.join(root, "licenses", name), "utf8").replaceAll("*/", "* /")), `styles.css is missing the complete license: ${name}`);
 }

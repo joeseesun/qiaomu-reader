@@ -76,7 +76,7 @@ ${pdfDecoderLicenses}
 
 PROJECT LICENSE — GPL-3.0-only
 Copyright (c) 2026 向阳乔木
-${projectLicense}
+The complete GPL-3.0-only license is included in the accompanying styles.css.
 
 ADAPTED ELTON READER PORTIONS — ORIGINAL MIT LICENSE
 ${upstreamLicense}
@@ -241,7 +241,7 @@ if (prod) {
   const css = fs.readFileSync("src/styles.css", "utf8") + `\n/* Bundled reading subset: SIL OFL 1.1\n${fontLicense}\n*/\n@font-face { font-family: 'QBR Zhuque Fangsong'; src: url('data:font/woff2;base64,${fontData}') format('woff2'); font-style: normal; font-weight: 400; font-display: swap; }\n`;
   const markedLicense = fs.readFileSync("licenses/marked-MIT.txt", "utf8").replaceAll("*/", "* /");
   const edgeLicense = fs.readFileSync("licenses/edge-tts-LGPL.txt", "utf8").replaceAll("*/", "* /");
-  fs.writeFileSync(path.join(profile.outputDir, "styles.css"), css + `\n/* Bundled Marked GFM parser license\n${markedLicense}\n*/\n/* Edge TTS interoperability license\n${edgeLicense}\n*/\n`);
+  fs.writeFileSync(path.join(profile.outputDir, "styles.css"), css + `\n/* Project license — GPL-3.0-only\n${projectLicense.replaceAll("*/", "* /")}\n*/\n/* Bundled Marked GFM parser license\n${markedLicense}\n*/\n/* Edge TTS interoperability license\n${edgeLicense}\n*/\n`);
   if (profile.name === "community") {
     fs.copyFileSync("manifest.json", path.join(profile.outputDir, "manifest.json"));
     fs.writeFileSync(path.join(profile.outputDir, "build-info.json"), JSON.stringify({

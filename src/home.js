@@ -1,6 +1,6 @@
 // What Qiaomu Reader shows on Qiaomu Home (see qiaomu-home.js): books in progress with covers, a shortcut to add books,
-// and title search over the library. Reads only in-memory state; never opens books or files until the user clicks.
-import { homeProvider } from "./qiaomu-home.js";
+// and title search over the library. Reads cached thumbnails on demand; never opens book bytes until the user clicks.
+import { homeProvider, notifyHomeChanged } from "./qiaomu-home.js";
 
 const MAX_ITEMS = 4;
 
@@ -20,14 +20,24 @@ function percentOf(record) {
  * @param {(key: string) => string} translate the plugin's UI translator
  */
 export function createHomeProvider(plugin, translate) {
-  const cover = (path) => {
-    const url = plugin.thumbCache && plugin.thumbCache[path];
-    return typeof url === "string" && url.startsWith("data:image/") ? url : undefined;
+  const pending = new Set();
+  const cover = (file) => {
+    const path = file.path, url = plugin.thumbCache?.[path];
+    if (typeof url === "string" && !url.startsWith("blob:")) return url;
+    if (plugin._thumbStore && !pending.has(path) && !Object.hasOwn(plugin.thumbCache || {}, path)) {
+      pending.add(path);
+      void plugin._thumbStore.get(file).then(image => {
+        if (plugin._unloading) return;
+        (plugin.thumbCache ||= {})[path] = image || null;
+        if (image) notifyHomeChanged(plugin.app, plugin.manifest.id);
+      }).catch(() => {}).finally(() => pending.delete(path));
+    }
+    return undefined;
   };
   const bookItem = (file) => {
     const record = plugin.getProgress(file.path);
     const progress = percentOf(record);
-    const image = cover(file.path);
+    const image = cover(file);
     return {
       id: file.path,
       title: file.basename,

@@ -3,6 +3,8 @@ import fs from "node:fs";
 import vm from "node:vm";
 import test from "node:test";
 import { JSDOM } from "jsdom";
+import { catalogMetadata, vaultCatalog } from "../src/book-catalog.js";
+import { webcrypto } from "node:crypto";
 import { coverPalette } from "../src/book-cover.js";
 
 const source = fs.readFileSync(new URL("../src/main.js", import.meta.url), "utf8");
@@ -30,7 +32,7 @@ function setup() {
   const Library = vm.runInNewContext(`${code}; LibraryModal`, { Modal: class { close() {} }, window,
     qiaomuReaderTranslate: (key, n) => n === undefined ? key : `${key}:${n}`, svgIcon() {},
     bookNoteLinkFor: () => "linked", resolveBookNote: () => ({}), openOrCreateBookNoteBeside: async () => { notes++; },
-    Notice: class {}, Date, qiaomuReaderPath: value => value, coverPalette,
+    Notice: class {}, Date, catalogMetadata, vaultCatalog, crypto: webcrypto, qiaomuReaderPath: value => value, coverPalette,
   });
   const library = new Library({}, plugin);
   library.loadThumb = async () => {};
@@ -110,8 +112,10 @@ test("library regenerates stale object-URL covers instead of hiding the title be
   x.library.makeEngineThumb = async () => { generated++; return "data:image/png;base64,new-cover"; };
   const shown = [];
   x.library.showImg = async (_cover, _placeholder, url) => { shown.push(url); return true; };
-  await x.Library.prototype.loadThumb.call(x.library, x.file, {}, {});
+  x.library.plugin._thumbStore = { get: async () => null, put: async () => "app://vault/thumbs/new.jpg" };
+  const cover = x.host.createDiv();
+  await x.Library.prototype.loadThumb.call(x.library, x.file, cover, {});
   assert.equal(generated, 1);
-  assert.deepEqual(shown, ["data:image/png;base64,new-cover"]);
+  assert.deepEqual(shown, ["app://vault/thumbs/new.jpg"]);
   assert.equal(x.library.plugin.thumbCache[x.file.path], shown[0]);
 });

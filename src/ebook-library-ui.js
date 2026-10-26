@@ -1,3 +1,5 @@
+import { vaultCatalog, bookMatches, bookMetadata } from './book-catalog.js';
+import { showBookOwnership } from './book-ownership-ui.js';
 function element(parent, tag, text, cls) {
   const node = parent.ownerDocument.createElement(tag);
   if (text !== undefined) node.textContent = text;
@@ -107,13 +109,17 @@ export function createEbookResult(parent, book, t, { onDownload, icon, pageUrl }
   return { row, button, setCover };
 }
 
-export function mountEbookDiscovery(shell, plugin, library, t, { icon, sourceParent = shell } = {}) {
+export function mountEbookDiscovery(shell, plugin, library, t, { icon, sourceParent = shell, sharedForm, sharedField, onNavigate = () => {} } = {}) {
   const service = plugin.ebookLibrary;
   const view = shell.ownerDocument.defaultView;
   const sources = element(sourceParent, 'div', undefined, 'qiaomu-reader-ebook-sources');
+  const localButton = sharedForm && element(sources, 'button', t('catalog.local'));
+  if (localButton) localButton.type = 'button';
   const publicButton = element(sources, 'button', t('ebook.source-public'));
   const qiaomuButton = element(sources, 'button', t('ebook.source-qiaomu'));
   publicButton.type = qiaomuButton.type = 'button';
+  if (sharedForm) { shell.classList.add('qiaomu-reader-find-unified'); sources.append(localButton, qiaomuButton, publicButton); }
+  const localRoot = sharedForm && element(shell, 'section', undefined, 'qiaomu-reader-discovery-results');
   const publicRoot = element(shell, 'div');
   const premium = element(shell, 'section', undefined, 'qiaomu-reader-ebook-panel'); premium.hidden = true;
   let closed = false, active = false, aborter = null, epoch = 0, searchEpoch = 0;
@@ -121,12 +127,16 @@ export function mountEbookDiscovery(shell, plugin, library, t, { icon, sourcePar
     const button = element(parent, 'button', text, cls); button.type = 'button';
     button.addEventListener('click', click); return button;
   };
+  let selected = sharedForm ? 'local' : 'public';
   const select = which => {
-    publicRoot.hidden = which !== 'public'; premium.hidden = which === 'public';
+    selected = which;
+    if (localRoot) localRoot.hidden = which !== 'local';
+    localButton?.setAttribute('aria-pressed', String(which === 'local'));
+    publicRoot.hidden = which !== 'public'; premium.hidden = which !== 'qiaomu';
     publicButton.setAttribute('aria-pressed', String(which === 'public'));
-    qiaomuButton.setAttribute('aria-pressed', String(which !== 'public'));
+    qiaomuButton.setAttribute('aria-pressed', String(which === 'qiaomu'));
   };
-  const cancel = () => { epoch++; searchEpoch++; aborter?.abort(); aborter = new AbortController(); };
+  const cancel = () => { if (sharedForm) sharedForm.querySelector('button[type="submit"]').disabled = false; epoch++; searchEpoch++; aborter?.abort(); aborter = new AbortController(); };
   const live = ticket => !closed && active && ticket === epoch;
   async function render() {
     cancel(); const ticket = epoch, signal = aborter.signal; premium.replaceChildren();
@@ -172,10 +182,10 @@ export function mountEbookDiscovery(shell, plugin, library, t, { icon, sourcePar
     const detailBody = element(details, 'div');
     element(detailBody, 'span', t('ebook.expires', new Date(profile.expiresAt * 1000).toLocaleDateString(plugin.settings.language || 'zh')));
     const logout = createButton(detailBody, t('ebook.sign-out'), () => void action(logout, async () => { await service.logout(signal); if (live(ticket)) await render(); }));
-    const form = element(premium, 'form', undefined, 'qiaomu-reader-discovery-search');
-    const label = element(form, 'label', t('book-title-or-author')), field = element(label, 'input');
+    const form = sharedForm || element(premium, 'form', undefined, 'qiaomu-reader-discovery-search');
+    const field = sharedField || element(element(form, 'label', t('book-title-or-author')), 'input');
     field.type = 'search'; field.maxLength = 160; field.autocomplete = 'off';
-    const submit = element(form, 'button', t('search')); submit.type = 'submit';
+    const submit = sharedForm ? sharedForm.querySelector('button[type="submit"]') : element(form, 'button', t('search')); submit.type = 'submit';
     const toolbar = element(premium, 'div', undefined, 'qiaomu-reader-ebook-toolbar'); toolbar.hidden = true;
     const count = element(toolbar, 'span'); count.setAttribute('role', 'status');
     const filters = element(toolbar, 'div', undefined, 'qiaomu-reader-ebook-filters');
@@ -222,14 +232,28 @@ export function mountEbookDiscovery(shell, plugin, library, t, { icon, sourcePar
         }
       } catch { /* Optional covers never replace successful search results with an error. */ }
     }
-    form.addEventListener('submit', event => { event.preventDefault(); void action(submit, async () => {
+    const search = event => { if (!live(ticket)) return; event.preventDefault(); void action(submit, async () => {
       if (!field.value.trim()) { field.focus(); return; }
       const searchTicket = ++searchEpoch;
       tell(t('searching-books')); results.replaceChildren(); toolbar.hidden = true; coverNote.hidden = true;
-      const books = await service.search(field.value, signal); if (!live(ticket) || searchTicket !== searchEpoch) return;
+      const query = field.value;
+      const localCheck = plugin.searchCalibreBooks?.(query).catch(() => ({ books: [], available: false }));
+      const books = await service.search(query, signal); if (!live(ticket) || searchTicket !== searchEpoch) return;
       tell(books.length ? '' : t('no-books-found')); toolbar.hidden = !books.length; coverNote.hidden = !books.length;
       filters.replaceChildren(); const rows = new Map();
-      for (const book of books) rows.set(book.id, createEbookResult(results, book, t, { icon, onDownload: button => void download(book, button) }));
+      const owned = plugin.bookFiles ? vaultCatalog(plugin) : [];
+      owned.push(...(plugin.bookRecords?.entries() || []).filter(record => !owned.some(book => book.path === record.path)));
+      for (const book of books) {
+        const row = createEbookResult(results, book, t, { icon, onDownload: button => void download(book, button) });
+        rows.set(book.id, row);
+        showBookOwnership(row, book, plugin, t, { records: owned, onNavigate });
+      }
+      void Promise.resolve(localCheck).then(result => {
+        if (!live(ticket) || searchTicket !== searchEpoch) return;
+        for (const book of books) {
+          if (!rows.get(book.id).row.querySelector('.qiaomu-reader-ebook-owned')) showBookOwnership(rows.get(book.id), book, plugin, t, { records: [], calibre: result?.books || [] });
+        }
+      });
       const buttons = new Map();
       const filter = format => {
         let visible = 0;
@@ -242,7 +266,9 @@ export function mountEbookDiscovery(shell, plugin, library, t, { icon, sourcePar
         buttons.set(format, button);
       }
       filter(''); void covers(books, rows, searchTicket);
-    }); });
+    }); };
+    form.addEventListener('submit', search);
+    signal.addEventListener('abort', () => form.removeEventListener('submit', search), { once: true });
     field.focus();
     const historyTicket = searchEpoch;
     try {
@@ -255,8 +281,47 @@ export function mountEbookDiscovery(shell, plugin, library, t, { icon, sourcePar
       }
     } catch (error) { if (historyTicket === searchEpoch && error.code !== 'cancelled') tell(ebookMessage(error, t)); }
   }
+  let localTicket = 0;
+  async function searchLocal() {
+    const request = ++localTicket;
+    localRoot.replaceChildren();
+    const query = sharedField.value;
+    const books = vaultCatalog(plugin).filter(book => bookMatches(book.file, book, query));
+    element(localRoot, 'p', t('catalog.local-count', books.length));
+    for (const book of books.slice(0, 50)) {
+      const row = createEbookResult(localRoot, { ...book, title: book.title || book.file.basename, format: book.file.extension }, t, { onDownload: () => { onNavigate(); void plugin.openFile(book.file); } });
+      row.button.textContent = t('catalog.open');
+    }
+    if (books.length > 50) element(localRoot, 'p', t('catalog.narrow'));
+    if (!query.trim()) return;
+    const status = element(localRoot, 'p', t('catalog.calibre-checking'));
+    try {
+      const result = await plugin.searchCalibreBooks(query);
+      if (closed || request !== localTicket) return;
+      status.textContent = t(result.available ? 'catalog.calibre-count' : 'catalog.calibre-unavailable', result.books.length);
+      for (const book of result.books) {
+        const row = createEbookResult(localRoot, { ...bookMetadata(book), title: book.title, format: book.formats?.[0] || '' }, t, { onDownload: () => { onNavigate(); plugin.openCalibrePicker(library, book.title); } });
+        row.button.textContent = t('add-from-calibre');
+      }
+    } catch { if (!closed && request === localTicket) status.textContent = t('catalog.calibre-unavailable'); }
+  }
+  if (sharedForm) {
+    const search = event => { if (!closed && selected === 'local') { event.preventDefault(); void searchLocal(); } };
+    sharedForm.addEventListener('submit', search);
+    localButton.addEventListener('click', () => { active = false; cancel(); select('local'); void searchLocal(); });
+    element(localRoot, 'p', t('catalog.local-help'));
+    const records = plugin.bookRecords?.entries().sort((a, b) => b.addedAt - a.addedAt).slice(0, 20) || [];
+    if (records.length) {
+      const history = element(localRoot, 'details', undefined, 'qiaomu-reader-book-records');
+      element(history, 'summary', t('catalog.history'));
+      for (const record of records) createButton(history, record.title || record.path, () => {
+        const file = plugin.app.vault.getAbstractFileByPath(record.recordPath);
+        if (file) { onNavigate(); void plugin.app.workspace.getLeaf(false).openFile(file); }
+      });
+    }
+  }
   publicButton.addEventListener('click', () => { active = false; cancel(); select('public'); });
   qiaomuButton.addEventListener('click', () => { active = true; select('qiaomu'); void render(); });
-  select('public');
-  return { publicRoot, dispose() { closed = true; active = false; cancel(); premium.replaceChildren(); } };
+  select(selected);
+  return { publicRoot, source: () => selected, dispose() { closed = true; active = false; cancel(); premium.replaceChildren(); } };
 }
