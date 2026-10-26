@@ -7,7 +7,7 @@ export function sortLibrary(files, mode, locale, progress, imports = {}) {
   return files.sort((a, b) => {
     const score = f => mode === 'added' ? imports[f.path]?.addedAt || f.stat?.ctime || 0
       : mode === 'title' ? 0 : progress(f.path)?.lastRead || 0;
-    return score(b) - score(a) || collator.compare(a.basename, b.basename) || collator.compare(a.path, b.path);
+    return score(b) - score(a) || collator.compare(imports[a.path]?.title || a.basename, imports[b.path]?.title || b.basename) || collator.compare(a.path, b.path);
   });
 }
 export function cleanBookName(name, metadata = {}) {

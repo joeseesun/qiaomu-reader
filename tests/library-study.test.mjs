@@ -3,6 +3,8 @@ import fs from "node:fs";
 import vm from "node:vm";
 import test from "node:test";
 import { JSDOM } from "jsdom";
+import { catalogMetadata, vaultCatalog } from "../src/book-catalog.js";
+import { webcrypto } from "node:crypto";
 import { coverPalette } from "../src/book-cover.js";
 
 const source = fs.readFileSync(new URL("../src/main.js", import.meta.url), "utf8");
@@ -30,7 +32,7 @@ function setup() {
   const Library = vm.runInNewContext(`${code}; LibraryModal`, { Modal: class { close() {} }, window,
     qiaomuReaderTranslate: (key, n) => n === undefined ? key : `${key}:${n}`, svgIcon() {},
     bookNoteLinkFor: () => "linked", resolveBookNote: () => ({}), openOrCreateBookNoteBeside: async () => { notes++; },
-    Notice: class {}, Date, qiaomuReaderPath: value => value, coverPalette,
+    Notice: class {}, Date, catalogMetadata, vaultCatalog, crypto: webcrypto, qiaomuReaderPath: value => value, coverPalette,
   });
   const library = new Library({}, plugin);
   library.loadThumb = async () => {};

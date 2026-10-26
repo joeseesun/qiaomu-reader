@@ -215,3 +215,30 @@ test('download reports transfer and verification before vault import', async () 
   await f.service.download({ id }, async () => { assert.equal(events.at(-1), 'importing'); return 1; }, state => events.push(state));
   assert.deepEqual(events, ['running', 'verifying', 'importing']);
 });
+
+test('resume retains full bibliography and synced receipts suppress completed jobs on a fresh device', async () => {
+ const f = await activated(async o => o.url.endsWith('/file') ? {status:200,arrayBuffer:bytes} : {status:200,json:{id,state:'complete',result}});
+ const candidate={id,title:'三体',author:'刘慈欣',year:'2008',language:'zh',isbn:'9787536692930',accessToken:'not metadata'};
+ await assert.rejects(f.service.download(candidate,async()=>0),{code:'import'});
+ assert.equal(f.state().pendingBooks[id].year,'2008');assert.equal(f.state().pendingBooks[id].accessToken,undefined);
+ await f.service.download(null,async files=>{assert.equal(files[0].bookMetadata.author,'刘慈欣');assert.equal(files[0].bookMetadata.language,'zh');assert.equal(files[0].bookJobId,id);return 1;},null,null,id);
+ assert.equal(f.state().pendingBooks[id],undefined);
+ const other=await activated(async()=>({status:200,json:{jobs:[{id,state:'complete',availableUntil:Date.now()/1000+1000}],id,state:'complete',result}}));
+ other.plugin.bookRecords={hasJob:value=>value===id};assert.deepEqual(await other.service.jobs(),[]);
+ await assert.rejects(other.service.download(null,async()=>assert.fail('must not reimport'),null,null,id),{code:'already-imported'});
+});
+
+test('one query searches local authors first, preserves text across sources, and remains usable after a cancelled online search',async()=>{
+ const f=fixture(),dom=new JSDOM('<main><form><input type="search"><button type="submit">Search</button></form></main>');
+ const document=dom.window.document,form=document.querySelector('form'),field=document.querySelector('input');let online=0,finish;
+ const file={path:'Books/123.epub',basename:'123',extension:'epub'};
+ f.plugin.settings.bookImports={[file.path]:{title:'三体',author:'刘慈欣'}};f.plugin.bookFiles=()=>[file];f.plugin.searchCalibreBooks=async()=>({books:[],available:false});
+ Object.assign(f.service,{isActivated:()=>true,profile:async()=>({expiresAt:1800000000,dailyLimit:20,usedToday:0}),jobs:async()=>[],search:()=>{online++;return new Promise(r=>{finish=r;});}});
+ const ui=mountEbookDiscovery(document.querySelector('main'),f.plugin,{},key=>key,{sharedForm:form,sharedField:field});
+ field.value='刘慈欣';form.dispatchEvent(new dom.window.Event('submit',{cancelable:true}));await new Promise(r=>setImmediate(r));
+ assert.equal(online,0);assert.match(document.querySelector('section:not([hidden])').textContent,/三体/);assert.equal(document.querySelectorAll('input[type=search]').length,1);
+ const buttons=[...document.querySelectorAll('.qiaomu-reader-ebook-sources button')];buttons.find(b=>b.textContent==='ebook.source-qiaomu').click();await new Promise(r=>setImmediate(r));
+ assert.equal(field.value,'刘慈欣');form.dispatchEvent(new dom.window.Event('submit',{cancelable:true}));await new Promise(r=>setImmediate(r));assert.equal(online,1);
+ buttons.find(b=>b.textContent==='catalog.local').click();assert.equal(form.querySelector('button').disabled,false);
+ finish([{id,title:'Stale result',format:'epub'}]);await new Promise(r=>setImmediate(r));assert.ok(!document.querySelector('section:not([hidden])').textContent.includes('Stale result'));ui.dispose();
+});

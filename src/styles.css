@@ -2014,7 +2014,7 @@ body.qiaomu-reader-active-view .status-bar { display: none; }
 .qiaomu-reader-kindle-notice { display: flex; align-items: center; gap: 12px; }
 .qiaomu-reader-kindle-notice button { color: inherit; background: transparent; border: 1px solid currentColor; box-shadow: none; padding: 3px 8px; }
 
-/* Explicit source choice; public discovery remains the default. */
+/* Explicit source choice; unified discovery starts with local books. */
 .qiaomu-reader-ebook-sources { display:flex; gap:4px; margin:0; flex-wrap:wrap; }
 .qiaomu-reader-ebook-sources button { min-height:36px; padding:6px 14px; border:1px solid transparent; border-radius:7px; box-shadow:none; background:transparent; color:var(--text-muted); font-size:14px; }
 .qiaomu-reader-ebook-sources button[aria-pressed="true"] { color:var(--text-normal); background:var(--background-modifier-hover); }
@@ -2040,3 +2040,15 @@ body.qiaomu-reader-active-view .status-bar { display: none; }
 
 .qiaomu-reader-lib-resume-host:empty { display:none; }
 .qiaomu-reader-lib-resume-host { margin:0 28px 18px; }
+
+.qiaomu-reader-lib-book-author { height:1.5em; line-height:1.5; margin-bottom:4px; font-size:11px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.qiaomu-reader-ebook-owned { font-size:12px; color:var(--text-muted); overflow-wrap:anywhere; }
+.qiaomu-reader-ebook-owned button { padding:2px 6px; height:auto; font-size:12px; }
+.qiaomu-reader-book-discovery .qiaomu-reader-book-records { margin-top:16px; }
+.qiaomu-reader-book-records button { display:block; max-width:100%; margin-top:6px; white-space:normal; text-align:start; height:auto; }
+
+.qiaomu-reader-find-unified > .qiaomu-reader-ebook-panel { margin-top:12px; }
+@container (max-width:420px) {
+  .qiaomu-reader-find-unified .qiaomu-reader-ebook-sources { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); width:100%; }
+  .qiaomu-reader-find-unified .qiaomu-reader-ebook-sources button { padding:6px 4px; font-size:13px; white-space:normal; height:auto; }
+}

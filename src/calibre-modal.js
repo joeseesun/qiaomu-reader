@@ -1,3 +1,4 @@
+import { matchBook, vaultCatalog } from './book-catalog.js';
 import { Modal, Notice, Platform } from "obsidian";
 import { QIAOMU_READER_EN } from "./i18n-en.js";
 import { QIAOMU_READER_ZH_CN } from "./i18n-zh.js";
@@ -32,7 +33,7 @@ export class CalibreSearchModal extends Modal {
     super(app);
     this.plugin = plugin;
     this.hooks = hooks || {};
-    this._query = "";
+    this._query = this.hooks.query || "";
     this._syntax = false;
     this._books = [];
     this._selected = new Set();
@@ -52,7 +53,7 @@ export class CalibreSearchModal extends Modal {
       this._error = tx(this.plugin, "calibre-desktop-only");
     }
     this._draw();
-    if (Platform.isDesktopApp) void this._search("");
+    if (Platform.isDesktopApp) void this._search(this._query);
   }
 
   onClose() {
@@ -206,6 +207,8 @@ export class CalibreSearchModal extends Modal {
 
   _bookState(book) {
     const settings = this.plugin.settings;
+    const known = matchBook(book, this.plugin.bookFiles ? vaultCatalog(this.plugin) : []);
+    if (known?.exact && known.record.file) return { kind: "imported", path: known.record.path };
     const mapped = findCalibreImportByUuid(settings, book.uuid)
       || findCalibreImportByIsbn(settings, book.isbn);
     if (mapped && this.app.vault.getAbstractFileByPath(mapped.path)) {

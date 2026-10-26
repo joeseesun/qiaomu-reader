@@ -1,3 +1,4 @@
+import { bookMetadata } from './book-catalog.js';
 // The public discovery flow never depends on this opt-in service.
 export const EBOOK_API = 'https://ebook-mcp.qiaomu.ai/reader/api';
 const LOCAL_KEY = 'qiaomu-reader-ebook-access';
@@ -151,7 +152,7 @@ export function createEbookLibrary(plugin, request, { cryptoApi = window.crypto,
     async jobs(signal) {
       const response = (await api('/jobs', undefined, signal)).json;
       const imported = new Set(local().importedJobs || []);
-      return (response?.jobs || []).filter(x => jobId(x.id) && !imported.has(x.id) && x.availableUntil * 1000 > now() && ['queued', 'running', 'complete'].includes(x.state));
+      return (response?.jobs || []).filter(x => jobId(x.id) && !imported.has(x.id) && !plugin.bookRecords?.hasJob(x.id) && x.availableUntil * 1000 > now() && ['queued', 'running', 'complete'].includes(x.state));
     },
     async download(candidate, importer, progress, signal, resumeId) {
       if (downloading) throw ebookError('busy'); downloading = true;
@@ -164,6 +165,7 @@ export function createEbookLibrary(plugin, request, { cryptoApi = window.crypto,
           if (!jobId(candidate?.id)) throw ebookError('search-expired');
           job = (await api('/jobs', { candidateId: candidate.id, requestId: cryptoApi.randomUUID() }, activeSignal)).json;
         }
+        if (candidate && jobId(job.id)) save({ ...local(), pendingBooks: { ...local().pendingBooks, [job.id]: bookMetadata(candidate) } });
         const deadline = now() + 210000;
         while (job.state === 'queued' || job.state === 'running') {
           progress?.(job.state); if (now() > deadline) throw ebookError('pending');
@@ -171,17 +173,19 @@ export function createEbookLibrary(plugin, request, { cryptoApi = window.crypto,
           job = (await api('/jobs/' + job.id, undefined, activeSignal)).json;
         }
         if (!jobId(job.id) || job.state !== 'complete' || !job.result) throw ebookError(job.error || 'download-failed');
-        if ((local().importedJobs || []).includes(job.id)) throw ebookError('already-imported');
+        if ((local().importedJobs || []).includes(job.id) || plugin.bookRecords?.hasJob(job.id)) throw ebookError('already-imported');
         progress?.('running');
         const response = await api('/jobs/' + job.id + '/file', undefined, activeSignal);
         progress?.('verifying');
         const file = await verifyEbook(response.arrayBuffer, job.result, cryptoApi); alive(activeSignal);
-        file.bookMetadata = { title: candidate?.title || '', author: candidate?.author || '' };
+        file.bookMetadata = { ...bookMetadata(local().pendingBooks?.[job.id]), ...bookMetadata(candidate), source: 'qiaomu' };
+        file.bookJobId = job.id;
         progress?.('importing');
         const imported = await importer([file]);
         if (!imported) throw ebookError('import');
         // Record the receipt even if the modal closed while the vault import ran.
-        alive(); save({ ...local(), importedJobs: [...new Set([...(local().importedJobs || []), job.id])].slice(-200) });
+        alive(); const pendingBooks = { ...local().pendingBooks }; delete pendingBooks[job.id];
+        save({ ...local(), pendingBooks, importedJobs: [...new Set([...(local().importedJobs || []), job.id])].slice(-200) });
         return file.name;
       }, signal); } finally { downloading = false; }
     },
