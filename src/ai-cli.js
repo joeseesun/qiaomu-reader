@@ -693,11 +693,19 @@ function latestUserPrompt(messages) {
   return "";
 }
 
+/**
+ * Classifies failures after an ACP process has started so request-time authentication
+ * errors do not masquerade as a failed CLI login probe. The returned reason drives
+ * user-facing recovery guidance; API-key rejection stays distinct from ACP auth
+ * negotiation, and only the supplied error message and diagnostic data are inspected.
+ * Credentials are not added to the classification result.
+ */
 export function classifyAcpFailure(error) {
   const message = String(error?.message || "ACP request failed");
   const data = typeof error?.data === "string" ? error.data : JSON.stringify(error?.data || {});
   const detail = `${message}\n${data}`;
-  if (/auth|logged in|sign in/i.test(detail)) return "cliauth";
+  if (/invalid[_\s-]?api[_\s-]?key|incorrect api key|api key[^\n]*(?:invalid|reject|denied)|401[^\n]*(?:unauthori|invalid)/i.test(detail)) return "auth";
+  if (/auth|logged in|sign in/i.test(detail)) return "apcauth";
   if (/rate limit|quota|usage limit|too many requests|overloaded/i.test(detail)) return "limit";
   if (/model.*not found|unknown model|invalid model/i.test(detail)) return "model";
   if (/(?:unknown|invalid|expired|missing|closed)\s+session|session(?:\s+id)?[^\n]*(?:not found|unknown|invalid|expired|closed|does not exist)|no such session/i.test(detail)) {
@@ -761,6 +769,12 @@ function acpLaunchSpec(id, binaryPath, cliPath, model, effort, paths) {
 }
 
 class CliAcpManager {
+  /**
+   * Starts an isolated ACP process for one CLI conversation. Codex reuses the
+   * user's dedicated auth file, provider configuration, or process environment
+   * only for its own child; the key is never written to plugin settings or
+   * included in diagnostics.
+   */
   constructor(id, binaryPath, cliPath, model, effort, nodePath = "") {
     const { childProcess, fs, os, path } = runtime();
     this.id = id;
@@ -784,13 +798,38 @@ class CliAcpManager {
     const source = window.process?.env || {};
     const realHome = source.HOME || os.homedir();
     const grokHome = source.GROK_HOME || path.join(realHome, ".grok");
+    let codexApiKey = "";
+    let codexApiKeyName = "";
     if (id === "codex-cli") {
       fs.mkdirSync(this.codexHome, { mode: 0o700 });
       const realCodexHome = source.CODEX_HOME || path.join(realHome, ".codex");
       const authFile = path.join(realCodexHome, "auth.json");
+      for (const key of ["CODEX_API_KEY", "OPENAI_API_KEY"]) {
+        if (typeof source[key] === "string" && source[key].trim()) {
+          codexApiKey = source[key].trim();
+          codexApiKeyName = key;
+          break;
+        }
+      }
       if (fs.existsSync(authFile)) {
         try { fs.symlinkSync(authFile, path.join(this.codexHome, "auth.json")); }
         catch { this.codexHome = realCodexHome; }
+        const configFile = path.join(realCodexHome, "config.toml");
+        if (this.codexHome !== realCodexHome && fs.existsSync(configFile)) {
+          // The terminal CLI's gateway/base URL lives in config.toml; preserve it while keeping session MCPs disabled by the ACP request.
+          try { fs.symlinkSync(configFile, path.join(this.codexHome, "config.toml")); } catch { /* keep the isolated home if the optional config link is unavailable */ }
+        }
+        // The ACP adapter selects API-key auth from the environment; reuse the existing Codex key without writing it to plugin settings or logs.
+        try {
+          const auth = JSON.parse(fs.readFileSync(authFile, "utf8"));
+          if (!codexApiKey) for (const key of ["CODEX_API_KEY", "OPENAI_API_KEY"]) {
+            if (typeof auth?.[key] === "string" && auth[key].trim()) {
+              codexApiKey = auth[key].trim();
+              codexApiKeyName = key;
+              break;
+            }
+          }
+        } catch { /* OAuth-only auth files do not contain an API key */ }
       } else {
         this.codexHome = realCodexHome;
       }
@@ -808,6 +847,7 @@ class CliAcpManager {
       // locations still reuse the user's existing subscription login.
       env: safeProcessEnv({
         ...this.launch.env,
+        ...(codexApiKey ? { [codexApiKeyName || "OPENAI_API_KEY"]: codexApiKey } : {}),
         PATH: [...new Set([nodePath, cliPath, binaryPath].filter(Boolean).map(file => path.dirname(file))) , source.PATH || ""].filter(Boolean).join(path.delimiter),
       }),
       shell: false,
