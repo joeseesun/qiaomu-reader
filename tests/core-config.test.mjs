@@ -572,7 +572,8 @@ test("CLI chat uses persistent, tool-free ACP sessions", () => {
 });
 
 test("ACP failures distinguish login, stale sessions, and stopped transports", () => {
-  assert.equal(classifyAcpFailure({ message: "Authentication required" }), "cliauth");
+  assert.equal(classifyAcpFailure({ message: "Authentication required" }), "apcauth");
+  assert.equal(classifyAcpFailure({ message: "Internal error", data: "auth error code: invalid_api_key" }), "auth");
   assert.equal(classifyAcpFailure({ message: "Unknown session: abc" }), "acpsession");
   assert.equal(classifyAcpFailure({ message: "Session id does not exist" }), "acpsession");
   assert.equal(classifyAcpFailure({ message: "transport closed" }), "acpstopped");
@@ -1055,6 +1056,8 @@ test("AI setup uses one status-driven flow and enables only after a successful t
   assert.match(source, /s\.aiEnabled = true;[\s\S]*await this\.plugin\.saveAll\(\)/);
   assert.match(source, /s\.aiNeedsVerification = false/);
   assert.match(source, /s\.aiNeedsVerification = true/);
+  assert.match(source, /why === "apcauth"/);
+  assert.match(source, /why === "apcauth"[\s\S]*the-cli-call-failed-this-is-not-necessarily-a-login-problem-veri/);
 });
 
 test("confirming AI settings automatically prepares, tests, and enables the selected provider", () => {

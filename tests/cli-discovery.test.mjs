@@ -20,13 +20,21 @@ test('all providers discover nvm versions with a GUI PATH, in numeric version or
 test('npm adapter shims launch with sibling Node and stream with a GUI PATH', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'reader-gui-path-'));
   const cli = path.join(root, 'codex'), adapter = path.join(root, 'codex-acp');
+  const codexHome = path.join(root, 'codex-home');
+  fs.mkdirSync(codexHome);
+  fs.writeFileSync(path.join(codexHome, 'auth.json'), JSON.stringify({ OPENAI_API_KEY: 'test-key' }), { mode: 0o600 });
+  fs.writeFileSync(path.join(codexHome, 'config.toml'), 'model_provider = "OpenAI"\n[model_providers.OpenAI]\nbase_url = "https://gateway.test"\n');
   fs.symlinkSync(process.execPath, path.join(root, 'node'));
   fs.writeFileSync(cli, '#!/usr/bin/env node\nconsole.log("codex 1.0");', { mode: 0o700 });
   fs.writeFileSync(adapter, `#!/usr/bin/env node
 const readline = require('node:readline');
 readline.createInterface({input: process.stdin}).on('line', line => {
  const m=JSON.parse(line); const send=o=>console.log(JSON.stringify(o));
- if(m.method==='initialize')send({id:m.id,result:{protocolVersion:1}});
+ if(m.method==='initialize') {
+  const config = require('node:fs').readFileSync(require('node:path').join(process.env.CODEX_HOME, 'config.toml'), 'utf8');
+  if(process.env.OPENAI_API_KEY !== 'test-key' || !config.includes('https://gateway.test')) { send({id:m.id,error:{code:-32000,message:'Authentication required'}}); return; }
+  send({id:m.id,result:{protocolVersion:1}});
+ }
  if(m.method==='session/new')send({id:m.id,result:{sessionId:'test'}});
  if(m.method==='session/set_mode')send({id:m.id,result:{}});
  if(m.method==='session/prompt'){
@@ -35,7 +43,7 @@ readline.createInterface({input: process.stdin}).on('line', line => {
  }
 });`, { mode: 0o700 });
   const prior = globalThis.window;
-  globalThis.window = { process: { platform: process.platform, env: { PATH: '/usr/bin:/bin', HOME: root }, getBuiltinModule: process.getBuiltinModule }, setTimeout, clearTimeout };
+  globalThis.window = { process: { platform: process.platform, env: { PATH: '/usr/bin:/bin', HOME: root, CODEX_HOME: codexHome }, getBuiltinModule: process.getBuiltinModule }, setTimeout, clearTimeout };
   try {
     assert.equal(isNodeEntrypoint(adapter, fs), true);
     assert.equal(isNodeEntrypoint(process.execPath, fs), false);

@@ -13412,6 +13412,8 @@ function aiConnectionErrorMessage(error) {
   if (why === "climissing") return qiaomuReaderTranslate("cli-not-found-install-it-or-set-its-path-first");
   if (why === "acpmissing") return qiaomuReaderTranslate("the-acp-adapter-was-not-found-install-it-or-set-its-path-first");
   if (why === "cliauth") return qiaomuReaderTranslate("the-cli-is-not-signed-in-complete-its-login-flow-in-terminal-fir");
+  // ACP authentication is checked during the real request, so it does not prove that the CLI login probe failed.
+  if (why === "apcauth") return qiaomuReaderTranslate("the-cli-call-failed-this-is-not-necessarily-a-login-problem-veri");
   if (why === "model") return qiaomuReaderTranslate("the-model-name-is-unavailable-leave-it-empty-to-use-the-cli-defa");
   if (why === "timeout") return qiaomuReaderTranslate("the-ai-request-timed-out-try-again-later");
   if (why === "acpsession") return qiaomuReaderTranslate("the-acp-session-expired-and-automatic-reconnection-failed-try-ag");
