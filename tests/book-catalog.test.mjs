@@ -63,3 +63,19 @@ test('unload prevents queued record writes',async()=>{
  const f=fixture(),store=createBookRecords(f.plugin);f.plugin._unloading=true;
  await assert.rejects(store.write({path:'x',stat:{}},{sha256:digest}),/closed/);assert.equal(f.shared.size,0);
 });
+
+test('sync may deliver a record before its book; later arrivals hydrate without rescanning every note',async()=>{
+ const f=fixture(),file={path:'Books/Late.epub',extension:'epub',stat:{size:3,mtime:1}};f.shared.set(file.path,file);
+ await createBookRecords(f.plugin).write(file,{title:'Late',author:'Author',sha256:digest},[job]);f.shared.delete(file.path);
+ const g=fixture(f.shared);let scans=0;const list=g.plugin.app.vault.getMarkdownFiles;g.plugin.app.vault.getMarkdownFiles=()=>{scans++;return list();};
+ createBookRecords(g.plugin);g.emit('resolved');g.emit('resolved');g.emit('resolved');assert.equal(scans,2);
+ assert.equal(g.plugin.settings.bookImports[file.path],undefined);g.shared.set(file.path,file);g.emit('create',file);
+ assert.equal(g.plugin.settings.bookImports[file.path].author,'Author');assert.equal(g.plugin.settings.bookImports[file.path].mtime,undefined);
+});
+test('moving the records folder keeps its existing record and user text',async()=>{
+ const f=fixture(),file={path:'Books/Book.epub',extension:'epub',stat:{size:3,mtime:1}};f.shared.set(file.path,file);
+ const store=createBookRecords(f.plugin),note=await store.write(file,{title:'Book',sha256:digest});note.body+='\nPersonal text';
+ const old=note.path;f.shared.delete(old);note.path=old.replace('Qiaomu Reader/Book records','Moved records');f.shared.set(note.path,note);
+ f.emit('rename',{path:'Moved records'},'Qiaomu Reader/Book records');await store.write(file,{title:'Book',sha256:digest},[job]);
+ assert.equal(store.entries().length,1);assert.equal(store.entries()[0].recordPath,note.path);assert.ok(note.body.endsWith('Personal text'));assert.equal(f.shared.has(old),false);
+});

@@ -7,20 +7,34 @@ export const BOOK_RECORD_FOLDER = 'Qiaomu Reader/Book records';
 export function createBookRecords(plugin) {
   const { vault, metadataCache, fileManager } = plugin.app;
   const records = new Map();
-  let queue = Promise.resolve();
+  let queue = Promise.resolve(), resolved = false;
+  const hydrate = record => {
+    const book = vault.getAbstractFileByPath(record.path);
+    if (book?.stat) plugin.settings.bookImports[record.path] = { ...plugin.settings.bookImports[record.path], ...record, size: book.stat.size, mtime: undefined };
+  };
   const accept = (file, cache = metadataCache.getFileCache(file)) => {
     const data = cache?.frontmatter?.qiaomu_book;
     if (data?.version !== 1 || typeof data.path !== 'string' || !/^[a-f0-9]{64}$/.test(data.sha256 || '')) { records.delete(file.path); return; }
     records.set(file.path, { ...bookMetadata(data), path: data.path, sha256: data.sha256, addedAt: Number(data.addedAt) || 0, jobs: Array.isArray(data.jobs) ? data.jobs.filter(x => /^[a-f0-9]{32}$/.test(x)) : [], recordPath: file.path });
-    const book = vault.getAbstractFileByPath(data.path);
-    if (book?.stat) plugin.settings.bookImports[data.path] = { ...plugin.settings.bookImports[data.path], ...records.get(file.path), size: book.stat.size, mtime: undefined };
+    hydrate(records.get(file.path));
   };
   for (const file of vault.getMarkdownFiles()) accept(file);
   plugin.registerEvent(metadataCache.on('changed', (file, _text, cache) => accept(file, cache)));
-  plugin.registerEvent(metadataCache.on('resolved', () => { for (const file of vault.getMarkdownFiles()) accept(file); }));
+  plugin.registerEvent(metadataCache.on('resolved', () => {
+    if (resolved) return; resolved = true;
+    for (const file of vault.getMarkdownFiles()) accept(file);
+  }));
+  plugin.registerEvent(vault.on('create', file => {
+    const record = [...records.values()].find(record => record.path === file.path);
+    if (record) hydrate(record);
+  }));
   plugin.registerEvent(vault.on('delete', file => records.delete(file.path)));
   plugin.registerEvent(vault.on('rename', (file, oldPath) => {
-    if (records.has(oldPath)) { const record = records.get(oldPath); records.delete(oldPath); record.recordPath = file.path; records.set(file.path, record); }
+    for (const [path, record] of [...records]) {
+      if (path === oldPath || path.startsWith(oldPath + '/')) {
+        records.delete(path); record.recordPath = file.path + path.slice(oldPath.length); records.set(record.recordPath, record);
+      }
+    }
     for (const record of records.values()) {
       if (record.path === oldPath || record.path.startsWith(oldPath + '/')) {
         const path = file.path + record.path.slice(oldPath.length);
