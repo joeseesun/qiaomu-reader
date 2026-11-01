@@ -2053,6 +2053,21 @@ body.qiaomu-reader-active-view .status-bar { display: none; }
   .qiaomu-reader-find-unified .qiaomu-reader-ebook-sources button { padding:6px 4px; font-size:13px; white-space:normal; height:auto; }
 }
 
+/* Prompt drafts stay in one scrollable editor, using the reader's neutral controls. */
+.qiaomu-reader-prompt-editor { display: flex; flex-direction: column; gap: 16px; }
+.qiaomu-reader-prompt-editor > p { color: var(--text-muted); margin: 0; }
+.qiaomu-reader-prompt-list { display: flex; flex-direction: column; gap: 20px; max-height: 55vh; overflow-y: auto; padding: 2px; }
+.qiaomu-reader-prompt-item { display: flex; flex-direction: column; gap: 10px; padding-bottom: 16px; border-bottom: 1px solid var(--background-modifier-border); }
+.qiaomu-reader-prompt-item label { display: flex; flex-direction: column; gap: 6px; font-size: var(--font-ui-small); }
+.qiaomu-reader-prompt-item input, .qiaomu-reader-prompt-item textarea { width: 100%; min-width: 0; box-sizing: border-box; }
+.qiaomu-reader-prompt-item textarea { resize: vertical; min-height: 80px; }
+.qiaomu-reader-prompt-item > button { align-self: flex-end; }
+.qiaomu-reader-prompt-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.qiaomu-reader-prompt-editor .mod-cta { margin-left: auto; background: var(--text-normal); color: var(--background-primary); }
+.qiaomu-reader-prompt-error { color: var(--text-error); font-size: var(--font-ui-small); }
+.qiaomu-reader-prompt-error:empty { display: none; }
+.qiaomu-reader-prompt-editor :is(input, textarea, button):focus-visible { outline: 1px solid var(--text-muted); outline-offset: 2px; }
+
 /* Bundled reading subset: SIL OFL 1.1
 Copyright (c) 2023, Zhejiang JadeFoci Techonology Co. LTD
 (https://www.jadefoci.com/)
