@@ -127,8 +127,9 @@ test("quick prompts send immediately, preserve existing drafts, and remain visib
   }
   items.length = 0;
   const host = dom().document.querySelector("main");
-  assert.equal(render(host, { plugin: { settings: {} } }), null);
-  assert.equal(host.children.length, 0, "empty settings do not leave an unused expander");
+  render(host, { plugin: { settings: {} } });
+  assert.equal(host.querySelectorAll("button").length, 1, "empty lists retain a way to add prompts");
+  assert.equal(host.querySelector("button").textContent, "manage-2");
   assert.doesNotMatch(source, /promptExpand|promptRow/);
 });
 

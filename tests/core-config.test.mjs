@@ -721,15 +721,15 @@ test("selection popup keeps primary actions compact and moves note tools into Mo
   assert.doesNotMatch(source, /brain-circuit/);
 });
 
-test("AI dialog uses built-in quick prompts and keeps reasoning separate", () => {
+test("AI dialog supports custom quick prompts and keeps reasoning separate", () => {
   const source = fs.readFileSync(new URL("../src/main.js", import.meta.url), "utf8");
   const chinese = fs.readFileSync(new URL("../src/i18n-zh.js", import.meta.url), "utf8");
   for (const label of ["解释一下", "举个例子", "总结要点", "对我有什么用", "换个角度看", "出题考考我"]) {
     assert.match(chinese, new RegExp(label));
   }
   assert.match(source, /const DEFAULT_AI_QUICK_PROMPTS/);
-  assert.doesNotMatch(source, /AiPromptLibraryModal/);
-  assert.match(source, /function aiQuickPrompts\(\) \{\s+return defaultAiQuickPrompts\(\);/);
+  assert.match(source, /class AiPromptModal extends Modal/);
+  assert.match(source, /return readingPrompts\(settings.aiQuickPrompts, defaultAiQuickPrompts\(\)\)/);
   assert.match(source, /button\.addEventListener\("click", \(\) => \{[\s\S]*chat\._send\(item\.prompt\)/);
   assert.match(source, /createEl\("details", \{ cls: "qiaomu-reader-ai-reason" \}\)/);
   assert.match(source, /reasoningBox\.open = false/);

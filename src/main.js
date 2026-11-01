@@ -1,3 +1,4 @@
+import { readingPrompts, renderPromptEditor } from "./ai-prompts.js";
 import { renderReaderAbout } from "./about.js";
 import { createEbookLibrary } from "./ebook-library.js";
 import { mountEbookDiscovery, createEbookResult, createEbookDownloadProgress } from "./ebook-library-ui.js";
@@ -3672,8 +3673,8 @@ function defaultAiQuickPrompts() {
     prompt: qiaomuReaderTranslate(item.prompt),
   }));
 }
-function aiQuickPrompts() {
-  return defaultAiQuickPrompts();
+function aiQuickPrompts(settings = {}) {
+  return readingPrompts(settings.aiQuickPrompts, defaultAiQuickPrompts());
 }
 function normalizeAiChatHistory(value) {
   if (!Array.isArray(value)) return [];
@@ -6182,8 +6183,39 @@ const ReaderNameModal = class extends Modal {
   onClose() { this.contentEl.empty(); }
 };
 
+class AiPromptModal extends Modal {
+  constructor(app, plugin, onSaved) {
+    super(app);
+    this.plugin = plugin;
+    this.onSaved = onSaved;
+  }
+  onOpen() {
+    this.setTitle(qiaomuReaderTranslate("manage-quick-prompts"));
+    renderPromptEditor(this.contentEl, {
+      value: this.plugin.settings.aiQuickPrompts,
+      defaults: defaultAiQuickPrompts(),
+      translate: qiaomuReaderTranslate,
+      close: () => this.close(),
+      save: async (value) => {
+        const previous = this.plugin.settings.aiQuickPrompts;
+        this.plugin.settings.aiQuickPrompts = value;
+        try {
+          if (await this.plugin._saveLocalData() === false) throw new Error("Prompt settings could not be saved");
+        } catch (error) { this.plugin.settings.aiQuickPrompts = previous; throw error; }
+        for (const leaf of this.app.workspace.getLeavesOfType(AI_CHAT_VIEW_TYPE)) {
+          const chat = leaf.view;
+          if (chat.quickPromptRow?.parentElement) renderAiComposerPrompts(chat.quickPromptRow.parentElement, chat);
+        }
+        this.onSaved?.();
+        new Notice(qiaomuReaderTranslate("quick-prompts-saved"));
+      },
+    });
+  }
+  onClose() { this.contentEl.empty(); }
+}
+
 function contextualAiQuickPrompts(chat) {
-  const items = aiQuickPrompts();
+  const items = aiQuickPrompts(chat.plugin.settings);
   const text = chat.contextMode === "none" ? "" : chat.pendingContext?.text || chat.text || "";
   if (!isNonChineseSource(text)) return items;
   const translation = {
@@ -6197,12 +6229,11 @@ function renderAiComposerPrompts(host, chat) {
   const items = contextualAiQuickPrompts(chat);
   chat.quickPromptButtons = [];
   const previous = chat.quickPromptRow;
-  if (!items.length) { previous?.remove(); chat.quickPromptRow = null; return null; }
   const row = host.createDiv("qiaomu-reader-ai-composer-prompts");
   if (previous?.parentElement === host) previous.replaceWith(row);
   chat.quickPromptRow = row;
   const visibleCount = items.some((item) => item.id === "translate-zh") ? 4 : 3;
-  row.setAttribute("aria-label", qiaomuReaderTranslate("quick-prompts-2"));
+  row.setAttribute("role", "group");
   const addPrompt = (item) => {
     const button = row.createEl("button", { cls: "qiaomu-reader-ai-composer-prompt", text: item.name });
     button.type = "button";
@@ -6228,6 +6259,14 @@ function renderAiComposerPrompts(host, chat) {
     });
     chat.quickPromptButtons.push(more);
   }
+  const manage = row.createEl("button", {
+    cls: "qiaomu-reader-ai-composer-prompt qiaomu-reader-ai-prompt-manage",
+    text: qiaomuReaderTranslate("manage-2"),
+  });
+  manage.type = "button";
+  manage.addEventListener("click", () => new AiPromptModal(chat.app, chat.plugin, () => {
+    if (chat.quickPromptRow?.parentElement) renderAiComposerPrompts(chat.quickPromptRow.parentElement, chat);
+  }).open());
   for (const button of chat.quickPromptButtons) button.disabled = !!chat.busy;
   return row;
 }
@@ -14382,6 +14421,14 @@ const SettingsTab = class extends PluginSettingTab {
       }));
   }
   _aiTailRows(host, s, p, cfg) {
+    const prompts = new Setting(host)
+      .setName(qiaomuReaderTranslate("quick-prompts-2"))
+      .setDesc(qiaomuReaderTranslate("0-buttons-in-the-ai-dialog-rename-them-edit-the-full-prompts-add", aiQuickPrompts(s).length));
+    prompts.addButton((button) => button.setButtonText(qiaomuReaderTranslate("manage-2")).onClick(() => {
+      new AiPromptModal(this.app, this.plugin, () => {
+        prompts.setDesc(qiaomuReaderTranslate("0-buttons-in-the-ai-dialog-rename-them-edit-the-full-prompts-add", aiQuickPrompts(s).length));
+      }).open();
+    }));
     new Setting(host)
       .setName(qiaomuReaderTranslate("custom-reading-prompt"))
       .setDesc(qiaomuReaderTranslate("leave-empty-to-use-the-built-in-reading-assistant-your-text-repl"))
