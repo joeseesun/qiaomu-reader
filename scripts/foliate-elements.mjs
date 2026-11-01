@@ -47,6 +47,21 @@ export function patchFoliateFrames(code, name) {
 }
 
 export function patchFoliatePaginator(code) {
+  // A selection-handle drag belongs to the native selection. Foliate already
+  // skips panning in touchmove, but used to snap the page anyway on touchend.
+  code = replaceRequired(code, `if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+            return`, `if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+            state.selecting = true
+            return`);
+  code = replaceRequired(code, `#onTouchEnd() {
+        this.#touchScrolled = false
+        if (this.scrolled) return`, `#onTouchEnd() {
+        this.#touchScrolled = false
+        const selection = this.#view?.document?.getSelection()
+        if (this.scrolled || this.#touchState?.selecting || (selection?.rangeCount && !selection.isCollapsed)) return`);
+  code = replaceRequired(code, `doc.addEventListener('pointerup', () => isPointerSelecting = false)`,
+    `doc.addEventListener('pointerup', () => isPointerSelecting = false)
+            doc.addEventListener('pointercancel', () => isPointerSelecting = false)`);
   // ResizeObserver callbacks run during layout. Defer geometry writes to the
   // next frame so expanding a section cannot trigger an observer feedback loop.
   for (const method of ["expand", "render"]) {
