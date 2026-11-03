@@ -232,6 +232,7 @@ Mac 桌面另提供「Mac 本地语音」，枚举本机已安装声音和实际
 
 | 可选功能 | 发送内容 | 目标服务 |
 | --- | --- | --- |
+| Hacker Books 书单 | 打开「发现图书」时请求公开榜单、主题和封面，打开详情时请求所选图书资料；搜索、书库匹配、「想读/读过」与推荐计算均在本地，不上传仓库书名或清单 | `hackerbooks.qiaomu.ai` |
 | 找书与下载 | 主动搜索时发送书名或作者关键词；仅在点击下载时请求所选书籍目录和 EPUB | Project Gutenberg |
 | 搜索结果封面 | 公开书源请求 Gutenberg 图书封面；乔木书库由服务端以书名、作者匹配参考封面，客户端仅以封面 ID 请求图片，不携带激活码或登录凭证 | Project Gutenberg、[Open Library](https://openlibrary.org/dev/docs/api/covers) |
 | 乔木书库（可选激活） | 激活码、安装 ID、设备备注；主动搜索的关键词与所选下载版本，不上传仓库书籍 | `ebook-mcp.qiaomu.ai`，由服务端经 Telegram 机器人查询 |

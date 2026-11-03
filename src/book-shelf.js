@@ -1,5 +1,5 @@
 import { requestUrl, setIcon } from "obsidian";
-import { SHELF_ORIGIN, SHELF_VIEWS, SHELF_MARKS, shelfDataUrl, shelfBookUrl, shelfPageUrl, shelfCoverUrl, normalizeShelfBooks, normalizeShelfTopics, normalizeShelfDetail, shelfOrder, searchShelf, shelfText, shelfSearchQuery, chineseStoreLinks, pickShelfComments, hackerNewsItemUrl, matchLibraryBooks, recommendShelf, normalizeShelfMarks, toggleShelfMark, markedShelf, externalBookSearchUrls } from "./book-discovery.js";
+import { SHELF_VIEWS, SHELF_MARKS, shelfDataUrl, shelfBookUrl, shelfPageUrl, shelfCoverUrl, normalizeShelfBooks, normalizeShelfTopics, normalizeShelfDetail, shelfOrder, searchShelf, shelfText, shelfSearchQuery, chineseStoreLinks, pickShelfComments, hackerNewsItemUrl, matchLibraryBooks, recommendShelf, toggleShelfMark, markedShelf, externalBookSearchUrls } from "./book-discovery.js";
 
 const ANNA_NAME = "Anna’s Archive";
 const HN_SOURCE_NAME = "Hacker News";
@@ -75,8 +75,10 @@ export class BookShelf {
     })().catch((error) => {
       console.warn("Qiaomu Reader: book shelf failed", error);
       shelf.failed = true;
+    }).finally(() => {
+      shelf.pending = null;
       for (const listener of shelf.listeners) listener();
-    }).finally(() => { shelf.pending = null; });
+    });
     shelf.failed = false;
     return shelf.pending;
   }
@@ -97,7 +99,8 @@ export class BookShelf {
   }
   _renderState(parent) {
     const shelf = this._shelf;
-    if (shelf.books && (shelf.full || !this._query)) return false;
+    const usable = shelf.books && (shelf.full || !this._query);
+    if (usable && !shelf.failed) return false;
     this._waiting = true;
     const state = parent.createDiv({ cls: "qiaomu-reader-discovery-status" });
     state.setAttribute("role", "status");
@@ -106,7 +109,7 @@ export class BookShelf {
       const retry = state.createEl("button", { cls: "qiaomu-reader-discovery-text-btn", text: this.t("shelf-retry") });
       retry.addEventListener("click", () => { void this._ensureShelf(); this._render(); });
     } else state.setText(this.t("shelf-loading"));
-    return true;
+    return !usable;
   }
   // Shelf IDs of books already in this vault's library, recomputed when the shelf grows.
   _owned() {
@@ -133,8 +136,14 @@ export class BookShelf {
     return seeds;
   }
   async _toggleMark(book, status) {
-    this.ctx.plugin.settings.shelfMarks = toggleShelfMark(this._marks(), book.id, status);
-    await this.ctx.plugin.saveAll();
+    const plugin = this.ctx.plugin, previous = this._marks();
+    const next = toggleShelfMark(previous, book.id, status);
+    plugin.settings.shelfMarks = next;
+    try { await plugin.saveAll(); }
+    catch (error) {
+      if (plugin.settings.shelfMarks === next) plugin.settings.shelfMarks = previous;
+      throw error;
+    }
   }
   _renderBrowse() {
     const ui = this._ui, seeds = this._seeds(), marks = this._marks();
@@ -311,6 +320,7 @@ export class BookShelf {
     if (this._owned().has(book.id)) stats.createSpan({ cls: "qiaomu-reader-discovery-owned", text: this.t("shelf-in-library") });
     if (text.blurb) info.createDiv({ cls: "qiaomu-reader-discovery-detail-blurb", text: text.blurb });
     const markRow = info.createDiv({ cls: "qiaomu-reader-discovery-marks" });
+    const markStatus = info.createDiv({ cls: "qiaomu-reader-discovery-status", attr: { role: "status" } });
     const drawMarks = () => {
       markRow.empty();
       for (const [status, icon] of [["wish", "bookmark"], ["read", "check"]]) {
@@ -320,9 +330,15 @@ export class BookShelf {
         setIcon(button.createSpan({ cls: "qiaomu-reader-discovery-link-icon" }), icon);
         button.createSpan({ text: this.t(`shelf-mark-${status}`) });
         button.addEventListener("click", async () => {
-          button.disabled = true;
-          await this._toggleMark(book, status);
-          if (this._alive && this._detail === book) drawMarks();
+          for (const control of markRow.querySelectorAll("button")) control.disabled = true;
+          markStatus.empty();
+          try { await this._toggleMark(book, status); }
+          catch (error) {
+            console.warn("Qiaomu Reader: reading list save failed", error);
+            if (this._alive && this._detail === book) markStatus.setText(this.t("saving-failed-check-vault-permissions-and-retry"));
+          } finally {
+            if (this._alive && this._detail === book) drawMarks();
+          }
         });
       }
     };
