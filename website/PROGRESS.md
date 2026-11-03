@@ -21,3 +21,15 @@ Umami：13b78a3e-d2ec-4cc8-b701-05eec52ff0b3，数据库确认唯一 property。
 本地 service worker activated，真实浏览器断网重载显示官网标题/正文；不代表真实手机安装验证。SEO/canonical/OG/结构化数据/robots/sitemap/图标/manifest 已部署，manifest 公网 Content-Type 为 application/manifest+json。关注、打赏、GitHub/X、乔木推荐均已提供。
 
 待验：本机负向 DNS 缓存过期后的正式域名浏览器访问、Umami 新浏览器事件入库、GitHub 推送。服务器自身已解析新域名并返回 HTTPS200；本机通过显式 IP 解析也得到 HTTPS200。
+
+## 最终公网验收 · 2026-11-03 11:09 北京时间
+
+- DNS 已生效。Ego Lite 从正式域名正常加载页面（桌面与390px手机视口），标题/真实截图/字体/唯一 Umami ID 均正确；手机 scrollWidth=innerWidth=390。
+- 公网浏览器访问标记：`https://reader.qiaomu.ai/?umami_verify=qa-20261103-reader-launch-final`。
+- Umami 数据库独立读回：website_id `13b78a3e-d2ec-4cc8-b701-05eec52ff0b3`，hostname `reader.qiaomu.ai`，url_path `/`，url_query `umami_verify=qa-20261103-reader-launch-final`，event_type=1，created_at `2026-11-03T03:08:46.644Z`（北京时间11:08:46）。这是受控 QA 流量，不是业务增长数据；浏览器执行与入库均确认。
+- 正式域名关注/打赏弹窗实际打开，二维码加载，Escape 关闭；安装链接指向官方社区页面/DSH latest Release；乔木推荐链接正确。
+- Public release gate、Windows TTS、完整 CI verify 在首个网站提交均通过；官网专用构建与检查也通过。
+- SEO/分享卡片已生成并检查渲染；robots/sitemap、404、manifest MIME、HTTP→HTTPS、安全响应头通过。PWA shell 已在浏览器离线重载验证，未做实体手机安装验证。
+- GitHub PR：https://github.com/joeseesun/qiaomu-reader/pull/94。没有创建 worktree，也未接管/清理其他任务的 worktree。
+
+本次未验证：实体手机 PWA 安装；未在本次重新安装/端到端测试两个插件（官网使用其既有公开包与当前文档，不宣称插件新版本发布）。
