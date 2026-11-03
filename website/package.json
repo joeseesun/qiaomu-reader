@@ -1,0 +1,10 @@
+{
+  "name": "qiaomu-reader-website",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "deploy": "bash scripts/deploy.sh",
+    "check": "node scripts/check.mjs"
+  }
+}
