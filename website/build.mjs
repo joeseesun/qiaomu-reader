@@ -1,0 +1,15 @@
+import {readFileSync,writeFileSync,cpSync,rmSync,mkdirSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+const id=readFileSync(new URL('umami-id.txt',import.meta.url),'utf8').trim();
+if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))throw Error('A valid versioned Umami website ID is required');
+const root=new URL('.',import.meta.url);const out=new URL('dist/',root);
+rmSync(out,{recursive:true,force:true});mkdirSync(out);cpSync(new URL('public/',root),out,{recursive:true});
+const hash=createHash('sha256').update(readFileSync(new URL('public/style.css',root))).update(readFileSync(new URL('public/site.js',root))).digest('hex').slice(0,10);
+const html=readFileSync(new URL('index.template.html',root),'utf8').replaceAll('UMAMI_ID',id).replaceAll('BUILD',hash);
+writeFileSync(new URL('index.html',out),html);
+writeFileSync(new URL('robots.txt',out),'User-agent: *\nAllow: /\nSitemap: https://reader.qiaomu.ai/sitemap.xml\n');
+writeFileSync(new URL('sitemap.xml',out),'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://reader.qiaomu.ai/</loc></url></urlset>');
+writeFileSync(new URL('404.html',out),'<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>页面未找到 · 乔木阅读</title><link rel="stylesheet" href="/style.css"><main class="wrap closing"><h1>这页翻过去了。</h1><p>回到首页，开始一本新书。</p><a class="btn" href="/">返回乔木阅读</a></main></html>');
+writeFileSync(new URL('sw.js',out),`const CACHE='reader-${hash}';const SHELL=['/','/style.css?v=${hash}','/site.js?v=${hash}','/favicon.svg'];self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)));self.skipWaiting()});self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('reader-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{if(e.request.method!=='GET'||new URL(e.request.url).origin!==self.location.origin)return;if(e.request.mode==='navigate')e.respondWith(fetch(e.request).catch(()=>caches.match('/')));else e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)))})`);
+if((html.match(/data-website-id=/g)||[]).length!==1||html.includes('UMAMI_ID'))throw Error('Analytics wiring invalid');
+console.log('Built reader.qiaomu.ai, assets '+hash+', Umami '+id);
