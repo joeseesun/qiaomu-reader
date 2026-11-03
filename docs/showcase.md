@@ -1,38 +1,37 @@
 # 正式版本截图 / Release screenshot evidence
 
-日期：2026-09-10。环境：macOS、Obsidian 1.13.7、正式发布的 **Qiaomu Reader 4.2.4**。插件 ID：`qiaomu-reader`。
+日期：2026-11-03。环境：macOS、Obsidian **1.13.7**、正式发布的 **Qiaomu Reader 4.9.4**。插件 ID：qiaomu-reader。
 
-## 版本核验
+## 安装与内容来源
 
-截图使用 [4.2.4 GitHub Release](https://github.com/joeseesun/qiaomu-reader/releases/tag/4.2.4) 的安装文件，安装在独立 QA 仓库中。已核对安装版本及 `main.js` 与下载的正式 Release 文件 SHA-256 一致：
+使用独立演示仓库与独立 Obsidian profile，没有使用日常仓库的书籍、对话或账号。安装文件与 [4.9.4 Release](https://github.com/joeseesun/qiaomu-reader/releases/tag/4.9.4) 一致；发布提交为 b857729a7e41eeaf5b04a1f58c65e60776872ea6。
 
-```text
-e6b3899c9448f43040457e133d7c1ee387a891639c8b2db3e3d4b877487e2198
-```
-
-对应发布提交：`cc544efb52615fdb87a53c059f2a6f253b9cc1ba`。此次只更新文档和截图，不修改插件运行代码、版本号或 Release 安装文件。
-
-## 展示内容
-
-| 截图 | 捕获时核验 |
+| 安装文件 | SHA-256 |
 | --- | --- |
-| [六本内置书架](assets/showcase-4.2.4-library.jpg) | 六本 EPUB 及封面、继续阅读、划线计数、笔记入口 |
-| [选文操作](assets/showcase-4.2.4-selection.jpg) | 真实正文选区与插件选文工具栏、双页布局 |
-| [划线与笔记](assets/showcase-4.2.4-notes.jpg) | 通过插件创建粉色划线和批注，读回自动生成的 Markdown 与回跳链接 |
-| [AI 助读](assets/showcase-4.2.4-ai.jpg) | 真实 AI 视图控制器加载固定示例；选文来源、回答操作、快捷问题与输入框 |
-| [PDF 原页](assets/showcase-4.2.4-pdf.jpg) | 原创两页 PDF 实际渲染，双页、图表与表格、100% 缩放 |
+| main.js | 8ca2fd0b2415bc6352bcf419678362308334d8212186395d58d124cb8a28445c |
+| manifest.json | ac42ce521c38fb1f21b79cdbfbf4029ef9733b6d19a83df120a9df9299bd1c6b |
+| styles.css | f0611d27ad35d5ac4e959437c4e74485331293603fd38cba8ab1791d3a5706f7 |
 
-截图由隔离 Obsidian 实例的调试接口捕获，原始 JPEG 为 2400 × 1600 像素；没有合成控件、替换背景或修图。截图中的阅读进度与划线属于演示状态，并非首次安装后的默认阅读记录。
+## 五张新版截图
 
-## 内容与验证边界
+| 截图 | 真实操作与证据 |
+| --- | --- |
+| [书库与继续阅读](assets/showcase-4.9.4-library.jpg) | 插件正常安装六本内置公版 EPUB；打开图书后生成阅读位置，实际划线计数与继续阅读入口可见 |
+| [发现图书](assets/showcase-4.9.4-discovery.jpg) | 通过「找书」打开公开书源，真实加载 Hacker Books 榜单、主题与封面；当次完整书单为 15,362 条，数量不作为永久承诺 |
+| [划线、批注与笔记](assets/showcase-4.9.4-notes.jpg) | 在实际 EPUB 文本上创建高亮并保存原创批注；插件生成的 Markdown 笔记含原文、批注和回跳链接，已读回确认 |
+| [自定义伴读提示词](assets/showcase-4.9.4-ai-prompts.jpg) | 真实编辑器展示两条原创模板，分别编辑展示名称与实际 Prompt；没有模拟 AI 回答或发送模型请求 |
+| [查词、生词本与朗读](assets/showcase-4.9.4-lookup-speech.jpg) | 选中 curiosity，通过谷歌取得“好奇心”的真实结果并收录到生词本；播放器已展开但未开始播放 |
 
-- 书架展示实际随插件打包的六本 EPUB；版本、封面来源和许可见[示例书说明](../assets/starter-books/README.md)。英文作品使用英文原版，不暗示内置现代中文译本。
-- 《世说新语》的划线、批注和 Markdown 笔记由插件正常流程产生；读回了保存的引文、批注和带书籍、划线与位置参数的回跳链接。
-- PDF 是原创演示内容，图表注明示意数据。该 PDF 用于展示原页阅读，并非第七本内置示例书。
-- AI 视图通过真实控制器加载固定示例，回答中可见“界面演示对话，未调用模型”。没有发起模型请求，也不将示例视为模型能力或网络连接测试。
-- 这些截图核验桌面布局和上述操作；不能替代流式时序、长期稳定性、移动真机或完整回归测试。发布验证与 CI 是独立证据。
-- 隔离仓库没有用户私人书籍、对话或账号配置；正常使用的 Obsidian 仓库未参与截图。
+原始捕获为 2400 × 1600，使用 Electron NativeImage 等比缩小为 1200 × 800 JPEG；每张小于 5 MB。没有合成控件、替换文字、拼接页面或用生成式图片修改界面，已逐张查看真实渲染。
+
+书籍、封面与原文许可见[示例书说明](../assets/starter-books/README.md)。阅读进度和批注是演示操作后的状态，不代表首次安装的默认记录。Hacker Books 是公开元数据书单，不是随插件打包的电子书。
+
+## 验证边界
+
+本轮证明桌面真实界面及上述操作，不代表移动真机、全部 AI 服务、朗读质量、Anki 同步或 Kindle 设备验证。谷歌查词确实发起了请求；AI 与朗读截图没有发起生成或播放请求，不用于宣称服务已连接。
+
+官方文案与图片顺序见 [listing-4.9.4.md](listing-4.9.4.md)。插件运行代码、版本和安装资产不变。旧版截图证据保留在 [showcase-4.2.4.md](showcase-4.2.4.md)。
 
 ## English
 
-These five unretouched captures show the published Qiaomu Reader 4.2.4 release running in an isolated Obsidian 1.13.7 desktop vault. The installed main.js matches the SHA-256 of the official release asset above. The library contains the six bundled public-domain EPUBs with their packaged covers; reading progress and highlights are demonstration state. The sample PDF is original demonstration material, not an additional bundled book. The real plugin created the highlighted passage, annotation and linked Markdown note. The AI view renders a clearly labeled seeded conversation without a model request. These images demonstrate desktop UI, not mobile-device coverage, streaming performance or model quality. Third-party book, cover and Obsidian rights remain with their respective owners and licenses.
+These five captures show the unmodified public 4.9.4 release in an isolated Obsidian 1.13.7 desktop vault. The plugin saved the highlighted passage, comment, linked Markdown note and vocabulary entry. Discovery loaded live public metadata; Google returned the displayed dictionary result. The prompt editor contains original templates, without a simulated AI reply. Read-aloud controls are idle. Retina captures were proportionally resized to 1200 × 800, with no composited or generated interface elements. Reading progress is demonstration state. These images do not establish mobile coverage, AI/speech quality, Anki delivery or Kindle-device behavior. Third-party book, cover and Obsidian rights remain with their respective owners and licenses.

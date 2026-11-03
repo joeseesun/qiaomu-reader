@@ -9,7 +9,7 @@
 
 也可以在 Obsidian 中进入 **设置 → 第三方插件 → 浏览**，搜索 **Qiaomu Reader**，选择作者为 **向阳乔木** 的插件。首次使用第三方插件时，先按提示开启社区插件。[完整安装步骤](#安装)
 
-![Qiaomu Reader 4.2.4 内置书库：六本中英文公版电子书，包含真实封面、继续阅读、划线数量与阅读笔记入口](docs/assets/showcase-4.2.4-library.jpg)
+![Qiaomu Reader 4.9.4 书库：六本内置公版书，继续阅读、阅读进度、划线数量与笔记入口](docs/assets/showcase-4.9.4-library.jpg)
 
 **安装后，书架里就有六本书。** 从《道德经》《唐诗三百首》《世说新语》或三本英文经典开始，直接体验阅读、划线和做笔记，无需先找书或配置 AI。
 
@@ -19,12 +19,13 @@ Qiaomu Reader 是中文优先的 Obsidian EPUB、PDF、FB2、MOBI、AZW3、CBZ�
 
 [安装与快速开始](#安装) · [功能导览](#功能导览) · [构建验证](https://github.com/joeseesun/qiaomu-reader/actions) · [GPL-3.0 许可](LICENSE)
 
-**截图版本：4.2.4。** 以下五张截图均来自安装正式 Release 文件的 Obsidian 1.13.7，展示内置书架、选文操作、划线笔记、AI 伴读和 PDF 原页。使用隔离演示仓库、公版示例书与原创 PDF；AI 对话明确标注为界面演示，未调用模型。详见[截图与版本核验](docs/showcase.md)。
+**截图版本：4.9.4。** 本页五张新版截图来自独立演示仓库中的正式 Release，展示书库、发现图书、划线笔记、自定义伴读提示词、查词与朗读控制。划线和生词本由插件实际生成；查词使用谷歌实际返回的结果；没有填入模拟 AI 回答。详见[截图与版本核验](docs/showcase.md)。
 
 ## 你会得到什么
 
 | 能力 | 实际效果 |
 | --- | --- |
+| 发现图书 | Hacker Books 榜单与主题筛选、书名作者搜索、想读与读过清单；推荐在本地计算 |
 | 内置阅读器 | EPUB 可重排；PDF 保留原页，独立缩放，图表不被拆散；FB2、MOBI、AZW3、CBZ 由同一引擎渲染 |
 | 文本阅读 | 明确导入的 Markdown、TXT、HTML 共用分页、目录、划线和进度；普通笔记继续使用原生编辑器 |
 | 语音朗读 | 从当前页读或继续上次位置，自动跨页跨章；播放器直接选择音色和试听，云端与设备本地语音按需配置 |
@@ -38,6 +39,8 @@ Qiaomu Reader 是中文优先的 Obsidian EPUB、PDF、FB2、MOBI、AZW3、CBZ�
 | 流式 Markdown | 回答边输出边渲染；表格、任务列表、引用、代码块等交给 Obsidian Markdown 渲染器 |
 | 回答成为笔记 | 保存完整 AI 回答，本地提取可修改标题；独立保存或追加到本书笔记 |
 | 少打断的交互 | 快捷问题直接可见；草稿按书落盘；专注阅读保留右侧 AI，不带回左侧文件树 |
+| 生词复习 | 词义、原句和来源链接存入 Markdown 生词本，支持 Spaced Repetition 与 AnkiConnect |
+| Kindle 传书 | 桌面端通过 Wi-Fi 发送到已配对、已越狱的 Kindle，支持 KOReader 与原生阅读 |
 | 自选 AI 服务 | 保留自定义提示词；支持 CLI / ACP、国产模型、OpenAI 兼容接口及本地模型 |
 | 起点页接续 | 装了[乔木Home](https://github.com/joeseesun/qiaomu-home)时，主页显示在读的书（封面、进度），点击回到上次位置；主页搜索框也能搜书名 |
 
@@ -50,7 +53,11 @@ Qiaomu Reader 是中文优先的 Obsidian EPUB、PDF、FB2、MOBI、AZW3、CBZ�
 **桌面端可以从本机 [Calibre](https://calibre-ebook.com/) 书库按需加入图书。** 在书库点击「从 Calibre 添加」，或使用命令面板。默认读取书库里的 `metadata.db`（需要 Python 3）；若没有 Python，则回退到 `calibredb`。选定的 EPUB / PDF / MOBI 等文件会拷贝进当前仓库，不会把整座 Calibre 书库挂进 Obsidian。移动端不提供此入口。
 
 ![从 Calibre 按需加入书库](docs/assets/calibre-import.png)
-书库顶部的 **找书** 可输入书名或作者。点击 **搜索** 会在浏览器分别打开 Anna’s Archive 与 Z-Library 的搜索页，同时在插件内搜索 Project Gutenberg 公版书。也可以单独点击各站链接。选择 Gutenberg 结果后，点击 **下载并加入书库** 才会下载 EPUB 并导入当前仓库。Standard Ebooks 和维基文库提供可下载的 EPUB 书籍，也作为浏览器中的补充入口。下载有权使用的 EPUB、PDF 或 MOBI 后，可通过 **添加书籍** 导入。外部站点地址可能变化；插件不会抓取或下载外部站点内容。
+书库顶部的 **找书** 默认打开「公开书源」。不用输入关键词，就能浏览 Hacker Books 的「值得读」「最多人提」「经典常青」榜单，并按主题筛选；输入书名或作者可搜索书单。详情展示 HN 读者评论、阅读建议与相关图书，可标记「想读」或「读过」。推荐根据本地书库与清单计算，不上传仓库书名、搜索词或阅读清单。
+
+![4.9.4 发现图书：Hacker Books 榜单、主题筛选与公开书源入口](docs/assets/showcase-4.9.4-discovery.jpg)
+
+搜索框在「公开书源」「本地书库」「乔木书库」之间保留关键词。公开书源中的 Anna’s Archive、Z-Library 等链接由你点击后在浏览器打开；点击「搜索」可查询 Project Gutenberg 公版书。只有选择「下载并加入书库」才下载 Gutenberg EPUB。取得有权使用的 EPUB、PDF 或 MOBI 后，也可以通过「添加图书」导入。外部站点的地址和可用性可能变化。
 
 搜索结果以封面、书名与作者、文件格式和大小分列展示，可按格式筛选；较长的书名可以展开。公开书源从 Project Gutenberg 加载封面；乔木书库通过 Open Library 匹配书目参考封面，并显示书源提供的语言与年份。封面并非下载版本保证，未匹配或加载失败时显示「暂无封面」，不影响下载。
 
@@ -60,17 +67,15 @@ Qiaomu Reader 是中文优先的 Obsidian EPUB、PDF、FB2、MOBI、AZW3、CBZ�
 
 ### 2. 选中一句话，就地划线、批注或提问
 
-![4.2.4 选文工具栏：划线与颜色下拉、批注、问 AI、复制；正文使用青瓷主题与双页布局](docs/assets/showcase-4.2.4-selection.jpg)
+AI 伴读与原文并排显示；宽屏桌面首次打开书时展示侧栏，并记住主动关闭状态。未配置服务可直接在侧栏完成配置。翻译结果可保存到本书笔记、当前打开的笔记、新笔记或今日笔记，同时保留原文和位置链接。
 
-**4.2.7 更新：** AI 助读更名为 AI 伴读；宽屏桌面首次打开书时展示侧栏，并记住主动关闭状态。未配置服务可直接在侧栏完成配置。翻译结果可保存到本书笔记、当前打开的笔记、新笔记或今日笔记，同时保留原文和位置链接。
-
-**4.2.6 更新：** 选文工具栏默认仅显示图标，启用翻译后显示翻译按钮。在「设置 → 翻页操作 → 选文工具栏」可调整按钮显示与顺序、开启文字标签；隐藏功能仍在“更多”和右键菜单中。AI 回复的“查看原文”支持跨章节与重新打开原书定位。
+选文工具栏默认仅显示图标，启用翻译后显示翻译按钮。在「设置 → 翻页操作 → 选文工具栏」可调整按钮显示与顺序、开启文字标签；隐藏功能仍在“更多”和右键菜单中。AI 回复的“查看原文”支持跨章节与重新打开原书定位。
 
 选中文字，常用操作出现在选文旁边；右键也能使用这些功能。划线颜色通过下拉菜单切换，三种颜色使用统一样式。朱雀仿宋随插件离线提供，也可选择本机字体或导入字体文件；主题、字号、行距与单/双页布局可在阅读设置中调整。书页背景覆盖阅读区域，工具栏跟随 Obsidian。
 
-### 划词翻译、查词和生词本（4.5.0）
+### 划词翻译、查词和生词本
 
-![4.5.0 查词卡片：选中 Caucus-Race 后，AI 结合所在句子与书名给出音标、本句义、常见义项、用法说明和例句，可一键收录到生词本](docs/assets/lookup-4.5.0.jpg)
+![4.9.4 英文阅读：curiosity 的谷歌查词结果已收录，底部展示尚未开始播放的朗读控制](docs/assets/showcase-4.9.4-lookup-speech.jpg)
 
 在「设置 → AI 与翻译 → 划线翻译」打开翻译按钮后，选中文字点 **翻译**：选中一个词或短语会显示查词卡片，选中一句或一段会显示译文。结果就在选文旁边，点别处或按 Esc 关闭。
 
@@ -81,21 +86,21 @@ Qiaomu Reader 是中文优先的 Obsidian EPUB、PDF、FB2、MOBI、AZW3、CBZ�
 
 ### 3. 划线成为笔记，还能回到原文
 
-![4.2.4 划线与笔记并排：左侧原书粉色划线，右侧 Markdown 阅读笔记包含引文、回跳链接与批注](docs/assets/showcase-4.2.4-notes.jpg)
+![4.9.4 划线与笔记并排：原文高亮、自动生成的 Markdown 摘录、批注与回跳链接](docs/assets/showcase-4.9.4-notes.jpg)
 
 每本书关联一篇 Markdown 阅读笔记。划线与批注自动汇总，引文右侧的 `↩` 链接用于返回书中对应位置。原文、自己的理解和来源留在一起，后续可以继续在 Obsidian 中整理与连接。
 
 ### 4. 需要时，围绕选文和 AI 讨论
 
-![4.2.4 AI 伴读：书页与对话并排，问题保留选文来源，快捷问题位于输入框上方；图中回答为明确标注的界面演示](docs/assets/showcase-4.2.4-ai.jpg)
+![4.9.4 自定义 AI 伴读提示词：展示名称与实际 Prompt 分开编辑，支持添加、删除和恢复默认](docs/assets/showcase-4.9.4-ai-prompts.jpg)
+
+在伴读快捷条点击「管理」，可新增、编辑或删除自己的提问模板，最多保存 20 条。按钮名称和实际发送的 Prompt 分开填写；快捷按钮与 `/` 菜单共用同一组设置。清空列表后仍保留管理入口，也能恢复随界面语言变化的内置提示词。
 
 已打开 AI 伴读时，新选文自动更新待提问上下文；选中本身不会发送请求。快捷问题保持可见，非中文选文增加翻译入口。每条已发送问题保留当时的来源，之后翻页或切换选文不会改写旧问题。
 
-回答可以复制，或完整保存为独立 Markdown 笔记、追加到本书笔记；保存前可修改自动提取的标题。AI 是可选功能，配置服务后由你主动发送问题。图中固定示例仅展示交互，不代表模型效果或响应速度。
+回答可以复制，或完整保存为独立 Markdown 笔记、追加到本书笔记；保存前可修改自动提取的标题。AI 是可选功能，配置服务后由你主动发送问题。新版截图展示的是提示词管理，没有发送 AI 请求，也没有填入模拟回答。
 
 ### 5. PDF 保留原页面与图表
-
-![4.2.4 PDF 阅读：两页原创演示 PDF 并排呈现，保留双栏文字、图表和表格，顶部显示独立缩放控件](docs/assets/showcase-4.2.4-pdf.jpg)
 
 PDF 保留原始版式，支持独立缩放。有可靠文字层时，可选择、复制、搜索、划线、批注和向 AI 提问；扫描页仍能阅读和保存进度，但不提供没有文字层支撑的搜索或文字问答。
 
@@ -313,7 +318,7 @@ Select text and press **Translate**: a word or short phrase opens a dictionary c
 
 ### A reading workflow, not just a chat window
 
-The five screenshots above show the published **4.2.4** release running in Obsidian 1.13.7: **the six-book starter library, selection actions, linked highlighting notes, optional AI assistance, and original PDF pages.** New users can start with Tao Te Ching, Three Hundred Tang Poems, Shishuo Xinyu, Alice in Wonderland, Jekyll and Hyde, or Meditations without finding a book or configuring AI first. The library includes covers, reading progress, highlight counts and note links.
+The five current screenshots show the published **4.9.4** release running in an isolated Obsidian 1.13.7 vault: the starter library, Hacker Books discovery, linked highlights and notes, custom AI prompts, and word lookup with read-aloud controls. Highlights and vocabulary were saved through the plugin; the dictionary result came from Google. No AI answer was simulated. Reading progress is demonstration state. See [screenshot evidence](docs/showcase.md).
 
 Since 4.2.5, the first library visit adds all six starter books even when the vault already contains ebooks or PDF attachments. Upgrades also repair installations previously skipped by older versions. Existing same-name files are preserved, and books deliberately deleted after a successful import are not recreated automatically. Use Settings → Storage & sync → Add starter books to restore them manually.
 
@@ -335,11 +340,17 @@ User-selected font files are read only on import and copied into the vault. Enum
 
 Reading works fully offline. In-reader settings are split into Reading and AI Assistance tabs, keeping frequent AI controls close to the book while API keys and endpoint URLs remain in Obsidian plugin settings. Optional AI reading assistance includes built-in quick prompts and supports signed-in Codex CLI, Claude Code CLI, Grok CLI, Kimi Code CLI, and ZCode CLI accounts without additional API-key setup, plus DeepSeek, Kimi, Qwen, GLM, MiniMax, SiliconFlow, Doubao, OpenRouter, OpenAI, Ollama, LM Studio, and custom OpenAI-compatible endpoints. Custom endpoints can create or select an Obsidian secret directly, and each provider keeps its own secret, model, and endpoint override. CLI chats use persistent ACP sessions: Grok and Kimi provide ACP natively, while Codex, Claude, and ZCode use separately installed adapters. If an ACP session expires or its process exits before returning any content, the plugin rebuilds it and retries once; authentication, model, session, and process failures are reported separately. Grok ACP is launched with background auto-update disabled so an updater cannot delay the first streamed token. CLI providers are desktop-only and still send the page or selection you explicitly attach to their cloud service. AI is off by default and keys are stored with Obsidian SecretStorage.
 
-**New in 4.2.7:** The AI companion appears on the first book open on wide desktop windows and remembers when you close it. Configure a service directly in the sidebar. Save translations with their original passage and location link to the book note, an open note, a new note or today’s Daily Note.
+The AI companion appears on the first book open on wide desktop windows and remembers when you close it. Configure a service directly in the sidebar. Save translations with their original passage and location link to the book note, an open note, a new note or today’s Daily Note.
 
-**New in 4.2.6:** Selection actions use icons by default, with translation shown when enabled. Configure labels, visibility and order under Settings → Page turning → Selection toolbar. Hidden actions remain in More and the context menu. AI source links can reopen the correct book and navigate across chapters.
+Selection actions use icons by default, with translation shown when enabled. Configure labels, visibility and order under Settings → Page turning → Selection toolbar. Hidden actions remain in More and the context menu. AI source links can reopen the correct book and navigate across chapters.
 
-Saving an AI reply preserves its complete Markdown body with the source below it, either in a separate note or appended to the book's reading note. An editable title is extracted locally from the reply's topic, emphasis or content, with no extra model request. Saving keeps the chat open, and the saved action opens the existing note. Unsent drafts are persisted locally for up to 30 books (20,000 characters each) and survive sidebar closure/restarts; third-party syncing of the plugin folder may also copy them. Deleting conversations requires confirmation. Screenshots above were captured with the published [4.2.4 release](https://github.com/joeseesun/qiaomu-reader/releases/tag/4.2.4); see the [official listing](https://community.obsidian.md/plugins/qiaomu-reader) for installation.
+Saving an AI reply preserves its complete Markdown body with the source below it, either in a separate note or appended to the book's reading note. An editable title is extracted locally from the reply's topic, emphasis or content, with no extra model request. Saving keeps the chat open, and the saved action opens the existing note. Unsent drafts are persisted locally for up to 30 books (20,000 characters each) and survive sidebar closure/restarts; third-party syncing of the plugin folder may also copy them. Deleting conversations requires confirmation. Screenshots above were captured with the published [4.9.4 release](https://github.com/joeseesun/qiaomu-reader/releases/tag/4.9.4); see the [official listing](https://community.obsidian.md/plugins/qiaomu-reader) for installation.
+
+### Discover books and customise AI prompts
+
+Find books opens the public source first. Browse Hacker Books rankings and topics, search titles or authors, inspect HN comments and related books, and maintain want-to-read/read lists. Recommendations are calculated locally from library and list matches; vault titles and lists are not uploaded. Gutenberg downloads and external catalog links remain available.
+
+Manage up to 20 AI quick prompts from the suggestion strip. Button labels and full prompts are edited separately; suggestion buttons and slash commands share the saved configuration. Restore translated defaults or remove suggestions while keeping the management action available.
 
 ### Send books to Kindle (desktop)
 
