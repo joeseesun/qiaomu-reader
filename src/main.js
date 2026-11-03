@@ -97,7 +97,8 @@ import { contextProvider, findAgent, notifyContextChanged } from "./qiaomu-conte
 import { notifyHomeChanged } from "./qiaomu-home.js";
 import { createHomeProvider } from "./home.js";
 import { AI_ASSISTANT_ROUTES, readerSnapshot, shouldUseAgent } from "./agent-bridge.js";
-import { externalBookSearchUrls, gutenbergSearchUrl, gutenbergDetailUrl, gutenbergCoverUrl, parseGutenbergSearch, parseGutenbergEpub, validGutenbergEpub, safeBookFileName } from "./book-discovery.js";
+import { externalBookSearchUrls, gutenbergSearchUrl, gutenbergDetailUrl, gutenbergCoverUrl, parseGutenbergSearch, parseGutenbergEpub, validGutenbergEpub, safeBookFileName, normalizeShelfMarks } from "./book-discovery.js";
+import { BookShelf } from "./book-shelf.js";
 import { isLookupTerm, cleanLookupTerm, rangeContext, sentenceAround, buildTranslateMessages, buildLookupMessages, parseLookupAnswer, parseGoogleLookup, googleDetectedLanguage, sameLanguage, fallbackTarget, looksLikeLanguage, lookupEngine, lookupSessionKey, lookupCacheKey, createLookupCache } from "./lookup.js";
 import { defaultVocabularyPath, vocabularyDeckTag, vocabularyHeader, vocabularyKey, parseVocabularyCards, addToVocabulary, ankiFieldsFromCard } from "./vocabulary.js";
 import { ANKI_DEFAULT_URL, ANKI_DEFAULT_DECK, ANKI_ADDON_CODE, ankiNote, addAnkiNotes, ensureAnkiSetup } from "./anki.js";
@@ -149,7 +150,7 @@ const DEFAULT_TRANSLATION = {
   ankiSync: false, ankiDeck: "", ankiUrl: "",
 };
 const DEFAULT_LIBRARY_UI = {
-  bookNoteLinks: {}, locationMarks: [], bookNotePrompted: {}, coverFits: {},
+  bookNoteLinks: {}, locationMarks: [], bookNotePrompted: {}, coverFits: {}, shelfMarks: {},
   textBookPaths: [], removedBookPaths: [],
   syncMode: "auto", libCategory: "all", libSort: "added", downloadFolder: "", bookImports: {},
 };
@@ -2149,6 +2150,7 @@ const QiaomuBookReader = class extends Plugin {
     this.settings.aiCliEfforts = { ...(this.settings.aiCliEfforts || {}) };
     this.settings.aiChatHistory = normalizeAiChatHistory(this.settings.aiChatHistory);
     this.settings.locationMarks = normalizeLocationMarks(this.settings.locationMarks);
+    this.settings.shelfMarks = normalizeShelfMarks(this.settings.shelfMarks);
     if (this.settings.aiProvider && this.settings.aiModel && !this.settings.aiModels[this.settings.aiProvider]) {
       this.settings.aiModels[this.settings.aiProvider] = this.settings.aiModel;
     }
@@ -12464,6 +12466,12 @@ const BookDiscoveryModal = class extends Modal {
     form.createEl("button", { attr: { type: "submit" }, text: qiaomuReaderTranslate("search") });
     this._ebookPanel = mountEbookDiscovery(this.contentEl, this.plugin, this.library, qiaomuReaderTranslate, { icon: setIcon, sourceParent: heading, sharedForm: form, sharedField: field, onNavigate: () => this.close() });
     const root = this._ebookPanel.publicRoot;
+    this._shelf = new BookShelf(root, {
+      plugin: this.plugin, translate: qiaomuReaderTranslate, chinese: qiaomuReaderLanguage === "zh", locale: qiaomuReaderLocale,
+      vaultBooks: () => this.library?._libVaultBooks?.(qiaomuReaderPath(this.plugin.settings.booksFolder)) || [],
+      scroller: this.contentEl, field,
+      searchGutenberg: (query) => { field.value = query; field.dispatchEvent(new Event("input")); void this._search(query, status, results); }
+    });
     const primary = root.createEl("section", { cls: "qiaomu-reader-discovery-primary" });
     primary.createEl("h3", { text: qiaomuReaderTranslate("browser-book-sources") });
     const primaryLinks = primary.createDiv({ cls: "qiaomu-reader-discovery-primary-links" });
@@ -12579,6 +12587,7 @@ const BookDiscoveryModal = class extends Modal {
   onClose() {
     this._open = false;
     this.plugin._bookDiscoveryModals?.delete(this);
+    this._shelf?.dispose();
     this._ebookPanel?.dispose();
     this._request += 1;
     this.contentEl.empty();
