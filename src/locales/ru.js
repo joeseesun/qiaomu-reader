@@ -1,3 +1,4 @@
+import { SHELF_TEXT } from "../shelf-i18n.js";
 import { ABOUT_TEXT } from "../about-i18n.js";
 import { EBOOK_TEXT } from "../ebook-i18n.js";
 // Russian locale pack. Inherited Russian UI strings keep their original wording;
@@ -6,6 +7,7 @@ import { KINDLE_TEXT } from "../kindle-i18n.js";
 export default {
   ...KINDLE_TEXT.ru,
   ...ABOUT_TEXT.ru,
+  ...SHELF_TEXT.ru,
   ...EBOOK_TEXT.ru,
   "ai-connect-account-or-key": "Подключите аккаунт или введите API-ключ и пройдите проверку, чтобы начать работу с ИИ.",
   "library-remove": "Убрать из библиотеки",

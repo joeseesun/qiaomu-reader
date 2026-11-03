@@ -235,6 +235,7 @@ test('one query searches local authors first, preserves text across sources, and
  f.plugin.settings.bookImports={[file.path]:{title:'三体',author:'刘慈欣'}};f.plugin.bookFiles=()=>[file];f.plugin.searchCalibreBooks=async()=>({books:[],available:false});
  Object.assign(f.service,{isActivated:()=>true,profile:async()=>({expiresAt:1800000000,dailyLimit:20,usedToday:0}),jobs:async()=>[],search:()=>{online++;return new Promise(r=>{finish=r;});}});
  const ui=mountEbookDiscovery(document.querySelector('main'),f.plugin,{},key=>key,{sharedForm:form,sharedField:field});
+ assert.equal(ui.source(),'public');[...document.querySelectorAll('.qiaomu-reader-ebook-sources button')].find(b=>b.textContent==='catalog.local').click();
  field.value='刘慈欣';form.dispatchEvent(new dom.window.Event('submit',{cancelable:true}));await new Promise(r=>setImmediate(r));
  assert.equal(online,0);assert.match(document.querySelector('section:not([hidden])').textContent,/三体/);assert.equal(document.querySelectorAll('input[type=search]').length,1);
  const buttons=[...document.querySelectorAll('.qiaomu-reader-ebook-sources button')];buttons.find(b=>b.textContent==='ebook.source-qiaomu').click();await new Promise(r=>setImmediate(r));
