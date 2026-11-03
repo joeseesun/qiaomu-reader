@@ -118,7 +118,7 @@ export function mountEbookDiscovery(shell, plugin, library, t, { icon, sourcePar
   const publicButton = element(sources, 'button', t('ebook.source-public'));
   const qiaomuButton = element(sources, 'button', t('ebook.source-qiaomu'));
   publicButton.type = qiaomuButton.type = 'button';
-  if (sharedForm) { shell.classList.add('qiaomu-reader-find-unified'); sources.append(localButton, qiaomuButton, publicButton); }
+  if (sharedForm) { shell.classList.add('qiaomu-reader-find-unified'); sources.append(publicButton, localButton, qiaomuButton); }
   const localRoot = sharedForm && element(shell, 'section', undefined, 'qiaomu-reader-discovery-results');
   const publicRoot = element(shell, 'div');
   const premium = element(shell, 'section', undefined, 'qiaomu-reader-ebook-panel'); premium.hidden = true;
@@ -127,7 +127,7 @@ export function mountEbookDiscovery(shell, plugin, library, t, { icon, sourcePar
     const button = element(parent, 'button', text, cls); button.type = 'button';
     button.addEventListener('click', click); return button;
   };
-  let selected = sharedForm ? 'local' : 'public';
+  let selected = 'public';
   const select = which => {
     selected = which;
     if (localRoot) localRoot.hidden = which !== 'local';
