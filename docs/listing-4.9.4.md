@@ -17,3 +17,11 @@ Read EPUB, PDF, MOBI, FB2, comics, Markdown, TXT and HTML in Obsidian. Start wit
 5. `showcase-4.9.4-lookup-speech.jpg` — live Google lookup, saved vocabulary and idle read-aloud controls.
 
 All images are 1200 × 800 JPEGs captured from the unmodified public 4.9.4 plugin. See [capture evidence](showcase.md). No mobile screenshots are represented as device validation. Plugin version and installation assets are unchanged.
+
+## Publication evidence — 2026-11-03
+
+The official editor saved both descriptions and five desktop images. A subsequent editor read matched both exact descriptions and returned five images. The public page displayed the new short description and five gallery items; all five enlarged images loaded at 1200 × 800. Image IDs, in order: 16034, 16035, 16036, 16037, 16038.
+
+Public listing: https://community.obsidian.md/plugins/qiaomu-reader
+
+README and screenshot source update: https://github.com/joeseesun/qiaomu-reader/pull/95
