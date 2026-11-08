@@ -14,6 +14,19 @@ import { translateUiText } from "../src/i18n-runtime.js";
 import { buildProfile } from "../scripts/build-profile.mjs";
 import { EMBEDDED_PDF_CMAPS } from "../src/pdf-cmaps-data.js";
 
+test('the bundled local voice catalog fits the release budget and retains every model without Node', async () => {
+  const source = fs.readFileSync(path.join(root, 'src/tts-local-models.json'), 'utf8');
+  const result = await build({
+    stdin: { resolveDir: root, contents: 'export {default as catalog} from "./src/tts-local-models.json"; export {decodeTranslationData} from "./src/compact-translations.js";' },
+    bundle: true, format: 'cjs', target: 'es2018', minify: true, write: false,
+    plugins: [await compactTranslations(root)],
+  });
+  const module = { exports: {} };
+  vm.runInNewContext(result.outputFiles[0].text, { module, atob });
+  assert.deepEqual(JSON.parse(JSON.stringify(module.exports.catalog)), JSON.parse(source));
+  assert.ok(result.outputFiles[0].contents.length < 90000, `catalog bundle: ${result.outputFiles[0].contents.length}`);
+});
+
 const root = path.resolve(import.meta.dirname, "..");
 for (const profileName of ["standard", "community"]) {
   test(`${profileName} packed dictionaries retain every translation, legacy key and language fallback without Node`, async () => {

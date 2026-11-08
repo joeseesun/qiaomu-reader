@@ -1,4 +1,5 @@
 import path from "node:path";
+import fs from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import pako from "pako";
 
@@ -29,6 +30,12 @@ export async function compactTranslations(root = process.cwd()) {
   return {
     name: "compact-reader-translations",
     setup(build) {
+      // Compress the static voice catalog too; keep every model and its metadata.
+      build.onLoad({ filter: /[\\/]src[\\/]tts-local-models\.json$/ }, async ({ path: file }) => {
+        const data = JSON.parse(await fs.readFile(file, "utf8"));
+        const packed = Buffer.from(pako.deflateRaw(JSON.stringify(data), { level: 9 })).toString("base64");
+        return { resolveDir: root, loader: "js", contents: `import { decodePackedJson } from ${JSON.stringify(path.join(root, "src/compact-translations.js"))}; export default decodePackedJson(${JSON.stringify(packed)});` };
+      });
       build.onResolve({ filter: /^qbr:translations$/ }, () => ({ path: "data", namespace: "qbr-translations" }));
       build.onLoad({ filter: /.*/, namespace: "qbr-translations" }, () => ({
         resolveDir: root,
