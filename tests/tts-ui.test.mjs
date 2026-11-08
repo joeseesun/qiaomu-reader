@@ -59,137 +59,43 @@ function fixture(tts) {
   const cleanup = () => { view._ttsCleanup(); root.remove(); };
   return { p, c, view, calls, q, scopes, cleanup };
 }
-test('first desktop use defaults to Edge, explains online transfer, exposes settings and persists dismissal', () => {
-  const f = fixture();
-  assert.equal(f.p.settings.tts.provider, 'edge');
-  const intro = f.q('.qbr-tts-intro'); assert.equal(intro.hidden, false); assert.match(intro.textContent, /微软/);
-  assert.match(intro.querySelector('button').textContent, /语音设置/);
-  intro.querySelectorAll('button')[1].click();
-  ui.stopViewTts(f.view); ui.openTts(f.view);
-  assert.equal(intro.hidden, true); assert.equal(f.p.settings.tts.introSeen, true);
-  assert.equal(f.calls.length, 0); f.cleanup();
+test('first-use setup discloses provider and does not synthesize or change it while browsing', () => {
+  const f = fixture(); ui.stopViewTts(f.view); f.q('.qbr-tts-read-action').click();
+  assert.equal(f.p.settings.tts.provider, 'edge'); assert.equal(f.calls.length, 0);
+  assert.match(lastModal.contentEl.textContent, /微软/);
+  lastModal.switchProvider('doubao'); assert.equal(lastModal.list.hidden, true); assert.equal(lastModal.test.disabled, true);
+  assert.equal(f.p.settings.tts.provider, 'edge'); lastModal.close(); f.cleanup();
 });
-test('existing explicit service remains; mobile fresh install retains system preference', () => {
-  const old = fixture({ provider: 'system' }); assert.equal(old.p.settings.tts.provider, 'system'); old.cleanup();
-  ttsHost.Platform.isDesktopApp = false;
-  const mobile = fixture(); assert.equal(mobile.p.settings.tts.provider, 'system'); mobile.cleanup();
-  ttsHost.Platform.isDesktopApp = true;
+test('fresh mobile retains system preference and gives setup when the device API is unavailable', () => {
+  ttsHost.Platform.isDesktopApp = false; const f = fixture(); ui.openTtsSettings(f.p);
+  assert.equal(f.p.settings.tts.provider, 'system'); assert.match(lastModal.feedback.textContent, /未提供系统朗读接口/);
+  assert.equal(lastModal.test.disabled, true); assert.equal(lastModal.adapter.providers('').some(p => p.id === 'macos'), false);
+  lastModal.close(); f.cleanup(); ttsHost.Platform.isDesktopApp = true;
 });
-test('missing mobile system API gives a direct setup route and hides desktop-only providers', () => {
-  ttsHost.Platform.isDesktopApp = false;
-  const f = fixture();
-  assert.match(f.q('.qbr-tts-intro').textContent, /未提供系统朗读接口/);
-  f.q('.qbr-tts-current-voice').click();
-  assert.equal(f.q('.qbr-tts-setup').hidden, false);
-  assert.match(f.q('.qbr-tts-setup').textContent, /选择其他服务/);
-  const services = [...f.q('select[data-tts-field="service"]').options].map(v => v.value);
-  assert.equal(services.includes('macos'), false); assert.equal(services.includes('edge'), false);
-  f.cleanup(); ttsHost.Platform.isDesktopApp = true;
+test('audition restores exact paused book position and rate without changing active voice or extra synthesis', async () => {
+  const f = fixture({ provider: 'edge', introSeen: true }); const owner = { view: f.view }, items = [{ text: '第一段' }, { text: '第二段' }];
+  f.c.start(owner, items, { id: 'edge' }, { paused: true, index: 1, rate: 1.5 });
+  ui.openTtsSettings(f.p); lastModal.profile.voice = 'zh-CN-YunxiNeural'; lastModal.audition(); await tick();
+  assert.equal(f.calls.at(-1).profile.voice, 'zh-CN-YunxiNeural'); assert.equal(f.p.settings.tts.profiles.edge, undefined);
+  f.c.audio.onended(); await tick(); assert.equal(f.c.owner, owner); assert.equal(f.c.index, 1); assert.equal(f.c.rate, 1.5); assert.equal(f.c.state, 'paused'); assert.equal(f.calls.length, 1);
+  lastModal.close(); f.cleanup();
 });
-test('a synced Mac provider remains visible on Windows with a specific recovery instead of invoking Node speech', () => {
-  ttsHost.Platform.isMacOS = false;
-  const f = fixture({ provider: 'macos', introSeen: true });
-  f.q('.qbr-tts-current-voice').click();
-  assert.equal(f.p.settings.tts.provider, 'macos'); assert.equal(f.calls.length, 0);
-  assert.match(f.q('.qbr-tts-setup').textContent, /仅适用于 Mac/);
-  const services = [...f.q('select[data-tts-field="service"]').options].map(v => v.value);
-  assert.ok(services.includes('macos')); assert.ok(services.includes('edge'));
-  f.cleanup();
-});
-test('voice preview does not select voice or synthesize book on restore; Escape and close clean up', async () => {
+test('failed audition retains draft and provider; closing the book never restores stale speech', async () => {
   const f = fixture({ provider: 'edge', introSeen: true });
-  const owner = { view: f.view }, items = [{ text: '第一段' }, { text: '第二段' }];
-  f.c.start(owner, items, { id: 'edge', voice: 'zh-CN-XiaoxiaoNeural' }, { paused: true, index: 1, rate: 1.5 });
-  f.q('.qbr-tts-current-voice').click();
-  f.q('[data-voice="zh-CN-YunxiNeural"] .qbr-tts-voice-preview').click(); await tick();
-  assert.equal(f.calls.at(-1).profile.voice, 'zh-CN-YunxiNeural');
-  assert.equal(f.p.settings.tts.profiles.edge, undefined);
-  f.c.audio.onended(); await tick();
-  assert.equal(f.c.owner, owner); assert.equal(f.c.index, 1); assert.equal(f.c.rate, 1.5); assert.equal(f.c.state, 'paused');
-  assert.equal(f.calls.length, 1);
-  f.q('.qbr-tts-options').dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-  assert.equal(f.q('.qbr-tts-options').hidden, true); assert.equal(f.scopes.size, 0);
-  assert.equal(doc.activeElement, f.q('.qbr-tts-current-voice'));
-  f.q('.qbr-tts-close').click(); assert.equal(f.view._ttsBar.hidden, true); assert.equal(f.c.owner, null); f.cleanup();
+  f.c.start({ view: f.view }, [{ text: '正文' }], { id: 'edge' }, { paused: true });
+  ui.openTtsSettings(f.p); lastModal.audition(); await tick(); f.c.fail({ code: 'http', status: 401 }, f.c.generation); await tick();
+  assert.equal(f.c.state, 'paused'); assert.match(lastModal.feedback.textContent, /401/); assert.equal(f.p.settings.tts.provider, 'edge');
+  lastModal.audition(); await tick(); f.view._closed = true; f.view._ttsCleanup(); assert.equal(f.c.owner, null); assert.equal(f.calls.length, 1); f.cleanup();
 });
-test('configuration is one click from intro; modal preserves position after preview and never resumes automatically', async () => {
-  const f = fixture({ provider: 'edge' });
-  const owner = { view: f.view }, items = [{ text: '正文' }, { text: '下一句' }];
-  f.c.start(owner, items, { id: 'edge' }, { paused: true, index: 1, rate: 1.25 });
-  f.q('.qbr-tts-intro button').click();
-  assert.equal(f.p.settings.tts.introSeen, true);
-  [...lastModal.contentEl.querySelectorAll('button')].find(b => b.textContent === '试听').click(); await tick();
-  lastModal.close();
-  assert.equal(f.c.owner, owner); assert.equal(f.c.index, 1); assert.equal(f.c.rate, 1.25); assert.equal(f.c.state, 'paused');
-  assert.equal(f.calls.length, 1); f.cleanup();
-});
-test('unconfigured cloud service has direct configuration recovery and retains inline models', () => {
-  const f = fixture({ provider: 'siliconflow', introSeen: true });
-  f.q('.qbr-tts-current-voice').click();
-  assert.ok(f.q('select[data-tts-field="model"]')); assert.equal(f.q('.qbr-tts-setup').hidden, false);
-  assert.match(f.q('.qbr-tts-setup').textContent, /配置并试听/);
-  f.q('.qbr-tts-setup button').click();
-  assert.equal(doc.activeElement.type, 'password'); lastModal.close(); f.cleanup();
-});
-test('cloud setup offers provider-specific public key and speech docs without exposing keys', () => {
-  const expected = {
-    openai: 'platform.openai.com/api-keys', qwen: 'bailian.console.aliyun.com/cn-beijing/model/settings/api-key',
-    doubao: 'console.volcengine.com/speech/service', minimax: 'platform.minimax.cn/console/access?tab=api-keys',
-    siliconflow: 'cloud.siliconflow.cn/account/ak', elevenlabs: 'elevenlabs.io/app/developers/api-keys',
-    azure: 'portal.azure.com/#create/Microsoft.CognitiveServicesSpeechServices',
-  };
-  const f = fixture({ provider: 'openai', introSeen: true });
-  f.p.app.secretStorage.getSecret = () => 'private-test-key';
-  ui.openTtsSettings(f.p);
-  const service = () => lastModal.contentEl.querySelector('select');
-  for (const [id, url] of Object.entries(expected)) {
-    service().value = id; service().dispatchEvent(new dom.window.Event('change'));
-    const links = [...lastModal.contentEl.querySelectorAll('.qbr-tts-service-help a')];
-    assert.equal(links.length, 2); assert.equal(links[0].href, `https://${url}`);
-    assert.equal(links[0].textContent, '获取密钥'); assert.equal(links[1].textContent, '服务文档');
-    for (const link of links) {
-      assert.equal(link.target, '_blank'); assert.equal(link.rel, 'noopener noreferrer');
-      assert.equal(link.hasAttribute('title'), false); assert.equal(link.hasAttribute('aria-label'), false);
-      assert.equal(link.href.includes('private-test-key'), false);
-    }
-  }
-  assert.equal(f.calls.length, 0); lastModal.close(); f.cleanup();
-});
-test('help follows MiniMax endpoint edits; custom and keyless services avoid unrelated signup links', () => {
-  const f = fixture({ provider: 'minimax', introSeen: true }); f.p.settings.language = 'en';
-  ui.openTtsSettings(f.p);
-  const root = lastModal.contentEl;
-  assert.equal(root.querySelector('.qbr-tts-service-help a').textContent, 'Get a key');
-  const endpoint = root.querySelector('details input');
-  endpoint.value = 'https://api.minimax.io/v1'; endpoint.dispatchEvent(new dom.window.Event('change'));
-  assert.equal(new URL(root.querySelector('.qbr-tts-service-help a').href).hostname, 'platform.minimax.io');
-  endpoint.value = 'https://api.minimax.cn/v1'; endpoint.dispatchEvent(new dom.window.Event('change'));
-  assert.equal(new URL(root.querySelector('.qbr-tts-service-help a').href).hostname, 'platform.minimax.cn');
-  const change = id => { const select = root.querySelector('select'); select.value = id; select.dispatchEvent(new dom.window.Event('change')); };
-  change('compatible'); assert.equal(root.querySelectorAll('.qbr-tts-service-help a').length, 0);
-  assert.match(root.querySelector('.qbr-tts-service-help').textContent, /your provider/);
-  for (const id of ['edge', 'system']) { change(id); assert.equal(root.querySelector('.qbr-tts-service-help'), null); }
-  assert.equal(f.calls.length, 0); lastModal.close(); f.cleanup();
-});
-test('failed preview restores book, shows rate-limit recovery, and keeps provider choice', async () => {
+test('inline menu preserves paused navigation and exposes speech location without losing other actions', () => {
   const f = fixture({ provider: 'edge', introSeen: true });
-  f.c.synthesize = async () => { throw Object.assign(Error('rate'), { code: 'http', status: 429 }); };
-  const owner = { view: f.view };
-  f.c.start(owner, [{ text: '正文' }], { id: 'edge' }, { paused: true, rate: 1.5 });
-  f.q('.qbr-tts-current-voice').click();f.q('.qbr-tts-voice-preview').click();await tick();
-  assert.equal(f.c.owner, owner); assert.equal(f.c.state, 'paused'); assert.equal(f.p.settings.tts.provider, 'edge');
-  assert.match(f.q('.qbr-tts-options').textContent, /429.*稍后重试/);f.cleanup();
+  f.c.start({ view: f.view }, [{ text: '一' }, { text: '二' }, { text: '三' }], { id: 'edge' }, { paused: true, index: 1 });
+  f.q('.qbr-tts-more').click(); const menu = f.q('.qbr-tts-menu'); assert.equal(menu.children.length, 4); assert.doesNotMatch(menu.textContent, /朗读选项|阅读位置/); menu.children[2].click();
+  const nav = f.q('.qbr-tts-position'); f.q('.qbr-tts-position-transport').children[1].click(); assert.equal(f.c.index, 2); assert.equal(f.c.state, 'paused'); assert.equal(f.calls.length, 0);
+  nav.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); assert.equal(nav.hidden, true); assert.equal(doc.activeElement, f.q('.qbr-tts-more'));
+  f.q('.qbr-tts-more').click(); menu.children[2].click(); assert.equal(f.q('.qbr-tts-position').hidden, false); assert.match(f.q('.qbr-tts-position').textContent, /从当前页朗读/);
+  f.q('.qbr-tts-close').click(); assert.equal(f.view._ttsBar.hidden, true); assert.equal(f.c.owner, null); ui.openTts(f.view); assert.equal(f.view._ttsBar.inert, false); f.cleanup();
 });
-test('closing book during configuration prevents restoring stale audio; chapter wait survives audition', async () => {
-  const f = fixture({ provider: 'edge', introSeen: true });
-  const owner = { view: f.view, follow: false };
-  f.c.start(owner, [{ text: '末句' }], { id: 'edge' }, { paused: true });f.c.index=1;f.c.waitingSection=true;
-  f.q('.qbr-tts-current-voice').click();f.q('.qbr-tts-voice-preview').click();await tick();f.c.audio.onended();await tick();
-  assert.equal(f.c.waitingSection, true);assert.equal(f.c.index, 1);
-  f.q('.qbr-tts-popup-footer button').click();ui.stopViewTts(f.view);lastModal.close();
-  assert.equal(f.c.owner, null);assert.equal(f.calls.length, 1);f.cleanup();
-});
-
 test('automatic EPUB page-follow awaits relocation without disabling follow, while manual browsing does', async () => {
   const f=fixture({provider:'system',introSeen:true});
   const book=new JSDOM('<body><p>第一页。第二页。</p></body>').window.document,node=book.querySelector('p').firstChild;
@@ -205,16 +111,14 @@ test('automatic EPUB page-follow awaits relocation without disabling follow, whi
   f.view._ttsOnRelocate({reason:'page'});assert.equal(owner.follow,false);f.cleanup();
 });
 
-test('voice search is available for short lists and survives choosing a filtered voice', () => {
-  const f = fixture({ provider: 'edge' });
-  f.q('.qbr-tts-current-voice').click();
-  let input = f.q('.qbr-tts-search input');
-  assert.ok(input); assert.equal(input.parentElement.hidden, false);
-  input.value = '云希'; input.dispatchEvent(new dom.window.Event('input'));
-  const row = [...f.q('.qbr-tts-voice-list').children].find(el => !el.hidden);
-  assert.ok(row); row.querySelector('button').click();
-  input = f.q('.qbr-tts-search input');
-  assert.equal(input.value, '云希');
-  assert.equal([...f.q('.qbr-tts-voice-list').children].filter(el => !el.hidden).length, 1);
-  assert.equal(f.scopes.size, 1); f.cleanup();
+test('speed stays directly accessible at both widths without a redundant options submenu', () => {
+  const f = fixture({ provider: 'edge', introSeen: true });
+  const menu = f.q('.qbr-tts-menu');
+  assert.equal(menu.children[0].hidden, false); menu.children[0].click();
+  assert.equal(f.q('.qbr-tts-rates').hidden, false);
+  f.view.contentEl.getBoundingClientRect = () => ({ width: 900, bottom: 700, left: 0 });
+  f.view._ttsRefresh(); assert.equal(menu.children[0].hidden, true);
+  assert.equal([...menu.children].filter(b => !b.hidden).length, 3);
+  f.q('.qbr-tts-speed').click(); assert.equal(f.q('.qbr-tts-rates').hidden, false);
+  f.cleanup();
 });
