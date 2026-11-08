@@ -5,12 +5,13 @@ import test from "node:test";
 import { parse } from "acorn";
 import { JSDOM } from "jsdom";
 import { selectionActionPreferences } from "../src/selection-preferences.js";
+import { createReaderSelectionLifecycle } from "../src/reader-selection.js";
 import { highlightBacklink } from "../src/highlight-navigation.js";
 
 const source = fs.readFileSync(new URL("../src/main.js", import.meta.url), "utf8");
 const ast = parse(source, { ecmaVersion: "latest", sourceType: "module" });
 const functions = ast.body.filter(n => n.type === "FunctionDeclaration");
-const names = ["selectionActions","matchingSelectionHighlight", "selectionColor", "clearReaderSelection", "beginReaderSelection", "engineSelectionRect", "openReaderSelectionContext", "selectionFeedback", "repaintSelectionHighlights", "applySelectionColor", "closeSelectionColorDropdown", "toggleSelectionColorDropdown", "syncSelectionToolbar", "addBarButtons", "openSelectionMoreMenu", "copySelectionText", "openAiSelectionChat", "closeInlineHighlightComment", "openInlineHighlightComment", "handleAreaNavClick"];
+const names = ["selectionActions","matchingSelectionHighlight", "selectionColor", "clearReaderSelection", "closeReaderSelectionMenu", "engineSelectionRect", "openReaderSelectionContext", "selectionFeedback", "repaintSelectionHighlights", "applySelectionColor", "closeSelectionColorDropdown", "toggleSelectionColorDropdown", "syncSelectionToolbar", "addBarButtons", "openSelectionMoreMenu", "copySelectionText", "openAiSelectionChat", "closeInlineHighlightComment", "openInlineHighlightComment", "handleAreaNavClick"];
 const code = functions.filter(n => names.includes(n.id.name)).map(n => source.slice(n.start, n.end)).join("\n");
 const tick = () => new Promise(r => setTimeout(r, 5));
 function setup() {
@@ -38,7 +39,7 @@ function setup() {
     }
     addSeparator() {}
     onHide(fn) { this.onhide = fn; }
-    hide() { this.onhide?.(); }
+    hide() { this.hidden = true; this.onhide?.(); }
     showAtPosition(pos) { this.pos = pos; }
   }
   const root = window.document.querySelector("main");
@@ -54,14 +55,14 @@ function setup() {
     _pendingSel: { cfi: "epubcfi(/6/2!/4/2,/1:0,/1:4)", text: "选中文本" },
     _currentHl() { return records.find(h => h.id === this._editHlId) || this._pendingSel; },
     _showHlPopup(rect) { this._hlPopupRect = rect; this.hlPopup.classList.add("qiaomu-reader-hl-popup-on"); },
-    _hideHlPopup() { api.closeInlineHighlightComment(this); this.hlPopup.classList.remove("qiaomu-reader-hl-popup-on"); this._pendingSel = null; this._editHlId = null; },
+    _hideHlPopup({ preserveSelection = false } = {}) { if (!preserveSelection) this._selectionLifecycle?.dismiss(); api.closeReaderSelectionMenu(this); api.closeInlineHighlightComment(this); this.hlPopup.classList.remove("qiaomu-reader-hl-popup-on"); this._pendingSel = null; this._editHlId = null; },
     _renderFlowHighlights() {}, _unwrapHighlight() {},
     _createHighlight(sel, color) { const existing = api.matchingSelectionHighlight(this, sel); if (existing) { existing.color = color; return existing.id; } const id = "h" + records.length; records.push({ ...sel, color, id }); return id; },
     _applyPopupColor(color) { api.applySelectionColor(this, color); },
   };
   class Scope { constructor() { this.bindings = []; } register(mods, key, run) { this.bindings.push({ mods, key, run }); } }
   const translations = [];
-  const context = { selectionActionPreferences, openLookupCard: v => translations.push({ text: v._currentHl().text, file: v.file }), window, Menu, Scope, aiSetupState: () => ({ ready: true, enabled: true }), paintAiSource() {}, qiaomuReaderTranslate: k => k, setIcon() {}, highlightBacklink,
+  const context = { qiaomuReaderIsMobile: app => !!app?.isMobile, selectionActionPreferences, openLookupCard: v => translations.push({ text: v._currentHl().text, file: v.file }), window, Menu, Scope, aiSetupState: () => ({ ready: true, enabled: true }), paintAiSource() {}, qiaomuReaderTranslate: k => k, setIcon() {}, highlightBacklink,
     docOf: el => el.ownerDocument, selOf: el => el.ownerDocument.getSelection(), readerIsPdf: () => false,
     qiaomuReaderRefreshHlPanel() {}, qiaomuReaderAutoFocus() {}, positionHlPopup() {},
     hlCommentQuoteBlock() {}, Notice: class {},
@@ -72,8 +73,10 @@ function setup() {
     HL_COLORS: ["yellow", "green", "pink", "blue"].map(id => ({ id, label: () => id })),
   };
   const api = vm.runInNewContext(`${code}\n({${names.join(",")}})`, context);
+  view._selectionLifecycle = createReaderSelectionLifecycle(view, (event, doc, index) => api.openReaderSelectionContext(view, event, doc, index));
+  view._onSelectionCheck = () => {};
   view._showHlPopup({ left: 10, right: 210, top: 100, bottom: 120, width: 200, height: 20 });
-  return { window, view, api, menus, records, copied, savedComments, translations, close: () => window.close() };
+  return { window, view, api, menus, records, copied, savedComments, translations, close: () => { view._selectionLifecycle.dispose(); window.close(); } };
 }
 
 test("toolbar exposes stable labeled actions and a separate three-color menu", () => {
@@ -103,7 +106,7 @@ test("right-click in a book iframe captures selection before the native menu and
   assert.equal(event.defaultPrevented, true);
   const menu = menus[0]; assert.equal(menu.pos.x, 130); assert.equal(menu.pos.y, 90);
   assert.deepEqual(menu.items.slice(0, 4).map(i => i.title), ["highlight-action", "annotate-action", "ask-ai-action", "copy"]);
-  doc.getSelection().removeAllRanges(); view._hideHlPopup();
+  doc.getSelection().removeAllRanges();
   await menu.items.find(i => i.title === "copy-position-link").run(); await tick();
   assert.match(copied[0], /cfi=epubcfi%28/);
   f.close();
@@ -114,6 +117,52 @@ test("an open menu cannot apply an old selection to another book", () => {
   f.view.file = { path: "Another.mobi" };
   f.menus[0].items[0].run();
   assert.equal(f.records.length, 0); f.close();
+});
+
+test("repeated context menus replace the old instance and stale actions cannot create highlights", async () => {
+  const f = setup();
+  for (let i = 0; i < 3; i++) f.api.openSelectionMoreMenu(f.view, {}, true);
+  assert.equal(f.menus.filter(menu => !menu.hidden).length, 1);
+  f.menus[0].items[0].run();
+  assert.equal(f.records.length, 0);
+  await tick();
+  assert.equal(f.view._selectionMenu, f.menus[2], "late onHide from an old menu must not close the current one");
+  f.view._hideHlPopup();
+  assert.equal(f.menus.filter(menu => !menu.hidden).length, 0);
+  f.menus[2].items[0].run(); assert.equal(f.records.length, 0);
+  f.close();
+});
+
+test("book-iframe pointerdown and Escape dismiss the host menu", () => {
+  const f = setup();
+  const frame = f.window.document.createElement("iframe"); f.view.areaEl.append(frame);
+  const doc = frame.contentDocument; doc.body.textContent = "book text";
+  f.view._selectionLifecycle.bind(doc, 0);
+  const pending = f.view._pendingSel;
+  for (const type of ["pointerdown", "keydown"]) {
+    f.view._pendingSel = pending; f.api.openSelectionMoreMenu(f.view, {}, true);
+    const event = type === "pointerdown"
+      ? new doc.defaultView.PointerEvent(type, { button: 0, pointerType: "mouse", bubbles: true })
+      : new doc.defaultView.KeyboardEvent(type, { key: "Escape", bubbles: true });
+    doc.body.dispatchEvent(event);
+    assert.equal(f.view._selectionMenu, null); assert.equal(f.menus.at(-1).hidden, true);
+  }
+  f.close();
+});
+
+test("Android long-press contextmenu never opens the blocking Obsidian sheet during selection", () => {
+  const f = setup(); f.view.app.isMobile = true;
+  f.view.areaEl.textContent = "selected text";
+  const doc = f.window.document, range = doc.createRange(); range.selectNodeContents(f.view.areaEl);
+  doc.getSelection().addRange(range);
+  f.view.areaEl.dispatchEvent(new f.window.PointerEvent("pointerdown", { button: 0, pointerType: "touch", bubbles: true }));
+  const event = new f.window.MouseEvent("contextmenu", { cancelable: true, bubbles: true });
+  f.view.areaEl.dispatchEvent(event);
+  assert.equal(event.defaultPrevented, true);
+  assert.equal(f.view._selectionDragging, true);
+  assert.equal(f.menus.length, 0);
+  assert.equal(doc.getSelection().toString(), "selected text");
+  f.close();
 });
 
 test("recoloring an existing CFI keeps its ID and comment; undo restores the previous color", () => {
@@ -146,7 +195,7 @@ test("comment drafts survive dismissal; ordinary Enter and IME confirmation do n
 test("the click dismissing a popup is consumed once before edge navigation", () => {
   const f = setup(); let pages = 0;
   f.view.areaEl.getBoundingClientRect = () => ({ left: 0, width: 500 }); f.view.nav = () => pages++;
-  f.api.beginReaderSelection(f.view, { button: 0, pointerType: "mouse" });
+  f.view.areaEl.dispatchEvent(new f.window.PointerEvent("pointerdown", { button: 0, pointerType: "mouse", bubbles: true }));
   const event = { target: f.view.areaEl, clientX: 490 };
   assert.equal(f.api.handleAreaNavClick(f.view, event), true); assert.equal(pages, 0);
   f.api.handleAreaNavClick(f.view, event); assert.equal(pages, 1); f.close();

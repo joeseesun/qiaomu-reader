@@ -107,6 +107,42 @@ test("TXT keeps Markdown syntax literal instead of parsing GFM", async () => {
     book.destroy();
 });
 
+test("Obsidian image embeds resolve vault paths, basenames, alt text and numeric sizes", async () => {
+    const calls = [];
+    const markdown = '# Images\n\n![[assets/中文 图片.png]] ![[photo.jpg|A & B]] ![[photo.jpg|320]] ![[photo.jpg|320x180]]\n\n![standard](assets/normal.png)';
+    const book = await makeTextBook(bytes(markdown), "note.md", {
+        resolveResource: path => { calls.push(path); return `app://vault/${encodeURI(path)}`; },
+    });
+    const images = [...book.sections[0].createDocument().querySelectorAll("img")];
+    assert.equal(images.length, 5);
+    assert.deepEqual(calls, ["assets/中文 图片.png", "photo.jpg", "photo.jpg", "photo.jpg", "assets/normal.png"]);
+    assert.equal(images[0].getAttribute("src"), "app://vault/assets/%E4%B8%AD%E6%96%87%20%E5%9B%BE%E7%89%87.png");
+    assert.equal(images[1].alt, "A & B");
+    assert.equal(images[2].getAttribute("width"), "320");
+    assert.equal(images[2].getAttribute("height"), null);
+    assert.equal(images[3].getAttribute("height"), "180");
+    book.destroy();
+});
+
+test("image embeds leave code, escaped syntax, non-images and unresolved attachments readable", async () => {
+    const markdown = [
+        '`![[code.png]]`', '', '```md', '![[fenced.png]]', '```', '',
+        '\\![[escaped.png]]', '![[note.md]]', '![[sound.mp3]]', '[[ordinary.png]]',
+        '![[missing.png]]', '![[photo.png|\" onerror=\"alert(1)]]',
+        '<img src="photo.png" width="-1" height="2px" onerror="alert(1)">',
+    ].join('\n');
+    const calls = [];
+    const book = await makeTextBook(bytes(markdown), "note.md", { resolveResource: path => {
+        calls.push(path); return path === "photo.png" ? "app://vault/photo.png" : null;
+    } });
+    const doc = book.sections[0].createDocument();
+    assert.deepEqual(calls, ["missing.png", "photo.png", "photo.png"]);
+    for (const literal of ["![[code.png]]", "![[fenced.png]]", "![[escaped.png]]", "![[note.md]]", "![[sound.mp3]]", "[[ordinary.png]]", "missing.png"]) assert.ok(doc.body.textContent.includes(literal), literal);
+    assert.equal(doc.querySelectorAll("img").length, 2);
+    assert.equal(doc.querySelector("[onerror],script,[width],[height]"), null);
+    book.destroy();
+});
+
 test("long unchaptered prose is bounded into sections without dropping text", async () => {
     const input = Array.from({ length: 1000 }, (_, i) => `line-${i} ${"文字".repeat(30)}`).join("\n");
     const book = await makeTextBook(bytes(input), "long.txt");
