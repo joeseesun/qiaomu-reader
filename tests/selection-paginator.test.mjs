@@ -33,3 +33,25 @@ test("Foliate no longer snaps to another page after a native selection-handle dr
     end.call(pager); assert.equal(snaps, 1, "ordinary page swipes still snap");
     pager.scrolled = true; end.call(pager); assert.equal(snaps, 1);
 });
+
+test("Foliate defers a queued repaint until the chapter iframe has a body", () => {
+    const source = patchFoliatePaginator(original);
+    const start = source.indexOf("    render() {");
+    const end = source.indexOf("    get scrolled()", start);
+    const render = vm.runInNewContext(`({${source.slice(start, end).replaceAll("#", "")}}).render`);
+    const calls = [];
+    const pager = {
+        view: { document: { documentElement: null, body: null }, render() { calls.push("render"); } },
+        container: { clientWidth: 400, clientHeight: 700 },
+        beforeRender() {
+            assert.ok(this.view.document.body, "background and layout require a loaded chapter");
+            calls.push("layout");
+        },
+        scrollToAnchor() { calls.push("anchor"); },
+    };
+    render.call(pager);
+    assert.deepEqual(calls, []);
+    pager.view.document = { documentElement: {}, body: {} };
+    render.call(pager);
+    assert.deepEqual(calls, ["layout", "render", "anchor"]);
+});

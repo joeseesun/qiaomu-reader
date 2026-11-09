@@ -78,9 +78,14 @@ export function patchFoliatePaginator(code) {
   code = replaceRequired(code, "this.#observer.unobserve(this)", "this.#observer.disconnect()");
   code = replaceRequired(code, "if (this.document) this.#observer.unobserve(this.document.body)", "this.#observer.disconnect()");
   code = replaceRequired(code, "this.#view.destroy()\n        this.#view = null", "this.#view?.destroy()\n        this.#view = null");
-  code = replaceRequired(code, "render() {\n        if (!this.#view) return", "render() {\n        if (!this.#view || !this.#container.clientWidth || !this.#container.clientHeight) return");
+  // The iframe is attached before navigation finishes. Its Document can
+  // exist without a body while a queued resize or font callback runs.
+  code = replaceRequired(code, "render() {\n        if (!this.#view) return",
+    "render() {\n        if (!this.#view?.document?.body || !this.#container.clientWidth || !this.#container.clientHeight) return");
+  code = replaceRequired(code, "const doc = this.#view?.document\n        if (!doc) return",
+    "const doc = this.#view?.document\n        if (!doc?.documentElement || !doc.defaultView) return");
   code = replaceRequired(code, "expand() {\n        const { documentElement } = this.document",
-    "expand() {\n        if (!this.#element.parentElement?.clientWidth || !this.#element.parentElement?.clientHeight) return\n        const { documentElement } = this.document");
+    "expand() {\n        if (!this.document?.body || !this.#element.parentElement?.clientWidth || !this.#element.parentElement?.clientHeight) return\n        const { documentElement } = this.document");
   code = replaceRequired(code, "--_max-column-count-portrait: 1;", "--_max-column-count-portrait: var(--_max-column-count);");
   // An exception must not leave all later navigation permanently locked.
   code = replaceRequired(code, "async #turnPage(dir, distance) {\n        if (this.#locked) return\n        this.#locked = true",
