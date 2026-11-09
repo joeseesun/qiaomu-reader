@@ -13,7 +13,12 @@ AI selection context and reading progress. Original source bytes are retained.
   preview renderer and code-block processors. GFM tables (including alignment),
   task lists, strikethrough, autolinks, nested lists and fenced code become HTML.
   Frontmatter stays out of the body. Standard relative links/images resolve in
-  the vault; Obsidian-specific wikilinks and dynamic plugin blocks are not GFM.
+  the vault. Obsidian image embeds (`![[assets/image.png]]`, `![[image.png|alt]]`,
+  `![[image.png|320]]`, `![[image.png|320x180]]`) use the same vault resolver,
+  relative to the source note, including basename lookup. Missing images retain
+  readable alt text or their path. Code examples and escaped embeds stay literal.
+  Note/audio/PDF embeds, ordinary wikilinks and dynamic plugin blocks remain
+  outside this static image support.
 - TXT is escaped plain text, never parsed as Markdown or executable HTML. Blank
   lines separate paragraphs; repeated blank lines collapse. Newlines inside a
   paragraph and existing indentation are preserved; no extra first-line indent

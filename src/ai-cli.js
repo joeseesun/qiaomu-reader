@@ -3,6 +3,7 @@
 // This module deliberately has no static Node imports: Obsidian also loads the
 // plugin on mobile, where Node built-ins do not exist. Node modules are resolved
 // only after the caller has established that it is running on desktop.
+import { parse, stringify } from "smol-toml";
 import { ACP_AUTO_INSTALL_ENABLED, installAcpWithTools } from "./ai-acp-manual.js";
 
 export const CLI_AI_PROVIDER_IDS = Object.freeze([
@@ -693,11 +694,19 @@ function latestUserPrompt(messages) {
   return "";
 }
 
+/**
+ * Classifies failures after an ACP process has started so request-time authentication
+ * errors do not masquerade as a failed CLI login probe. The returned reason drives
+ * user-facing recovery guidance; API-key rejection stays distinct from ACP auth
+ * negotiation, and only the supplied error message and diagnostic data are inspected.
+ * Credentials are not added to the classification result.
+ */
 export function classifyAcpFailure(error) {
   const message = String(error?.message || "ACP request failed");
   const data = typeof error?.data === "string" ? error.data : JSON.stringify(error?.data || {});
   const detail = `${message}\n${data}`;
-  if (/auth|logged in|sign in/i.test(detail)) return "cliauth";
+  if (/invalid[_\s-]?api[_\s-]?key|incorrect api key|api key[^\n]*(?:invalid|reject|denied)|401[^\n]*(?:unauthori|invalid)/i.test(detail)) return "auth";
+  if (/auth|logged in|sign in/i.test(detail)) return "apcauth";
   if (/rate limit|quota|usage limit|too many requests|overloaded/i.test(detail)) return "limit";
   if (/model.*not found|unknown model|invalid model/i.test(detail)) return "model";
   if (/(?:unknown|invalid|expired|missing|closed)\s+session|session(?:\s+id)?[^\n]*(?:not found|unknown|invalid|expired|closed|does not exist)|no such session/i.test(detail)) {
@@ -760,7 +769,36 @@ function acpLaunchSpec(id, binaryPath, cliPath, model, effort, paths) {
   return { command, args, env, sessionMode: meta.sessionMode || "" };
 }
 
+function codexProviderConfig(text) {
+  const config = parse(text);
+  const result = {};
+  for (const field of ["model", "model_provider", "openai_base_url", "chatgpt_base_url"]) {
+    if (typeof config[field] === "string") result[field] = config[field];
+  }
+  const providerId = result.model_provider;
+  const provider = providerId && config.model_providers?.[providerId];
+  if (provider && typeof provider === "object") {
+    // Preserve routing and HTTP authentication, excluding executable auth
+    // helpers and unrelated terminal settings such as hooks, MCPs and plugins.
+    const fields = [
+      "name", "base_url", "wire_api", "env_key", "requires_openai_auth", "experimental_bearer_token",
+      "http_headers", "env_http_headers", "query_params", "request_max_retries",
+      "stream_max_retries", "stream_idle_timeout_ms", "supports_websockets",
+    ];
+    result.model_providers = {
+      [providerId]: Object.fromEntries(fields.filter(field => Object.hasOwn(provider, field)).map(field => [field, provider[field]])),
+    };
+  }
+  return stringify(result);
+}
+
 class CliAcpManager {
+  /**
+   * Starts an isolated ACP process for one CLI conversation. Codex reuses the
+   * user's dedicated auth file, provider configuration, or process environment
+   * only for its own child; the key is never written to plugin settings or
+   * included in diagnostics.
+   */
   constructor(id, binaryPath, cliPath, model, effort, nodePath = "") {
     const { childProcess, fs, os, path } = runtime();
     this.id = id;
@@ -784,15 +822,45 @@ class CliAcpManager {
     const source = window.process?.env || {};
     const realHome = source.HOME || os.homedir();
     const grokHome = source.GROK_HOME || path.join(realHome, ".grok");
+    let codexApiKey = "";
+    let codexApiKeyName = "";
     if (id === "codex-cli") {
       fs.mkdirSync(this.codexHome, { mode: 0o700 });
       const realCodexHome = source.CODEX_HOME || path.join(realHome, ".codex");
       const authFile = path.join(realCodexHome, "auth.json");
-      if (fs.existsSync(authFile)) {
-        try { fs.symlinkSync(authFile, path.join(this.codexHome, "auth.json")); }
-        catch { this.codexHome = realCodexHome; }
-      } else {
-        this.codexHome = realCodexHome;
+      for (const key of ["CODEX_API_KEY", "OPENAI_API_KEY"]) {
+        if (typeof source[key] === "string" && source[key].trim()) {
+          codexApiKey = source[key].trim();
+          codexApiKeyName = key;
+          break;
+        }
+      }
+      try {
+        const configFile = path.join(realCodexHome, "config.toml");
+        if (fs.existsSync(configFile)) {
+          // ACP's empty mcpServers list does not disable Codex's own MCPs.
+          const config = codexProviderConfig(fs.readFileSync(configFile, "utf8"));
+          fs.writeFileSync(path.join(this.codexHome, "config.toml"), config, { mode: 0o600 });
+        }
+        if (fs.existsSync(authFile)) {
+          const isolatedAuth = path.join(this.codexHome, "auth.json");
+          try { fs.symlinkSync(authFile, isolatedAuth); }
+          catch { fs.writeFileSync(isolatedAuth, fs.readFileSync(authFile), { mode: 0o600 }); }
+          // The ACP adapter selects API-key auth from its own environment.
+          try {
+            const auth = JSON.parse(fs.readFileSync(authFile, "utf8"));
+            if (!codexApiKey) for (const key of ["CODEX_API_KEY", "OPENAI_API_KEY"]) {
+              if (typeof auth?.[key] === "string" && auth[key].trim()) {
+                codexApiKey = auth[key].trim();
+                codexApiKeyName = key;
+                break;
+              }
+            }
+          } catch { /* OAuth-only auth files do not contain an API key */ }
+        }
+      } catch {
+        fs.rmSync(this.root, { recursive: true, force: true });
+        throw cliError("cli", "Could not read Codex ACP provider configuration");
       }
     }
     this.launch = acpLaunchSpec(id, binaryPath, cliPath, this.model, effort, {
@@ -808,6 +876,7 @@ class CliAcpManager {
       // locations still reuse the user's existing subscription login.
       env: safeProcessEnv({
         ...this.launch.env,
+        ...(codexApiKey ? { [codexApiKeyName || "OPENAI_API_KEY"]: codexApiKey } : {}),
         PATH: [...new Set([nodePath, cliPath, binaryPath].filter(Boolean).map(file => path.dirname(file))) , source.PATH || ""].filter(Boolean).join(path.delimiter),
       }),
       shell: false,

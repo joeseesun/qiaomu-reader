@@ -12,7 +12,22 @@ import { QIAOMU_READER_ZH_CN as zh } from "../src/i18n-zh.js";
 import { UI_TRANSLATIONS } from "../src/i18n-languages.js";
 import { translateUiText } from "../src/i18n-runtime.js";
 import { buildProfile } from "../scripts/build-profile.mjs";
+import { ABOUT_QR } from "../src/about-qr.js";
 import { EMBEDDED_PDF_CMAPS } from "../src/pdf-cmaps-data.js";
+
+test('packed voices and QR assets retain their content without Node', async () => {
+  const source = fs.readFileSync(path.join(root, 'src/tts-local-models.json'), 'utf8');
+  const result = await build({
+    stdin: { resolveDir: root, contents: 'export {default as catalog} from "./src/tts-local-models.json"; export {ABOUT_QR} from "./src/about-qr.js"; export {decodeTranslationData} from "./src/compact-translations.js";' },
+    bundle: true, format: 'cjs', target: 'es2018', minify: true, write: false,
+    plugins: [await compactTranslations(root)],
+  });
+  const module = { exports: {} };
+  vm.runInNewContext(result.outputFiles[0].text, { module, atob });
+  assert.deepEqual(JSON.parse(JSON.stringify(module.exports.catalog)), JSON.parse(source));
+  assert.deepEqual(JSON.parse(JSON.stringify(module.exports.ABOUT_QR)), ABOUT_QR);
+  assert.ok(result.outputFiles[0].contents.length < 135000, `packed assets: ${result.outputFiles[0].contents.length}`);
+});
 
 const root = path.resolve(import.meta.dirname, "..");
 for (const profileName of ["standard", "community"]) {

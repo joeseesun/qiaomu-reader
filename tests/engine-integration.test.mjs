@@ -18,6 +18,19 @@ function functionSource(name) {
 }
 const translate = (key) => key;
 
+test("Markdown image lookup uses Obsidian's vault resolver relative to the source note", () => {
+  const calls = [], image = { path: "assets/中文 图片.png" };
+  const options = vm.runInNewContext(`${functionSource("textReaderOptions")}\ntextReaderOptions`, { parseYaml() {} })({
+    metadataCache: { getFirstLinkpathDest(link, source) { calls.push([link, source]); return link === "missing.png" ? null : image; } },
+    vault: { getResourcePath: file => `app://vault/${encodeURI(file.path)}` }, workspace: {},
+  }, { path: "Notes/subfolder/article.md" });
+  for (const link of ["assets/中文 图片.png", "中文 图片.png", "../../assets/中文 图片.png"]) {
+    assert.equal(options.resolveResource(link), "app://vault/assets/%E4%B8%AD%E6%96%87%20%E5%9B%BE%E7%89%87.png");
+  }
+  assert.equal(options.resolveResource("missing.png"), null);
+  assert.deepEqual(calls.map(x => x[1]), Array(4).fill("Notes/subfolder/article.md"));
+});
+
 test("switching a reused PDF flow between paged and scroll modes clears stale geometry", () => {
   const method = source.slice(source.indexOf("  _styleFlow(cfg, geo, cjk) {"), source.indexOf("  _mountBookHtml("));
   const style = vm.runInNewContext(`({${method}})._styleFlow`, { resolveReaderFont: () => "serif", FONTS: {} });
@@ -357,7 +370,7 @@ test("iframe page turns stay immersive while center taps and pointer edges revea
   const calls = [];
   const view = { areaEl: main, plugin: { settings: { navMode: "click" } },
     _armImmersive: () => calls.push("chrome"), nav: dir => calls.push(dir) };
-  const attach = vm.runInNewContext(`${functionSource("beginReaderSelection")}\n${functionSource("handleAreaNavClick")}\n${functionSource("revealReaderChromeFromPage")}\n${functionSource("attachEngineChrome")}\nattachEngineChrome`, {
+  const attach = vm.runInNewContext(`${functionSource("handleAreaNavClick")}\n${functionSource("revealReaderChromeFromPage")}\n${functionSource("attachEngineChrome")}\nattachEngineChrome`, {
     readerIsPdf: () => false, selOf: () => null,
   });
   attach(view, doc);

@@ -1,4 +1,5 @@
 import path from "node:path";
+import fs from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import pako from "pako";
 
@@ -29,6 +30,14 @@ export async function compactTranslations(root = process.cwd()) {
   return {
     name: "compact-reader-translations",
     setup(build) {
+      // Pack large static assets losslessly with the same JSON codec.
+      build.onLoad({ filter: /[\\/]src[\\/](tts-local-models\.json|about-qr\.js)$/ }, async ({ path: file }) => {
+        const isCatalog = file.endsWith(".json");
+        const data = isCatalog ? JSON.parse(await fs.readFile(file, "utf8")) : (await import(pathToFileURL(file).href)).ABOUT_QR;
+        const packed = Buffer.from(pako.deflateRaw(JSON.stringify(data), { level: 9 })).toString("base64");
+        const binding = isCatalog ? "export default" : "export const ABOUT_QR =";
+        return { resolveDir: root, loader: "js", contents: `import { decodePackedJson } from ${JSON.stringify(path.join(root, "src/compact-translations.js"))}; ${binding} decodePackedJson(${JSON.stringify(packed)});` };
+      });
       build.onResolve({ filter: /^qbr:translations$/ }, () => ({ path: "data", namespace: "qbr-translations" }));
       build.onLoad({ filter: /.*/, namespace: "qbr-translations" }, () => ({
         resolveDir: root,

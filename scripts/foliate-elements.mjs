@@ -47,6 +47,21 @@ export function patchFoliateFrames(code, name) {
 }
 
 export function patchFoliatePaginator(code) {
+  // A selection-handle drag belongs to the native selection. Foliate already
+  // skips panning in touchmove, but used to snap the page anyway on touchend.
+  code = replaceRequired(code, `if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+            return`, `if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+            state.selecting = true
+            return`);
+  code = replaceRequired(code, `#onTouchEnd() {
+        this.#touchScrolled = false
+        if (this.scrolled) return`, `#onTouchEnd() {
+        this.#touchScrolled = false
+        const selection = this.#view?.document?.getSelection()
+        if (this.scrolled || this.#touchState?.selecting || (selection?.rangeCount && !selection.isCollapsed)) return`);
+  code = replaceRequired(code, `doc.addEventListener('pointerup', () => isPointerSelecting = false)`,
+    `doc.addEventListener('pointerup', () => isPointerSelecting = false)
+            doc.addEventListener('pointercancel', () => isPointerSelecting = false)`);
   // ResizeObserver callbacks run during layout. Defer geometry writes to the
   // next frame so expanding a section cannot trigger an observer feedback loop.
   for (const method of ["expand", "render"]) {
@@ -63,9 +78,14 @@ export function patchFoliatePaginator(code) {
   code = replaceRequired(code, "this.#observer.unobserve(this)", "this.#observer.disconnect()");
   code = replaceRequired(code, "if (this.document) this.#observer.unobserve(this.document.body)", "this.#observer.disconnect()");
   code = replaceRequired(code, "this.#view.destroy()\n        this.#view = null", "this.#view?.destroy()\n        this.#view = null");
-  code = replaceRequired(code, "render() {\n        if (!this.#view) return", "render() {\n        if (!this.#view || !this.#container.clientWidth || !this.#container.clientHeight) return");
+  // The iframe is attached before navigation finishes. Its Document can
+  // exist without a body while a queued resize or font callback runs.
+  code = replaceRequired(code, "render() {\n        if (!this.#view) return",
+    "render() {\n        if (!this.#view?.document?.body || !this.#container.clientWidth || !this.#container.clientHeight) return");
+  code = replaceRequired(code, "const doc = this.#view?.document\n        if (!doc) return",
+    "const doc = this.#view?.document\n        if (!doc?.documentElement || !doc.defaultView) return");
   code = replaceRequired(code, "expand() {\n        const { documentElement } = this.document",
-    "expand() {\n        if (!this.#element.parentElement?.clientWidth || !this.#element.parentElement?.clientHeight) return\n        const { documentElement } = this.document");
+    "expand() {\n        if (!this.document?.body || !this.#element.parentElement?.clientWidth || !this.#element.parentElement?.clientHeight) return\n        const { documentElement } = this.document");
   code = replaceRequired(code, "--_max-column-count-portrait: 1;", "--_max-column-count-portrait: var(--_max-column-count);");
   // An exception must not leave all later navigation permanently locked.
   code = replaceRequired(code, "async #turnPage(dir, distance) {\n        if (this.#locked) return\n        this.#locked = true",
