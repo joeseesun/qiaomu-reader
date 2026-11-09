@@ -2173,6 +2173,10 @@ body.qiaomu-reader-active-view .status-bar { display: none; }
 @media (max-width:560px) { .modal.qiaomu-reader-book-discovery { height:auto; max-height:92vh; } .qiaomu-reader-book-discovery .modal-content { padding:22px 18px; } .qiaomu-reader-discovery-grid { grid-template-columns:1fr; } .qiaomu-reader-discovery-detail-top .qiaomu-reader-discovery-cover { width:84px; } .qiaomu-reader-discovery-result { flex-wrap:wrap; } .qiaomu-reader-discovery-result-info { flex-basis:100%; } .qiaomu-reader-book-discovery .qiaomu-reader-discovery-tabs button, .qiaomu-reader-book-discovery .qiaomu-reader-discovery-btn { min-height:40px; } .qiaomu-reader-discovery-path-cols { grid-template-columns:1fr; } }
 @media (max-width:560px) { .qiaomu-reader-discovery-grid { grid-template-columns:1fr; } .qiaomu-reader-discovery-detail-top .qiaomu-reader-discovery-cover { width:84px; } .qiaomu-reader-discovery-path-cols { grid-template-columns:1fr; } }
 /* Inline speech: one stable trigger, two controls in a narrow reading pane. */
+/* The regular chrome overlays the page. Reserve its row while speech is open
+   so playback stays clear of the reading surface in both reader hosts. */
+.qiaomu-reader-top.qbr-tts-expanded { position: relative; top: 0; flex: none; }
+.qiaomu-reader-top.qbr-tts-expanded.qbr-tts-compact { height: 48px; padding-block: 1px; }
 .qbr-tts-slot { position: relative; flex: 0 0 auto; width: 32px; height: 32px; transition: width 320ms cubic-bezier(.22,1,.36,1); color: var(--qiaomu-reader-text, var(--text-normal)); }
 .qbr-tts-slot.is-open { width: 160px; }
 .qbr-tts-slot.is-closing { width: 32px; }

@@ -371,12 +371,14 @@ export function openTts(view, selectedText) {
   if (selectedText) stopViewTts(view);
   view._ttsSelectedText = selectedText || null;
   view._ttsFinishClosing?.(); view._ttsBar.hidden = false; view._ttsBar.inert = false;
-  view._ttsBar.parentElement.classList.add('is-open'); view.contentEl.classList.remove('qiaomu-reader-immersive'); view._armImmersive?.(); view._ttsRefresh?.();
+  view._ttsBar.parentElement.classList.add('is-open');
+  view.contentEl.classList.remove('qiaomu-reader-immersive'); view._armImmersive?.(); view._ttsRefresh?.();
 }
 export function attachTts(view, tray) {
   view._ttsCleanup?.();
   const plugin = view.plugin, c = ensureTts(plugin), tx = key => ttsText(plugin, key);
   const slot = tray.createDiv('qbr-tts-slot'), doc = tray.ownerDocument, win = doc.defaultView;
+  const top = tray.parentElement;
   const read = button(slot, 'play', tx('read'), () => {
     openTts(view);
     if (!config(plugin).introSeen) { openTtsSettings(plugin); return; }
@@ -399,7 +401,12 @@ export function attachTts(view, tray) {
   let scope, closingTimer, frame;
   const closePanels = () => { panels.forEach(p => { p.hidden = true; }); more.setAttribute('aria-expanded', 'false'); if (scope) { plugin.app.keymap.popScope(scope); scope = null; } };
   const fit = () => {
-    const root = view.contentEl.getBoundingClientRect(); slot.classList.toggle('is-narrow', root.width <= 650); menuSpeed.hidden = root.width > 650;
+    const root = view.contentEl.getBoundingClientRect();
+    const narrow = root.width <= 650;
+    slot.classList.toggle('is-narrow', narrow);
+    top.classList.toggle('qbr-tts-compact', narrow);
+    top.classList.toggle('qbr-tts-expanded', !bar.hidden || slot.classList.contains('is-closing'));
+    menuSpeed.hidden = !narrow;
     if (bar.hidden) return;
     const anchor = slot.getBoundingClientRect(), width = Math.max(160, Math.min(360, root.width - 32));
     bar.style.setProperty('--qbr-tts-panel-height', `${Math.max(100, root.bottom - anchor.bottom - 16)}px`);
@@ -431,7 +438,9 @@ export function attachTts(view, tray) {
   }
   const errorBox = bar.createDiv('qbr-tts-error'), errorMessage = errorBox.createDiv({ attr: { role: 'alert' } }); errorBox.hidden = true;
   button(errorBox, 'rotate-ccw', tx('retry'), () => c.retry(), true); button(errorBox, 'settings-2', tx('voiceSettings'), sound, true);
-  const progress = bar.createDiv({ cls: 'qbr-tts-sr', attr: { role: 'progressbar', 'aria-label': tx('progress'), 'aria-valuemin': '0', 'aria-valuemax': '100' } });
+  const progressName = 'qbr-tts-progress-' + crypto.randomUUID();
+  bar.createSpan({ cls: 'qbr-tts-sr', text: tx('progress'), attr: { id: progressName } });
+  const progress = bar.createDiv({ cls: 'qbr-tts-sr', attr: { role: 'progressbar', 'aria-labelledby': progressName, 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': '0' } });
   const refresh = () => {
     const own = c.owner?.view === view, state = own ? c.state : 'idle', busy = ['playing', 'loading'].includes(state);
     const icon = state === 'loading' ? 'loader-circle' : busy ? 'pause' : state === 'ended' ? 'rotate-ccw' : 'play';
@@ -454,10 +463,18 @@ export function attachTts(view, tray) {
   doc.addEventListener('pointerdown', outside);
   bar.addEventListener('keydown', e => { if (e.key === 'Escape' && panels.some(p => !p.hidden)) { e.preventDefault(); e.stopPropagation(); closePanels(); more.focus(); } });
   const observer = new win.ResizeObserver(() => { win.cancelAnimationFrame(frame); frame = win.requestAnimationFrame(fit); }); observer.observe(view.contentEl);
-  view._ttsFinishClosing = () => { win.clearTimeout(closingTimer); slot.classList.remove('is-closing', 'is-open'); };
+  view._ttsFinishClosing = () => {
+    win.clearTimeout(closingTimer);
+    slot.classList.remove('is-closing', 'is-open');
+    top.classList.remove('qbr-tts-expanded');
+  };
   view._ttsCollapse = animate => {
     view._ttsFinishClosing(); bar.inert = true;
-    if (animate && !win.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { slot.classList.add('is-closing'); closingTimer = win.setTimeout(() => { view._ttsFinishClosing(); read.focus(); }, 340); } else read.focus();
+    if (animate && !win.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      slot.classList.add('is-closing');
+      top.classList.add('qbr-tts-expanded');
+      closingTimer = win.setTimeout(() => { view._ttsFinishClosing(); read.focus(); }, 340);
+    } else read.focus();
   };
   view._ttsClosePanels = closePanels; view._ttsRefresh = refresh; view._ttsRefreshPosition = refresh;
   view._ttsOnRelocate = detail => { const saved = savedSpeechProgress(config(plugin), view.file); if (detail?.reason !== 'anchor' && !view._ttsNavigating && c.owner?.view === view && saved && !speechAnchorVisible(view, saved)) c.owner.follow = false; refresh(); };

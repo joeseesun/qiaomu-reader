@@ -3,6 +3,7 @@
 // This module deliberately has no static Node imports: Obsidian also loads the
 // plugin on mobile, where Node built-ins do not exist. Node modules are resolved
 // only after the caller has established that it is running on desktop.
+import { parse, stringify } from "smol-toml";
 import { ACP_AUTO_INSTALL_ENABLED, installAcpWithTools } from "./ai-acp-manual.js";
 
 export const CLI_AI_PROVIDER_IDS = Object.freeze([
@@ -768,6 +769,29 @@ function acpLaunchSpec(id, binaryPath, cliPath, model, effort, paths) {
   return { command, args, env, sessionMode: meta.sessionMode || "" };
 }
 
+function codexProviderConfig(text) {
+  const config = parse(text);
+  const result = {};
+  for (const field of ["model", "model_provider", "openai_base_url", "chatgpt_base_url"]) {
+    if (typeof config[field] === "string") result[field] = config[field];
+  }
+  const providerId = result.model_provider;
+  const provider = providerId && config.model_providers?.[providerId];
+  if (provider && typeof provider === "object") {
+    // Preserve routing and HTTP authentication, excluding executable auth
+    // helpers and unrelated terminal settings such as hooks, MCPs and plugins.
+    const fields = [
+      "name", "base_url", "wire_api", "env_key", "requires_openai_auth", "experimental_bearer_token",
+      "http_headers", "env_http_headers", "query_params", "request_max_retries",
+      "stream_max_retries", "stream_idle_timeout_ms", "supports_websockets",
+    ];
+    result.model_providers = {
+      [providerId]: Object.fromEntries(fields.filter(field => Object.hasOwn(provider, field)).map(field => [field, provider[field]])),
+    };
+  }
+  return stringify(result);
+}
+
 class CliAcpManager {
   /**
    * Starts an isolated ACP process for one CLI conversation. Codex reuses the
@@ -811,27 +835,32 @@ class CliAcpManager {
           break;
         }
       }
-      if (fs.existsSync(authFile)) {
-        try { fs.symlinkSync(authFile, path.join(this.codexHome, "auth.json")); }
-        catch { this.codexHome = realCodexHome; }
+      try {
         const configFile = path.join(realCodexHome, "config.toml");
-        if (this.codexHome !== realCodexHome && fs.existsSync(configFile)) {
-          // The terminal CLI's gateway/base URL lives in config.toml; preserve it while keeping session MCPs disabled by the ACP request.
-          try { fs.symlinkSync(configFile, path.join(this.codexHome, "config.toml")); } catch { /* keep the isolated home if the optional config link is unavailable */ }
+        if (fs.existsSync(configFile)) {
+          // ACP's empty mcpServers list does not disable Codex's own MCPs.
+          const config = codexProviderConfig(fs.readFileSync(configFile, "utf8"));
+          fs.writeFileSync(path.join(this.codexHome, "config.toml"), config, { mode: 0o600 });
         }
-        // The ACP adapter selects API-key auth from the environment; reuse the existing Codex key without writing it to plugin settings or logs.
-        try {
-          const auth = JSON.parse(fs.readFileSync(authFile, "utf8"));
-          if (!codexApiKey) for (const key of ["CODEX_API_KEY", "OPENAI_API_KEY"]) {
-            if (typeof auth?.[key] === "string" && auth[key].trim()) {
-              codexApiKey = auth[key].trim();
-              codexApiKeyName = key;
-              break;
+        if (fs.existsSync(authFile)) {
+          const isolatedAuth = path.join(this.codexHome, "auth.json");
+          try { fs.symlinkSync(authFile, isolatedAuth); }
+          catch { fs.writeFileSync(isolatedAuth, fs.readFileSync(authFile), { mode: 0o600 }); }
+          // The ACP adapter selects API-key auth from its own environment.
+          try {
+            const auth = JSON.parse(fs.readFileSync(authFile, "utf8"));
+            if (!codexApiKey) for (const key of ["CODEX_API_KEY", "OPENAI_API_KEY"]) {
+              if (typeof auth?.[key] === "string" && auth[key].trim()) {
+                codexApiKey = auth[key].trim();
+                codexApiKeyName = key;
+                break;
+              }
             }
-          }
-        } catch { /* OAuth-only auth files do not contain an API key */ }
-      } else {
-        this.codexHome = realCodexHome;
+          } catch { /* OAuth-only auth files do not contain an API key */ }
+        }
+      } catch {
+        fs.rmSync(this.root, { recursive: true, force: true });
+        throw cliError("cli", "Could not read Codex ACP provider configuration");
       }
     }
     this.launch = acpLaunchSpec(id, binaryPath, cliPath, this.model, effort, {

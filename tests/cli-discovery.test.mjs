@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { parse } from 'smol-toml';
 import { cliPathCandidates, acpPathCandidates, isNodeEntrypoint, resolveCliPath, resolveAcpPath, probeCliAcp, runCliAi, disposeCliAiSessions } from '../src/ai-cli.js';
 
 test('all providers discover nvm versions with a GUI PATH, in numeric version order', () => {
@@ -23,7 +24,18 @@ test('npm adapter shims launch with sibling Node and stream with a GUI PATH', as
   const codexHome = path.join(root, 'codex-home');
   fs.mkdirSync(codexHome);
   fs.writeFileSync(path.join(codexHome, 'auth.json'), JSON.stringify({ OPENAI_API_KEY: 'test-key' }), { mode: 0o600 });
-  fs.writeFileSync(path.join(codexHome, 'config.toml'), 'model_provider = "OpenAI"\n[model_providers.OpenAI]\nbase_url = "https://gateway.test"\n');
+  const configPath = path.join(codexHome, 'config.toml');
+  const config = `model_provider = "OpenAI"
+notify = ["unsafe-notify"]
+[model_providers.OpenAI]
+base_url = "https://gateway.test"
+[model_providers.OpenAI.auth]
+command = "unsafe-auth-helper"
+[mcp_servers.probe]
+command = "unsafe-mcp"
+`;
+  fs.writeFileSync(configPath, config);
+  const receivedConfig = path.join(root, 'received-config.toml');
   fs.symlinkSync(process.execPath, path.join(root, 'node'));
   fs.writeFileSync(cli, '#!/usr/bin/env node\nconsole.log("codex 1.0");', { mode: 0o700 });
   fs.writeFileSync(adapter, `#!/usr/bin/env node
@@ -32,6 +44,7 @@ readline.createInterface({input: process.stdin}).on('line', line => {
  const m=JSON.parse(line); const send=o=>console.log(JSON.stringify(o));
  if(m.method==='initialize') {
   const config = require('node:fs').readFileSync(require('node:path').join(process.env.CODEX_HOME, 'config.toml'), 'utf8');
+  require('node:fs').writeFileSync(${JSON.stringify(receivedConfig)}, config);
   if(process.env.OPENAI_API_KEY !== 'test-key' || !config.includes('https://gateway.test')) { send({id:m.id,error:{code:-32000,message:'Authentication required'}}); return; }
   send({id:m.id,result:{protocolVersion:1}});
  }
@@ -51,6 +64,11 @@ readline.createInterface({input: process.stdin}).on('line', line => {
     assert.equal(await resolveAcpPath('codex-cli', adapter), adapter);
     const probe = await probeCliAcp('codex-cli', { binaryPath: cli, acpPath: adapter });
     assert.equal(probe.sessionId, 'test');
+    assert.deepEqual(JSON.parse(JSON.stringify(parse(fs.readFileSync(receivedConfig, 'utf8')))), {
+      model_provider: 'OpenAI',
+      model_providers: { OpenAI: { base_url: 'https://gateway.test' } },
+    });
+    assert.equal(fs.readFileSync(configPath, 'utf8'), config);
     const answer = await runCliAi('codex-cli', { binaryPath: cli, acpPath: adapter, sessionKey: 'chat', messages: [{ role: 'user', content: 'hello' }] });
     assert.equal(answer.answer, 'CONNECTED');
   } finally {
