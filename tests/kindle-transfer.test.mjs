@@ -16,7 +16,7 @@ const bundle = await build({ entryPoints: ["src/kindle-transport.js"], bundle: t
 const mod = { exports: {} };
 globalThis.window = { require: createRequire(import.meta.url), setTimeout, clearTimeout };
 new Function("require", "module", "exports", bundle.outputFiles[0].text)(createRequire(import.meta.url), mod, mod.exports);
-const { createKindleKey, kindlePublicKey, pairKindleUsb, verifyKindleUsb, checkKindleConnection, sendKindleFile } = await mod.exports.loadKindleTransport();
+const { createKindleKey, kindlePublicKey, pairKindleUsb, verifyKindleUsb, checkKindleConnection, sendKindleFile, pathInsideRoot } = await mod.exports.loadKindleTransport();
 
 const { Server, utils } = ssh2;
 const fixtureConfig = { host: "127.0.0.1" };
@@ -101,6 +101,13 @@ test("only explicit local destinations and supported safe filenames are accepted
   assert.equal(kindleBookName("中文 书名.epub"), "中文 书名.epub");
   for (const host of ["127.0.0.1", "8.8.8.8", "https://192.168.1.2", "192.168.1.256", "192.168.1.1;id"]) assert.throws(() => kindleConnection({ host }));
   for (const name of ["../book.epub", "book\n.epub", "book\\.epub", "payload.sh", "notes.md"]) assert.throws(() => kindleBookName(name));
+});
+
+test("USB path validation accepts drive roots without accepting siblings", () => {
+  const root = process.platform === "win32" ? "F:\\" : "/mnt/kindle";
+  assert.equal(pathInsideRoot(root, path.join(root, "system/version.txt")), true);
+  const outside = process.platform === "win32" ? "C:\\outside" : "/mnt/outside";
+  assert.equal(pathInsideRoot(root, outside), false);
 });
 
 test("USB pairing is idempotent and preserves unrelated keys and reading settings", async t => {

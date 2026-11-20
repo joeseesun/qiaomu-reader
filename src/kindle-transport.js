@@ -11,6 +11,10 @@ export async function loadKindleTransport() {
   const { createHash, randomUUID } = window.require("node:crypto");
   const { Client, utils } = ssh2;
   const fsp = fs.promises;
+  const pathInsideRoot = (root, candidate) => {
+    const relative = path.relative(root, candidate);
+    return relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+  };
 const timing = typeof window === "undefined" ? { setTimeout, clearTimeout } : window;
 const aborted = () => Object.assign(kindleError("cancelled"), { name: "AbortError" });
 const check = signal => { if (signal?.aborted) throw aborted(); };
@@ -29,7 +33,7 @@ async function verifyKindleUsb(candidate) {
   if (root === path.parse(root).root && (os.platform() !== "win32" || /^[cC]:/.test(root))) throw kindleError("usb");
   for (const rel of ["system/version.txt", "koreader/koreader.sh", "koreader/settings.reader.lua"]) {
     const resolved = await fsp.realpath(path.join(root, rel));
-    if (!resolved.startsWith(root + path.sep) || !(await fsp.stat(resolved)).isFile()) throw kindleError("usb");
+    if (!pathInsideRoot(root, resolved) || !(await fsp.stat(resolved)).isFile()) throw kindleError("usb");
   }
   if (!/^Kindle\s+\d/.test(await fsp.readFile(path.join(root, "system/version.txt"), "utf8"))) throw kindleError("usb");
   return root;
@@ -55,14 +59,14 @@ async function pairKindleUsb(candidate, publicKey, { signal, port } = {}) {
   const updated = kindleLuaSettings(settings, port);
   const keyDir = path.join(root, "koreader/settings/SSH");
   const settingsDir = await fsp.realpath(path.dirname(keyDir));
-  if (!settingsDir.startsWith(root + path.sep)) throw kindleError("usb");
+  if (!pathInsideRoot(root, settingsDir)) throw kindleError("usb");
   await fsp.mkdir(keyDir, { recursive: true });
   // Reject links outside the verified Kindle, including an existing key file.
   const actualDir = await fsp.realpath(keyDir);
-  if (!actualDir.startsWith(root + path.sep)) throw kindleError("usb");
+  if (!pathInsideRoot(root, actualDir)) throw kindleError("usb");
   const keyPath = path.join(actualDir, "authorized_keys");
   const keyExists = await fsp.lstat(keyPath).then(() => true, error => { if (error.code === "ENOENT") return false; throw error; });
-  if (keyExists && !(await fsp.realpath(keyPath)).startsWith(root + path.sep)) throw kindleError("usb");
+  if (keyExists && !pathInsideRoot(root, await fsp.realpath(keyPath))) throw kindleError("usb");
   const previous = keyExists ? await fsp.readFile(keyPath, "utf8") : null;
   const keys = appendKindleKey(previous || "", publicKey);
   const id = randomUUID();
@@ -245,5 +249,5 @@ async function sendKindleFile(config, privateKey, localPath, name, { signal, onP
   }, { ...options, signal });
 }
 
-return { createKindleKey, kindlePublicKey, verifyKindleUsb, findKindleUsb, pairKindleUsb, withKindleSession, checkKindleConnection, discoverKindle, sendKindleFile };
+return { createKindleKey, kindlePublicKey, verifyKindleUsb, findKindleUsb, pairKindleUsb, withKindleSession, checkKindleConnection, discoverKindle, sendKindleFile, pathInsideRoot };
 }
